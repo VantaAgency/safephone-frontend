@@ -1,0 +1,180 @@
+"use client";
+
+import { useState } from "react";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { cn } from "@/lib/utils";
+import { Logo } from "./logo";
+import { Button } from "@/components/ui/button";
+import { MenuIcon, XIcon } from "@/components/ui/icons";
+import { useAuth } from "@/lib/auth/auth-provider";
+import type { Lang, Translations } from "@/lib/i18n";
+
+interface NavbarProps {
+  lang: Lang;
+  setLang: (lang: Lang) => void;
+  t: Translations;
+}
+
+const NAV_LINKS = [
+  { key: "plans", href: "/forfaits" },
+  { key: "mobitech", href: "/reparations" },
+  { key: "partners", href: "/partenaires" },
+  { key: "contact", href: "/contact" },
+] as const;
+
+export function Navbar({ lang, setLang, t }: NavbarProps) {
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const pathname = usePathname();
+  const router = useRouter();
+  const { user, isAuthenticated, isPending, signOut } = useAuth();
+
+  const isActive = (href: string) => pathname === href;
+
+  const handleSignOut = async () => {
+    await signOut();
+    router.push("/");
+  };
+
+  return (
+    <header className="fixed top-0 w-full z-50 glass-panel border-b border-slate-200/50">
+      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+        {/* Logo */}
+        <Link href="/" className="shrink-0">
+          <Logo />
+        </Link>
+
+        {/* Desktop Nav Links */}
+        <nav className="hidden items-center space-x-8 md:flex">
+          {NAV_LINKS.map(({ key, href }) => (
+            <Link
+              key={key}
+              href={href}
+              className={cn(
+                "text-sm font-medium transition-colors",
+                isActive(href)
+                  ? "text-indigo-950"
+                  : "text-slate-500 hover:text-indigo-950"
+              )}
+            >
+              {t.nav[key as keyof typeof t.nav]}
+            </Link>
+          ))}
+        </nav>
+
+        {/* Desktop Right Section */}
+        <div className="hidden items-center space-x-4 md:flex">
+          <button
+            onClick={() => setLang(lang === "fr" ? "en" : "fr")}
+            className="flex h-7 w-7 items-center justify-center rounded-full text-[10px] font-medium text-slate-400 transition-colors hover:text-indigo-950 cursor-pointer"
+          >
+            {lang === "fr" ? "EN" : "FR"}
+          </button>
+
+          {isPending ? (
+            <div className="h-8 w-20 animate-pulse rounded-full bg-slate-100" />
+          ) : isAuthenticated ? (
+            <>
+              <Link
+                href="/tableau-de-bord"
+                className="text-sm font-medium text-slate-500 hover:text-indigo-950 transition-colors"
+              >
+                {user?.name || t.nav.dashboard}
+              </Link>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSignOut}
+              >
+                {lang === "fr" ? "Déconnexion" : "Sign out"}
+              </Button>
+            </>
+          ) : (
+            <>
+              <Link
+                href="/connexion"
+                className="text-sm font-medium text-slate-500 hover:text-indigo-950 transition-colors"
+              >
+                {t.nav.login}
+              </Link>
+              <Link href="/inscription">
+                <Button variant="primary" size="sm">
+                  {lang === "fr" ? "M'abonner maintenant" : "Subscribe now"}
+                </Button>
+              </Link>
+            </>
+          )}
+        </div>
+
+        {/* Mobile Right */}
+        <div className="flex items-center gap-2 md:hidden">
+          <button
+            onClick={() => setLang(lang === "fr" ? "en" : "fr")}
+            className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-medium text-slate-400 cursor-pointer"
+          >
+            {lang === "fr" ? "EN" : "FR"}
+          </button>
+          <button
+            onClick={() => setMobileOpen(!mobileOpen)}
+            className="flex h-10 w-10 items-center justify-center rounded-lg text-slate-500 hover:text-indigo-950 cursor-pointer"
+            aria-label="Toggle menu"
+          >
+            {mobileOpen ? <XIcon size={22} /> : <MenuIcon size={22} />}
+          </button>
+        </div>
+      </div>
+
+      {/* Mobile Menu */}
+      {mobileOpen && (
+        <div className="border-t border-slate-200/50 bg-white px-4 py-4 md:hidden">
+          <div className="flex flex-col gap-1">
+            {NAV_LINKS.map(({ key, href }) => (
+              <Link
+                key={key}
+                href={href}
+                onClick={() => setMobileOpen(false)}
+                className={cn(
+                  "rounded-xl px-4 py-3 text-sm font-medium transition-colors",
+                  isActive(href)
+                    ? "bg-indigo-50 text-indigo-950"
+                    : "text-slate-500 hover:bg-slate-50 hover:text-indigo-950"
+                )}
+              >
+                {t.nav[key as keyof typeof t.nav]}
+              </Link>
+            ))}
+          </div>
+          <div className="mt-4 flex flex-col gap-2 border-t border-slate-100 pt-4">
+            {isAuthenticated ? (
+              <>
+                <Link href="/tableau-de-bord" onClick={() => setMobileOpen(false)}>
+                  <Button variant="outline" fullWidth>
+                    {user?.name || t.nav.dashboard}
+                  </Button>
+                </Link>
+                <Button
+                  variant="ghost"
+                  fullWidth
+                  onClick={() => { handleSignOut(); setMobileOpen(false); }}
+                >
+                  {lang === "fr" ? "Déconnexion" : "Sign out"}
+                </Button>
+              </>
+            ) : (
+              <>
+                <Link href="/connexion" onClick={() => setMobileOpen(false)}>
+                  <Button variant="outline" fullWidth>{t.nav.login}</Button>
+                </Link>
+                <Link href="/inscription" onClick={() => setMobileOpen(false)}>
+                  <Button variant="primary" fullWidth>
+                    {lang === "fr" ? "M'abonner maintenant" : "Subscribe now"}
+                  </Button>
+                </Link>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+    </header>
+  );
+}
