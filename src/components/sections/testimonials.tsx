@@ -6,8 +6,8 @@ const TESTIMONIALS = [
   {
     name: "Aminata D.",
     location: "Dakar, Plateau",
-    quote: "Mon écran s'est cassé la semaine dernière. J'ai fait ma réclamation sur le site SafePhone, validée en 1h. J'ai déposé le téléphone chez MobiTech Plateau et je l'ai récupéré comme neuf le lendemain. Je n'ai sorti aucun FCFA supplémentaire.",
-    quoteEn: "My screen cracked last week. I filed my claim on SafePhone, validated in 1h. I dropped the phone at MobiTech Plateau and picked it up like new the next day. I didn't spend a single extra FCFA.",
+    quote: "Mon écran s'est cassé la semaine dernière. J'ai fait ma demande sur le site SafePhone, validée en 1h. J'ai déposé le téléphone chez MobiTech Plateau et je l'ai récupéré comme neuf le lendemain. Je n'ai sorti aucun FCFA supplémentaire.",
+    quoteEn: "My screen cracked last week. I submitted my request on SafePhone, validated in 1h. I dropped the phone at MobiTech Plateau and picked it up like new the next day. I didn't spend a single extra FCFA.",
     initials: "AD",
     avatarClass: "border-indigo-100 bg-indigo-50 text-indigo-600",
     rating: 5,
