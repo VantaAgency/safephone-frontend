@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useLanguage } from "@/lib/language-context";
 import { Button } from "@/components/ui/button";
 import { FormField, Input } from "@/components/ui/form-field";
 import { WrenchIcon, MapPinIcon, ClockIcon, CheckCircleIcon, ChevronRightIcon, PhoneIcon, ScreenIcon, BatteryIcon, PlugIcon, CameraIcon, DropletIcon, SettingsIcon } from "@/components/ui/icons";
 import { REPAIR_TYPES, REPAIR_LOCATIONS, DEVICE_BRANDS } from "@/lib/data";
+import { useCreateRepairBooking } from "@/lib/api/hooks";
 import { cn } from "@/lib/utils";
 
 const REPAIR_ICONS: Record<string, typeof ScreenIcon> = {
@@ -21,6 +23,7 @@ const TIMES = ["08:00", "09:00", "10:00", "11:00", "13:00", "14:00", "15:00", "1
 
 export default function ReparationsPage() {
   const { lang, t } = useLanguage();
+  const router = useRouter();
   const [step, setStep] = useState(1);
   const [deviceType, setDeviceType] = useState("");
   const [repairType, setRepairType] = useState("");
@@ -29,23 +32,36 @@ export default function ReparationsPage() {
   const [time, setTime] = useState("");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [booked, setBooked] = useState(false);
+  const [bookedRef, setBookedRef] = useState<string | null>(null);
+  const createBooking = useCreateRepairBooking();
 
-  const handleBook = () => {
-    setLoading(true);
-    setTimeout(() => { setLoading(false); setBooked(true); }, 2000);
+  const handleBook = async () => {
+    try {
+      const result = await createBooking.mutateAsync({
+        device_type: deviceType,
+        repair_type: repairType,
+        location_id: location,
+        booking_date: date,
+        booking_time: time,
+        customer_name: name,
+        customer_phone: phone,
+      });
+      setBookedRef(result.reference);
+    } catch {
+      // Error shown via createBooking.isError
+    }
   };
 
   const reset = () => {
-    setBooked(false); setStep(1); setDeviceType(""); setRepairType("");
+    setBookedRef(null); setStep(1); setDeviceType(""); setRepairType("");
     setLocation(""); setDate(""); setTime(""); setName(""); setPhone("");
+    createBooking.reset();
   };
 
   const stepLabels = [t.mobitech.stepDevice, t.mobitech.stepRepair, t.mobitech.stepLocation, t.mobitech.stepDateTime, t.mobitech.stepConfirm];
 
   // Booking confirmed state
-  if (booked) {
+  if (bookedRef) {
     const loc = REPAIR_LOCATIONS.find(l => l.id === location);
     return (
       <div className="flex min-h-[70vh] items-center justify-center bg-slate-50 px-5 py-24">
@@ -62,7 +78,7 @@ export default function ReparationsPage() {
 
           <div className="mt-8 rounded-[2rem] border border-slate-200/80 bg-white p-5 text-left shadow-sm">
             {[
-              [t.mobitech.reference, "MBT-" + Math.random().toString(36).slice(2, 8).toUpperCase()],
+              [t.mobitech.reference, bookedRef],
               [t.mobitech.stepDevice, DEVICE_BRANDS.find(d => d.id === deviceType)?.[lang === "fr" ? "labelFr" : "labelEn"] || deviceType],
               [t.mobitech.stepRepair, REPAIR_TYPES.find(r => r.id === repairType)?.[lang === "fr" ? "labelFr" : "labelEn"] || repairType],
               [t.mobitech.stepLocation, loc?.name || location],
@@ -76,7 +92,7 @@ export default function ReparationsPage() {
           </div>
 
           <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
-            <Button variant="primary" onClick={() => {}}>
+            <Button variant="primary" onClick={() => router.push("/tableau-de-bord")}>
               {lang === "fr" ? "Mon tableau de bord" : "My dashboard"}
             </Button>
             <Button variant="outline" onClick={reset}>
@@ -280,15 +296,21 @@ export default function ReparationsPage() {
                 </div>
               </div>
 
+              {createBooking.isError && (
+                <div className="rounded-xl border border-red-200/60 bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
+                  {lang === "fr" ? "Une erreur est survenue. Réessayez." : "An error occurred. Please try again."}
+                </div>
+              )}
+
               <Button
                 variant="primary"
                 size="lg"
                 fullWidth
                 onClick={handleBook}
-                loading={loading}
-                disabled={!date || !time || !name || !phone}
+                loading={createBooking.isPending}
+                disabled={!date || !time || !name || !phone || createBooking.isPending}
               >
-                {loading ? t.mobitech.booking : t.mobitech.book}
+                {createBooking.isPending ? t.mobitech.booking : t.mobitech.book}
               </Button>
             </div>
             <Button variant="ghost" size="sm" className="mt-4" onClick={() => setStep(3)}>

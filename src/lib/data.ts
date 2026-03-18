@@ -110,50 +110,6 @@ export const TESTIMONIALS = [
   },
 ];
 
-// ── Partner Pipeline (kept for partner dashboard, no backend yet) ──
-
-export type ClientStatus = "invited" | "plan_purchased" | "device_registered" | "active";
-
-export interface PartnerClient {
-  id: string;
-  name: string;
-  phone: string;
-  invitedAt: string;
-  status: ClientStatus;
-  planId?: string;
-  lastActivity: string;
-}
-
-export const MOCK_PARTNER_CLIENTS: PartnerClient[] = [
-  { id: "PC-001", name: "Amadou Diallo", phone: "+221 77 234 56 78", invitedAt: "10 Mar 2025", status: "active", planId: "ecranplus", lastActivity: "il y a 2 jours" },
-  { id: "PC-002", name: "Fatou Mbaye", phone: "+221 76 345 67 89", invitedAt: "08 Mar 2025", status: "device_registered", planId: "essentiel", lastActivity: "il y a 3 jours" },
-  { id: "PC-003", name: "Moussa Sarr", phone: "+221 78 456 78 90", invitedAt: "06 Mar 2025", status: "plan_purchased", planId: "plus", lastActivity: "il y a 5 jours" },
-  { id: "PC-004", name: "Aissatou Fall", phone: "+221 77 567 89 01", invitedAt: "04 Mar 2025", status: "invited", lastActivity: "il y a 7 jours" },
-];
-
-// ── Admin Partners (kept for admin dashboard, no backend yet) ──
-
-export interface AdminPartner {
-  id: string;
-  storeName: string;
-  ownerName: string;
-  city: string;
-  clientsCount: number;
-  activeClients: number;
-  commissionThisMonth: number;
-  status: "active" | "inactive";
-  joinedAt: string;
-}
-
-export const MOCK_ADMIN_PARTNERS: AdminPartner[] = [
-  { id: "PRT-001", storeName: "Boutique Diallo Mobile", ownerName: "Ousmane Diallo", city: "Dakar — Parcelles Assainies", clientsCount: 48, activeClients: 45, commissionThisMonth: 42600, status: "active", joinedAt: "Jan 2025" },
-  { id: "PRT-002", storeName: "TechCenter Plateau", ownerName: "Mamadou Faye", city: "Dakar — Plateau", clientsCount: 31, activeClients: 28, commissionThisMonth: 24800, status: "active", joinedAt: "Jan 2025" },
-  { id: "PRT-003", storeName: "Galaxy Phone Almadies", ownerName: "Ibrahima Ndiaye", city: "Dakar — Almadies", clientsCount: 19, activeClients: 17, commissionThisMonth: 15200, status: "active", joinedAt: "Fév 2025" },
-  { id: "PRT-004", storeName: "Phone World Thiès", ownerName: "Aïcha Seck", city: "Thiès", clientsCount: 12, activeClients: 10, commissionThisMonth: 9600, status: "active", joinedAt: "Fév 2025" },
-  { id: "PRT-005", storeName: "InfoTech Kaolack", ownerName: "Boubacar Diouf", city: "Kaolack", clientsCount: 7, activeClients: 5, commissionThisMonth: 4200, status: "active", joinedAt: "Mar 2025" },
-  { id: "PRT-006", storeName: "Mobile Corner Rufisque", ownerName: "Fatimata Ba", city: "Rufisque", clientsCount: 3, activeClients: 0, commissionThisMonth: 0, status: "inactive", joinedAt: "Mar 2025" },
-];
-
 // ── Helpers ──
 
 export function formatXOF(amount: number): string {

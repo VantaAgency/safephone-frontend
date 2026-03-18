@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { AppShell } from "@/components/layout/app-shell";
 import { LanguageProvider } from "@/lib/language-context";
-import { PipelineProvider } from "@/lib/pipeline-context";
 import { AuthProvider } from "@/lib/auth/auth-provider";
+import { AuthModalProvider } from "@/components/auth/auth-modal-provider";
 import { QueryProvider } from "@/lib/api/query-provider";
 import { ToastProvider } from "@/components/ui/toast";
 import "./globals.css";
@@ -31,13 +32,15 @@ export default function RootLayout({
       <body className="antialiased">
         <QueryProvider>
           <AuthProvider>
-            <PipelineProvider>
-              <LanguageProvider>
-                <ToastProvider>
-                  <AppShell>{children}</AppShell>
-                </ToastProvider>
-              </LanguageProvider>
-            </PipelineProvider>
+            <LanguageProvider>
+              <Suspense>
+                <AuthModalProvider>
+                  <ToastProvider>
+                    <AppShell>{children}</AppShell>
+                  </ToastProvider>
+                </AuthModalProvider>
+              </Suspense>
+            </LanguageProvider>
           </AuthProvider>
         </QueryProvider>
       </body>

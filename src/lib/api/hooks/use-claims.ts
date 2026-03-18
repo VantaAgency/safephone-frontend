@@ -27,10 +27,11 @@ export function useCreateClaim() {
   });
 }
 
-export function useAdminClaims(params?: AdminClaimParams) {
+export function useAdminClaims(params?: AdminClaimParams, { enabled = true }: { enabled?: boolean } = {}) {
   return useQuery<Claim[]>({
     queryKey: ["admin-claims", params],
     queryFn: () => claims.adminList(params),
+    enabled,
   });
 }
 
@@ -47,6 +48,7 @@ export function useUpdateClaimStatus() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["claims"] });
       queryClient.invalidateQueries({ queryKey: ["admin-claims"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-stats"] });
     },
   });
 }

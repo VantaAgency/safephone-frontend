@@ -1,20 +1,31 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useLanguage } from "@/lib/language-context";
+import { useAuth } from "@/lib/auth/auth-provider";
 import { Button } from "@/components/ui/button";
 import { FormField, Input, Select } from "@/components/ui/form-field";
-import { CheckCircleIcon, UsersIcon, CreditCardIcon, PhoneIcon } from "@/components/ui/icons";
+import { UsersIcon, CreditCardIcon, ShieldCheckIcon, WhatsAppIcon, CheckCircleIcon } from "@/components/ui/icons";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { partnerApplicationSchema } from "@/lib/validation/schemas";
+import { useSubmitPartnerApplication, useMyPartnerApplication } from "@/lib/api/hooks";
+import { ApiError } from "@/lib/api/client";
 
 export default function PartenairesPage() {
   const { lang, t } = useLanguage();
+  const { user, isPending: authPending } = useAuth();
+  const isAuthenticated = !!user;
+
+  const { data: myApplication, isLoading: appLoading } = useMyPartnerApplication(isAuthenticated);
+
   const [form, setForm] = useState({ store: "", name: "", phone: "", city: "" });
-  const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [formError, setFormError] = useState("");
+  const submitPartnerApplication = useSubmitPartnerApplication();
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const result = partnerApplicationSchema.safeParse({
       storeName: form.store,
       fullName: form.name,
@@ -25,7 +36,6 @@ export default function PartenairesPage() {
       const errors: Record<string, string> = {};
       for (const issue of result.error.issues) {
         const key = String(issue.path[0]);
-        // Map schema keys to form keys
         const fieldMap: Record<string, string> = { storeName: "store", fullName: "name" };
         errors[fieldMap[key] || key] = issue.message;
       }
@@ -33,23 +43,223 @@ export default function PartenairesPage() {
       return;
     }
     setFieldErrors({});
-    setLoading(true);
-    // No backend endpoint — simulate
-    setTimeout(() => { setLoading(false); setSuccess(true); }, 1500);
+    setFormError("");
+    try {
+      await submitPartnerApplication.mutateAsync({
+        store_name: form.store,
+        full_name: form.name,
+        phone: form.phone,
+        city: form.city,
+      });
+      setSuccess(true);
+      setForm({ store: "", name: "", phone: "", city: "" });
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setFormError(err.message);
+      } else {
+        setFormError(
+          lang === "fr"
+            ? "Impossible de contacter le serveur. Vérifiez votre connexion et réessayez."
+            : "Could not reach the server. Check your connection and try again."
+        );
+      }
+    }
   };
 
-  const benefits = [
-    { icon: CreditCardIcon, title: t.partners.benefit1, desc: t.partners.b1d },
-    { icon: PhoneIcon, title: t.partners.benefit2, desc: t.partners.b2d },
-    { icon: UsersIcon, title: t.partners.benefit3, desc: t.partners.b3d },
-    { icon: CheckCircleIcon, title: t.partners.benefit4, desc: t.partners.b4d },
+  const steps = [
+    { icon: UsersIcon, title: t.partners.benefit1, desc: t.partners.b1d },
+    { icon: WhatsAppIcon, title: t.partners.benefit2, desc: t.partners.b2d },
+    { icon: ShieldCheckIcon, title: t.partners.benefit3, desc: t.partners.b3d },
+    { icon: CreditCardIcon, title: t.partners.benefit4, desc: t.partners.b4d },
   ];
+
+  const renderFormSection = () => {
+    if (authPending || appLoading) {
+      return (
+        <div className="rounded-[2rem] border border-slate-200/80 bg-white p-8 shadow-sm text-center">
+          <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-slate-200 border-t-indigo-600" />
+        </div>
+      );
+    }
+
+    // Not authenticated: prompt to sign in
+    if (!isAuthenticated) {
+      return (
+        <div className="rounded-[2rem] border border-slate-200/80 bg-white p-8 text-center shadow-sm">
+          <ShieldCheckIcon size={48} className="mx-auto mb-4 text-slate-300" />
+          <h3 className="text-lg font-medium text-indigo-950">
+            {lang === "fr" ? "Connexion requise" : "Sign in required"}
+          </h3>
+          <p className="mt-2 text-sm text-slate-500">
+            {lang === "fr"
+              ? "Vous devez créer un compte ou vous connecter pour soumettre une candidature partenaire."
+              : "You need to create an account or sign in to submit a partner application."}
+          </p>
+          <div className="mt-6 flex justify-center gap-3">
+            <Link href="/connexion">
+              <Button variant="primary" size="lg">
+                {lang === "fr" ? "Se connecter" : "Sign in"}
+              </Button>
+            </Link>
+            <Link href="/inscription-compte">
+              <Button variant="outline" size="lg">
+                {lang === "fr" ? "Créer un compte" : "Sign up"}
+              </Button>
+            </Link>
+          </div>
+        </div>
+      );
+    }
+
+    // Has existing application
+    if (myApplication) {
+      if (myApplication.status === "pending") {
+        return (
+          <div className="rounded-[2rem] border border-yellow-200/60 bg-yellow-50 p-8 text-center">
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-yellow-100">
+              <ShieldCheckIcon size={24} className="text-yellow-600" />
+            </div>
+            <h3 className="text-lg font-medium text-indigo-950">
+              {lang === "fr" ? "Candidature en cours d'examen" : "Application under review"}
+            </h3>
+            <p className="mt-2 text-sm text-slate-500">
+              {lang === "fr"
+                ? "Votre candidature a été soumise et est en cours d'examen par notre équipe. Nous vous contacterons bientôt."
+                : "Your application has been submitted and is being reviewed by our team. We will contact you soon."}
+            </p>
+            <div className="mt-4">
+              <StatusBadge status="pending" label={lang === "fr" ? "En attente" : "Pending"} />
+            </div>
+            <div className="mt-4 text-xs text-slate-400">
+              {lang === "fr" ? "Soumise le" : "Submitted on"}{" "}
+              {new Date(myApplication.created_at).toLocaleDateString(lang === "fr" ? "fr-FR" : "en-US")}
+            </div>
+          </div>
+        );
+      }
+
+      if (myApplication.status === "approved") {
+        return (
+          <div className="rounded-[2rem] border border-emerald-200/60 bg-emerald-50 p-8 text-center">
+            <CheckCircleIcon size={48} className="mx-auto mb-4 text-emerald-500" />
+            <h3 className="text-lg font-medium text-indigo-950">
+              {lang === "fr" ? "Vous êtes partenaire SafePhone !" : "You are a SafePhone partner!"}
+            </h3>
+            <p className="mt-2 text-sm text-slate-500">
+              {lang === "fr"
+                ? "Votre candidature a été approuvée. Accédez à votre espace partenaire pour gérer vos clients et commissions."
+                : "Your application has been approved. Access your partner dashboard to manage your clients and commissions."}
+            </p>
+            <div className="mt-6">
+              <Link href="/espace-partenaire">
+                <Button variant="primary" size="lg">
+                  {lang === "fr" ? "Espace partenaire" : "Partner dashboard"}
+                </Button>
+              </Link>
+            </div>
+          </div>
+        );
+      }
+
+      if (myApplication.status === "rejected") {
+        return (
+          <div>
+            <div className="mb-6 rounded-[2rem] border border-red-200/60 bg-red-50 p-6">
+              <h3 className="font-medium text-red-800">
+                {lang === "fr" ? "Candidature précédente refusée" : "Previous application rejected"}
+              </h3>
+              {myApplication.rejection_reason && (
+                <p className="mt-2 text-sm text-red-600">
+                  {lang === "fr" ? "Raison : " : "Reason: "}{myApplication.rejection_reason}
+                </p>
+              )}
+              <p className="mt-2 text-sm text-slate-500">
+                {lang === "fr"
+                  ? "Vous pouvez soumettre une nouvelle candidature ci-dessous."
+                  : "You can submit a new application below."}
+              </p>
+            </div>
+            {renderForm()}
+          </div>
+        );
+      }
+    }
+
+    // No application or success state
+    if (success) {
+      return (
+        <div className="rounded-[2rem] border border-emerald-200/60 bg-emerald-50 p-8 text-center">
+          <CheckCircleIcon size={48} className="mx-auto mb-4 text-emerald-500" />
+          <h3 className="text-lg font-medium text-indigo-950">{t.partners.success}</h3>
+        </div>
+      );
+    }
+
+    return renderForm();
+  };
+
+  const renderForm = () => (
+    <div className="rounded-[2rem] border border-slate-200/80 bg-white p-6 shadow-sm md:p-8">
+      <div className="space-y-5">
+        <FormField label={t.partners.name} error={fieldErrors.store}>
+          <Input
+            value={form.store}
+            onChange={(e) => setForm({ ...form, store: e.target.value })}
+            placeholder="Boutique Diallo Mobile"
+            error={!!fieldErrors.store}
+          />
+        </FormField>
+        <FormField label={t.partners.fname} error={fieldErrors.name}>
+          <Input
+            value={form.name || user?.name || ""}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+            placeholder="Ousmane Diallo"
+            error={!!fieldErrors.name}
+          />
+        </FormField>
+        <FormField label={t.partners.phone} error={fieldErrors.phone}>
+          <Input
+            value={form.phone || user?.phone || ""}
+            onChange={(e) => setForm({ ...form, phone: e.target.value })}
+            placeholder="+221 77 000 00 00"
+            error={!!fieldErrors.phone}
+          />
+        </FormField>
+        <FormField label={t.partners.city} error={fieldErrors.city}>
+          <Select
+            value={form.city}
+            onChange={(e) => setForm({ ...form, city: (e.target as HTMLSelectElement).value })}
+            error={!!fieldErrors.city}
+          >
+            <option value="">{lang === "fr" ? "Sélectionnez votre ville" : "Select your city"}</option>
+            {["Dakar", "Thiès", "Saint-Louis", "Kaolack", "Ziguinchor", "Touba", "Rufisque", "Mbour"].map(c => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </Select>
+        </FormField>
+        {(formError || submitPartnerApplication.isError) && (
+          <div className="rounded-xl border border-red-200/60 bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
+            {formError || (lang === "fr" ? "Une erreur est survenue. Réessayez." : "An error occurred. Please try again.")}
+          </div>
+        )}
+        <Button
+          variant="primary"
+          size="lg"
+          fullWidth
+          onClick={handleSubmit}
+          loading={submitPartnerApplication.isPending}
+          disabled={!form.store || !(form.name || user?.name) || !(form.phone || user?.phone) || !form.city}
+        >
+          {t.partners.submit}
+        </Button>
+      </div>
+    </div>
+  );
 
   return (
     <div className="bg-slate-50">
       {/* Hero Section */}
-      <section className="relative overflow-hidden bg-indigo-950 py-24 md:py-32">
-        {/* Decorative blur circles */}
+      <section className="relative overflow-hidden bg-indigo-950 py-10 md:py-14">
         <div className="pointer-events-none absolute -top-24 -left-24 h-72 w-72 rounded-full bg-yellow-400/10 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-32 -right-32 h-96 w-96 rounded-full bg-indigo-500/10 blur-3xl" />
 
@@ -68,19 +278,32 @@ export default function PartenairesPage() {
         </div>
       </section>
 
-      {/* Benefits */}
-      <section className="py-24 md:py-32">
+      {/* How it works */}
+      <section className="py-10 md:py-14">
         <div className="mx-auto max-w-7xl px-5 md:px-8">
+          <div className="mb-8 text-center">
+            <div className="mb-3 inline-flex items-center rounded-full border border-slate-200/80 bg-white px-4 py-1.5 text-xs font-medium uppercase tracking-wider text-slate-500">
+              {lang === "fr" ? "Comment ça marche" : "How it works"}
+            </div>
+            <h2 className="text-2xl font-medium tracking-tight text-indigo-950 md:text-3xl">
+              {lang === "fr" ? "4 étapes pour gagner des commissions" : "4 steps to earn commissions"}
+            </h2>
+          </div>
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {benefits.map((b, i) => {
-              const Icon = b.icon;
+            {steps.map((s, i) => {
+              const Icon = s.icon;
               return (
                 <div key={i} className="rounded-[2rem] border border-slate-200/80 bg-white p-6 shadow-sm transition-all hover:shadow-lg">
-                  <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-yellow-100">
-                    <Icon size={22} className="text-yellow-500" />
+                  <div className="mb-4 flex items-center gap-3">
+                    <span className="text-xs font-semibold text-slate-300">
+                      {String(i + 1).padStart(2, "0")}
+                    </span>
+                    <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-yellow-100">
+                      <Icon size={22} className="text-yellow-500" />
+                    </div>
                   </div>
-                  <h3 className="mb-1.5 font-medium text-indigo-950">{b.title}</h3>
-                  <p className="text-sm text-slate-500">{b.desc}</p>
+                  <h3 className="mb-1.5 font-medium text-indigo-950">{s.title}</h3>
+                  <p className="text-sm text-slate-500">{s.desc}</p>
                 </div>
               );
             })}
@@ -89,69 +312,12 @@ export default function PartenairesPage() {
       </section>
 
       {/* Application Form */}
-      <section className="bg-slate-100/50 py-24 md:py-32">
+      <section className="bg-slate-100/50 py-10 md:py-14">
         <div className="mx-auto max-w-xl px-5 md:px-8">
           <div className="mb-8">
             <h2 className="text-2xl font-medium tracking-tight text-indigo-950">{t.partners.apply}</h2>
           </div>
-
-          {success ? (
-            <div className="rounded-[2rem] border border-emerald-200/60 bg-emerald-50 p-8 text-center">
-              <CheckCircleIcon size={48} className="mx-auto mb-4 text-emerald-500" />
-              <h3 className="text-lg font-medium text-indigo-950">{t.partners.success}</h3>
-            </div>
-          ) : (
-            <div className="rounded-[2rem] border border-slate-200/80 bg-white p-6 shadow-sm md:p-8">
-              <div className="space-y-5">
-                <FormField label={t.partners.name} error={fieldErrors.store}>
-                  <Input
-                    value={form.store}
-                    onChange={(e) => setForm({ ...form, store: e.target.value })}
-                    placeholder="Boutique Diallo Mobile"
-                    error={!!fieldErrors.store}
-                  />
-                </FormField>
-                <FormField label={t.partners.fname} error={fieldErrors.name}>
-                  <Input
-                    value={form.name}
-                    onChange={(e) => setForm({ ...form, name: e.target.value })}
-                    placeholder="Ousmane Diallo"
-                    error={!!fieldErrors.name}
-                  />
-                </FormField>
-                <FormField label={t.partners.phone} error={fieldErrors.phone}>
-                  <Input
-                    value={form.phone}
-                    onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                    placeholder="+221 77 000 00 00"
-                    error={!!fieldErrors.phone}
-                  />
-                </FormField>
-                <FormField label={t.partners.city} error={fieldErrors.city}>
-                  <Select
-                    value={form.city}
-                    onChange={(e) => setForm({ ...form, city: (e.target as HTMLSelectElement).value })}
-                    error={!!fieldErrors.city}
-                  >
-                    <option value="">{lang === "fr" ? "Sélectionnez votre ville" : "Select your city"}</option>
-                    {["Dakar", "Thiès", "Saint-Louis", "Kaolack", "Ziguinchor", "Touba", "Rufisque", "Mbour"].map(c => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
-                  </Select>
-                </FormField>
-                <Button
-                  variant="primary"
-                  size="lg"
-                  fullWidth
-                  onClick={handleSubmit}
-                  loading={loading}
-                  disabled={!form.store || !form.name || !form.phone || !form.city}
-                >
-                  {t.partners.submit}
-                </Button>
-              </div>
-            </div>
-          )}
+          {renderFormSection()}
         </div>
       </section>
     </div>

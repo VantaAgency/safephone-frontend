@@ -17,6 +17,7 @@ interface AuthContextValue {
     name: string;
     email: string;
     phone?: string;
+    role?: string;
   } | null;
   isPending: boolean;
   isAuthenticated: boolean;
@@ -31,13 +32,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const user = useMemo(() => {
     if (!session.data?.user) return null;
+    const u = session.data.user as Record<string, unknown>;
     return {
       id: session.data.user.id,
       name: session.data.user.name,
       email: session.data.user.email,
-      phone: (session.data.user as Record<string, unknown>).phone as
-        | string
-        | undefined,
+      phone: u.phone as string | undefined,
+      role: u.role as string | undefined,
     };
   }, [session.data]);
 

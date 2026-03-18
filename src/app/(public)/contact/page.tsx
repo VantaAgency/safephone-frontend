@@ -6,15 +6,16 @@ import { Button } from "@/components/ui/button";
 import { FormField, Input, Textarea } from "@/components/ui/form-field";
 import { WhatsAppIcon, MapPinIcon, ClockIcon, CheckCircleIcon } from "@/components/ui/icons";
 import { contactFormSchema } from "@/lib/validation/schemas";
+import { useSubmitContact } from "@/lib/api/hooks";
 
 export default function ContactPage() {
   const { lang, t } = useLanguage();
   const [form, setForm] = useState({ name: "", email: "", subject: "", message: "" });
-  const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const submitContact = useSubmitContact();
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const result = contactFormSchema.safeParse(form);
     if (!result.success) {
       const errors: Record<string, string> = {};
@@ -26,13 +27,18 @@ export default function ContactPage() {
       return;
     }
     setFieldErrors({});
-    setLoading(true);
-    // No backend endpoint — simulate
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      await submitContact.mutateAsync({
+        name: form.name,
+        email: form.email,
+        subject: form.subject || undefined,
+        message: form.message,
+      });
       setSuccess(true);
       setForm({ name: "", email: "", subject: "", message: "" });
-    }, 1500);
+    } catch {
+      // Error is available via submitContact.isError
+    }
   };
 
   return (
@@ -156,12 +162,17 @@ export default function ContactPage() {
                     error={!!fieldErrors.message}
                   />
                 </FormField>
+                {submitContact.isError && (
+                  <div className="rounded-xl border border-red-200/60 bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
+                    {lang === "fr" ? "Une erreur est survenue. Réessayez." : "An error occurred. Please try again."}
+                  </div>
+                )}
                 <Button
                   variant="primary"
                   size="lg"
                   fullWidth
                   onClick={handleSubmit}
-                  loading={loading}
+                  loading={submitContact.isPending}
                   disabled={!form.name || !form.message}
                 >
                   {t.contact.send}

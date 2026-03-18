@@ -7,6 +7,7 @@ import { useLanguage } from "@/lib/language-context";
 import { Button } from "@/components/ui/button";
 import { FormField, Input } from "@/components/ui/form-field";
 import { authClient } from "@/lib/auth/client";
+import { users } from "@/lib/api/endpoints";
 
 export default function RegisterPage() {
   const { lang, t } = useLanguage();
@@ -63,6 +64,14 @@ export default function RegisterPage() {
             : "Could not create account. Please check your information."
         );
         return;
+      }
+      // Persist phone number if provided (best-effort — do not block navigation on failure)
+      if (form.phone.trim()) {
+        try {
+          await users.updateProfile({ phone: form.phone.trim() });
+        } catch {
+          // Non-blocking: phone update failure should not prevent dashboard access
+        }
       }
       router.push("/tableau-de-bord");
     } catch {

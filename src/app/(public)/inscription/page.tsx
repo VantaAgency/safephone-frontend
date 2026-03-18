@@ -6,8 +6,7 @@ import { Button } from "@/components/ui/button";
 import { CheckCircleIcon, CheckIcon, PhoneIcon } from "@/components/ui/icons";
 import { DEVICE_BRANDS, PAYMENT_METHODS } from "@/lib/data";
 import { useLanguage } from "@/lib/language-context";
-import { usePipeline } from "@/lib/pipeline-context";
-import { usePlans } from "@/lib/api/hooks";
+import { usePlans, useUpdatePartnerClientStatus } from "@/lib/api/hooks";
 import { PlanCardSkeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import type { Plan } from "@/lib/api/types";
@@ -22,7 +21,7 @@ export default function InscriptionPage() {
 
 function InscriptionContent() {
   const { lang, t } = useLanguage();
-  const { clients, updateClientStatus } = usePipeline();
+  const updateClientStatus = useUpdatePartnerClientStatus();
   const searchParams = useSearchParams();
   const router = useRouter();
   const { data: plans, isLoading: plansLoading } = usePlans();
@@ -30,8 +29,7 @@ function InscriptionContent() {
   const partnerCode = searchParams.get("partner");
   const clientId = searchParams.get("client");
 
-  const linkedClient = clientId ? clients.find((c) => c.id === clientId) : null;
-  const preselectedPlan = linkedClient?.planId ?? searchParams.get("plan") ?? "";
+  const preselectedPlan = searchParams.get("plan") ?? "";
 
   const [step, setStep] = useState(1);
   const [selectedPlanId, setSelectedPlanId] = useState(preselectedPlan);
@@ -57,17 +55,20 @@ function InscriptionContent() {
 
   const handleContinueToPay = () => {
     if (clientId) {
-      updateClientStatus(clientId, "plan_purchased", selectedPlanId);
-      sessionStorage.setItem("pendingClientId", clientId);
+      // Best-effort: update client status in partner pipeline (don't block navigation on failure)
+      updateClientStatus.mutate({
+        clientId,
+        data: { status: "plan_purchased", plan_id: selectedPlanId || undefined },
+      });
     }
-    router.push(`/paiement?plan=${selectedPlanId}&brand=${selectedBrand}`);
+    router.push(`/paiement?plan=${selectedPlanId}&brand=${selectedBrand}&annual=${annual}`);
   };
 
   const getBrandLabel = (brand: (typeof DEVICE_BRANDS)[number]) =>
     lang === "fr" ? brand.labelFr : brand.labelEn;
 
   return (
-    <div className="bg-slate-50 py-24 md:py-32">
+    <div className="bg-slate-50 py-10 md:py-14">
       <div className="mx-auto max-w-xl px-5 md:px-8">
 
         {/* Partner referral banner */}

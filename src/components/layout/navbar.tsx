@@ -8,6 +8,7 @@ import { Logo } from "./logo";
 import { Button } from "@/components/ui/button";
 import { MenuIcon, XIcon } from "@/components/ui/icons";
 import { useAuth } from "@/lib/auth/auth-provider";
+import { useAuthModal } from "@/components/auth/auth-modal-provider";
 import type { Lang, Translations } from "@/lib/i18n";
 
 interface NavbarProps {
@@ -28,6 +29,7 @@ export function Navbar({ lang, setLang, t }: NavbarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { user, isAuthenticated, isPending, signOut } = useAuth();
+  const { openAuthModal } = useAuthModal();
 
   const isActive = (href: string) => pathname === href;
 
@@ -81,6 +83,22 @@ export function Navbar({ lang, setLang, t }: NavbarProps) {
               >
                 {user?.name || t.nav.dashboard}
               </Link>
+              {(user?.role === "partner" || user?.role === "admin") && (
+                <Link
+                  href="/espace-partenaire"
+                  className="text-sm font-medium text-slate-500 hover:text-indigo-950 transition-colors"
+                >
+                  {lang === "fr" ? "Partenaire" : "Partner"}
+                </Link>
+              )}
+              {user?.role === "admin" && (
+                <Link
+                  href="/admin"
+                  className="text-sm font-medium text-slate-500 hover:text-indigo-950 transition-colors"
+                >
+                  Admin
+                </Link>
+              )}
               <Button
                 variant="outline"
                 size="sm"
@@ -91,12 +109,12 @@ export function Navbar({ lang, setLang, t }: NavbarProps) {
             </>
           ) : (
             <>
-              <Link
-                href="/connexion"
-                className="text-sm font-medium text-slate-500 hover:text-indigo-950 transition-colors"
+              <button
+                onClick={() => openAuthModal("sign-in")}
+                className="text-sm font-medium text-slate-500 hover:text-indigo-950 transition-colors cursor-pointer"
               >
                 {t.nav.login}
-              </Link>
+              </button>
               <Link href="/inscription">
                 <Button variant="primary" size="sm">
                   {lang === "fr" ? "M'abonner maintenant" : "Subscribe now"}
@@ -152,6 +170,20 @@ export function Navbar({ lang, setLang, t }: NavbarProps) {
                     {user?.name || t.nav.dashboard}
                   </Button>
                 </Link>
+                {(user?.role === "partner" || user?.role === "admin") && (
+                  <Link href="/espace-partenaire" onClick={() => setMobileOpen(false)}>
+                    <Button variant="ghost" fullWidth>
+                      {lang === "fr" ? "Espace Partenaire" : "Partner Portal"}
+                    </Button>
+                  </Link>
+                )}
+                {user?.role === "admin" && (
+                  <Link href="/admin" onClick={() => setMobileOpen(false)}>
+                    <Button variant="ghost" fullWidth>
+                      Admin
+                    </Button>
+                  </Link>
+                )}
                 <Button
                   variant="ghost"
                   fullWidth
@@ -162,9 +194,13 @@ export function Navbar({ lang, setLang, t }: NavbarProps) {
               </>
             ) : (
               <>
-                <Link href="/connexion" onClick={() => setMobileOpen(false)}>
-                  <Button variant="outline" fullWidth>{t.nav.login}</Button>
-                </Link>
+                <Button
+                  variant="outline"
+                  fullWidth
+                  onClick={() => { setMobileOpen(false); openAuthModal("sign-in"); }}
+                >
+                  {t.nav.login}
+                </Button>
                 <Link href="/inscription" onClick={() => setMobileOpen(false)}>
                   <Button variant="primary" fullWidth>
                     {lang === "fr" ? "M'abonner maintenant" : "Subscribe now"}

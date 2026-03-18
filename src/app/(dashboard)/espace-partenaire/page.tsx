@@ -6,46 +6,61 @@ import { Button } from "@/components/ui/button";
 import { FormField, Input, Select } from "@/components/ui/form-field";
 import { CheckCircleIcon, CreditCardIcon, PhoneIcon, ShieldCheckIcon, UsersIcon } from "@/components/ui/icons";
 import { StatusBadge } from "@/components/ui/status-badge";
-import type { ClientStatus, PartnerClient } from "@/lib/data";
+import { useAuth } from "@/lib/auth/auth-provider";
 import { useLanguage } from "@/lib/language-context";
 import { usePlans } from "@/lib/api/hooks";
-import { usePipeline } from "@/lib/pipeline-context";
+import {
+  usePartnerProfile,
+  usePartnerClients,
+  useCreatePartnerClient,
+  usePartnerSales,
+  usePartnerPayouts,
+} from "@/lib/api/hooks";
+import { formatXOF } from "@/lib/data";
 import { cn } from "@/lib/utils";
+import type { PartnerClient } from "@/lib/api/types";
 
-const PARTNER_SLUG = "boutique-diallo-mobile";
-
-const MOCK_PARTNER_SALES = [
-  { id: "PS-001", customer: "Amadou Ba", plan: "Ecran+", amount: "3 500 XOF", commission: "700 XOF", date: "08 Mar 2025", status: "completed" },
-  { id: "PS-002", customer: "Fatou Diop", plan: "Plus", amount: "6 000 XOF", commission: "1 200 XOF", date: "06 Mar 2025", status: "completed" },
-  { id: "PS-003", customer: "Moussa Sall", plan: "Essentiel", amount: "1 500 XOF", commission: "300 XOF", date: "05 Mar 2025", status: "completed" },
-  { id: "PS-004", customer: "Aissatou Ndiaye", plan: "Haute", amount: "10 000 XOF", commission: "2 000 XOF", date: "03 Mar 2025", status: "completed" },
-];
-
-const MOCK_PAYOUTS = [
-  { id: "PO-001", amount: "18 400 XOF", method: "Wave", date: "01 Mar 2025", status: "completed" },
-  { id: "PO-002", amount: "14 200 XOF", method: "Orange Money", date: "01 Fev 2025", status: "completed" },
-];
-
+type ClientStatus = "invited" | "plan_purchased" | "device_registered" | "active";
 type PartnerTab = "pipeline" | "performance";
 
 const STATUS_ORDER: ClientStatus[] = ["invited", "plan_purchased", "device_registered", "active"];
 
 export default function PartnerDashboardPage() {
   const { lang } = useLanguage();
-  const { clients, addClient } = usePipeline();
+  const { user, isPending } = useAuth();
+
+  if (!isPending && user?.role !== "partner" && user?.role !== "admin") {
+    return (
+      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 text-center">
+        <ShieldCheckIcon size={48} className="text-slate-300" />
+        <h1 className="text-xl font-semibold text-slate-800">
+          {lang === "fr" ? "Accès refusé" : "Access denied"}
+        </h1>
+        <p className="text-sm text-slate-500">
+          {lang === "fr"
+            ? "Cette page est réservée aux partenaires MobiTech."
+            : "This page is for MobiTech partners only."}
+        </p>
+        <a href="/tableau-de-bord" className="text-sm font-medium text-blue-600 hover:underline">
+          {lang === "fr" ? "Retour au tableau de bord" : "Back to dashboard"}
+        </a>
+      </div>
+    );
+  }
+  const { data: profile, isLoading: profileLoading } = usePartnerProfile();
+  const { data: clients = [], isLoading: clientsLoading } = usePartnerClients();
+  const { data: sales = [], isLoading: salesLoading } = usePartnerSales();
+  const { data: payouts = [], isLoading: payoutsLoading } = usePartnerPayouts();
   const { data: plans } = usePlans();
+  const createClient = useCreatePartnerClient();
+
   const [tab, setTab] = useState<PartnerTab>("pipeline");
   const [showModal, setShowModal] = useState(false);
   const [modalName, setModalName] = useState("");
   const [modalPhone, setModalPhone] = useState("");
   const [modalPlan, setModalPlan] = useState("");
-  const [submitting, setSubmitting] = useState(false);
   const [newClientId, setNewClientId] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-
-  const totalClients = clients.length;
-  const plansPurchased = clients.filter((c) => c.status !== "invited").length;
-  const activeClients = clients.filter((c) => c.status === "active").length;
 
   const statusLabel: Record<ClientStatus, string> = {
     invited: lang === "fr" ? "Invite" : "Invited",
@@ -54,22 +69,17 @@ export default function PartnerDashboardPage() {
     active: lang === "fr" ? "Actif" : "Active",
   };
 
-  const handleInvolve = () => {
-    setSubmitting(true);
-    setTimeout(() => {
-      const newClient: PartnerClient = {
-        id: `PC-${String(clients.length + 100).padStart(3, "0")}`,
-        name: modalName.trim(),
-        phone: modalPhone.trim() || "+221 —",
-        invitedAt: "13 Mar 2026",
-        status: "invited",
-        planId: modalPlan || undefined,
-        lastActivity: lang === "fr" ? "a l'instant" : "just now",
-      };
-      addClient(newClient);
-      setNewClientId(newClient.id);
-      setSubmitting(false);
-    }, 1500);
+  const handleInvolve = async () => {
+    try {
+      const client = await createClient.mutateAsync({
+        client_name: modalName.trim(),
+        client_phone: modalPhone.trim() || undefined,
+        plan_id: modalPlan || undefined,
+      });
+      setNewClientId(client.id);
+    } catch {
+      // error shown via createClient.isError
+    }
   };
 
   const closeModal = () => {
@@ -80,6 +90,7 @@ export default function PartnerDashboardPage() {
     setModalPlan("");
   };
 
+  const partnerSlug = profile?.id ?? "partner";
   const canSubmit = modalName.trim().length >= 2;
 
   return (
@@ -95,11 +106,21 @@ export default function PartnerDashboardPage() {
               </span>
             </div>
             <h1 className="text-2xl font-medium tracking-tight text-indigo-950 md:text-3xl">
-              Boutique Diallo Mobile
+              {profileLoading ? (
+                <span className="inline-block h-8 w-56 animate-pulse rounded-lg bg-slate-200" />
+              ) : (
+                profile?.store_name ?? "—"
+              )}
             </h1>
-            <p className="mt-1 text-slate-500">Dakar, Parcelles Assainies</p>
+            <p className="mt-1 text-slate-500">
+              {profileLoading ? (
+                <span className="inline-block h-4 w-32 animate-pulse rounded bg-slate-200" />
+              ) : (
+                profile?.city ?? "—"
+              )}
+            </p>
           </div>
-          <Button variant="secondary" size="md" onClick={() => setShowModal(true)}>
+          <Button variant="secondary" size="md" onClick={() => setShowModal(true)} disabled={!profile}>
             + {lang === "fr" ? "Impliquer un client" : "Add a Client"}
           </Button>
         </div>
@@ -108,24 +129,23 @@ export default function PartnerDashboardPage() {
         <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-4">
           <StatCard
             label={lang === "fr" ? "Clients impliques" : "Clients involved"}
-            value={String(totalClients)}
+            value={profileLoading ? "—" : String(profile?.total_clients ?? 0)}
             icon={<UsersIcon size={20} className="text-indigo-600" />}
           />
           <StatCard
             label={lang === "fr" ? "Plans achetes" : "Plans purchased"}
-            value={String(plansPurchased)}
+            value={profileLoading ? "—" : String(profile?.plans_purchased ?? 0)}
             icon={<ShieldCheckIcon size={20} className="text-violet-600" />}
           />
           <StatCard
             label={lang === "fr" ? "Clients actifs" : "Active clients"}
-            value={String(activeClients)}
+            value={profileLoading ? "—" : String(profile?.active_clients ?? 0)}
             icon={<PhoneIcon size={20} className="text-emerald-500" />}
           />
           <StatCard
             label={lang === "fr" ? "Commission du mois" : "Month commission"}
-            value="42 600 XOF"
+            value={profileLoading ? "—" : formatXOF(profile?.month_commission_xof ?? 0)}
             icon={<CreditCardIcon size={20} className="text-yellow-500" />}
-            trend="+18%"
           />
         </div>
 
@@ -153,7 +173,17 @@ export default function PartnerDashboardPage() {
         {/* Pipeline Tab */}
         {tab === "pipeline" && (
           <div>
-            {clients.length === 0 ? (
+            {clientsLoading ? (
+              <div className="rounded-2xl border border-slate-200/80 bg-white shadow-sm">
+                {[...Array(3)].map((_, i) => (
+                  <div key={i} className="flex items-center gap-4 border-b border-slate-50 px-5 py-4 last:border-0">
+                    <div className="h-4 w-32 animate-pulse rounded bg-slate-200" />
+                    <div className="h-4 w-24 animate-pulse rounded bg-slate-200" />
+                    <div className="h-4 w-20 animate-pulse rounded bg-slate-200" />
+                  </div>
+                ))}
+              </div>
+            ) : clients.length === 0 ? (
               <div className="rounded-2xl border border-slate-200/80 bg-white py-16 text-center shadow-sm">
                 <p className="font-medium text-indigo-950">
                   {lang === "fr" ? "Aucun client implique" : "No clients yet"}
@@ -176,7 +206,6 @@ export default function PartnerDashboardPage() {
                           lang === "fr" ? "Invite le" : "Invited on",
                           lang === "fr" ? "Formule" : "Plan",
                           lang === "fr" ? "Progression" : "Progress",
-                          lang === "fr" ? "Derniere activite" : "Last activity",
                         ].map((h) => (
                           <th
                             key={h}
@@ -188,20 +217,22 @@ export default function PartnerDashboardPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {clients.map((client) => {
-                        const planObj = plans?.find((p) => p.id === client.planId || p.slug === client.planId);
-                        const stepIndex = STATUS_ORDER.indexOf(client.status);
+                      {clients.map((client: PartnerClient) => {
+                        const planObj = plans?.find((p) => p.id === client.plan_id);
+                        const stepIndex = STATUS_ORDER.indexOf(client.status as ClientStatus);
                         return (
                           <tr
                             key={client.id}
                             className="border-b border-slate-50 last:border-0 hover:bg-slate-50/30"
                           >
                             <td className="px-5 py-3.5">
-                              <div className="font-medium text-indigo-950">{client.name}</div>
-                              <div className="text-xs text-slate-400">{client.id}</div>
+                              <div className="font-medium text-indigo-950">{client.client_name}</div>
+                              <div className="text-xs text-slate-400">{client.id.slice(0, 8)}…</div>
                             </td>
-                            <td className="px-5 py-3.5 text-slate-500">{client.phone}</td>
-                            <td className="px-5 py-3.5 text-slate-500">{client.invitedAt}</td>
+                            <td className="px-5 py-3.5 text-slate-500">{client.client_phone ?? "—"}</td>
+                            <td className="px-5 py-3.5 text-slate-500">
+                              {new Date(client.invited_at).toLocaleDateString(lang === "fr" ? "fr-FR" : "en-US", { day: "2-digit", month: "short", year: "numeric" })}
+                            </td>
                             <td className="px-5 py-3.5">
                               {planObj ? (
                                 <span className="rounded-full bg-yellow-400/15 px-2.5 py-0.5 text-xs font-medium text-yellow-600">
@@ -224,13 +255,10 @@ export default function PartnerDashboardPage() {
                                 ))}
                               </div>
                               <StatusBadge
-                                status={client.status}
-                                label={statusLabel[client.status]}
+                                status={client.status as ClientStatus}
+                                label={statusLabel[client.status as ClientStatus] ?? client.status}
                                 className="mt-1.5"
                               />
-                            </td>
-                            <td className="px-5 py-3.5 text-xs text-slate-400">
-                              {client.lastActivity}
                             </td>
                           </tr>
                         );
@@ -251,43 +279,59 @@ export default function PartnerDashboardPage() {
                 {lang === "fr" ? "Ventes recentes" : "Recent sales"}
               </h2>
               <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-slate-100 bg-slate-50/50">
-                        {[
-                          lang === "fr" ? "Client" : "Customer",
-                          lang === "fr" ? "Forfait" : "Plan",
-                          "Commission",
-                          "Date",
-                        ].map((h) => (
-                          <th
-                            key={h}
-                            className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-400"
-                          >
-                            {h}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {MOCK_PARTNER_SALES.map((sale) => (
-                        <tr key={sale.id} className="border-b border-slate-50 last:border-0">
-                          <td className="px-5 py-3.5 font-medium text-indigo-950">
-                            {sale.customer}
-                          </td>
-                          <td className="px-5 py-3.5">
-                            <span className="rounded-full bg-indigo-950/5 px-2.5 py-0.5 text-xs font-medium text-indigo-950">
-                              {sale.plan}
-                            </span>
-                          </td>
-                          <td className="px-5 py-3.5 font-medium text-emerald-600">{sale.commission}</td>
-                          <td className="px-5 py-3.5 text-slate-500">{sale.date}</td>
+                {salesLoading ? (
+                  <div className="p-6 space-y-3">
+                    {[...Array(3)].map((_, i) => (
+                      <div key={i} className="h-4 w-full animate-pulse rounded bg-slate-200" />
+                    ))}
+                  </div>
+                ) : sales.length === 0 ? (
+                  <div className="py-12 text-center text-sm text-slate-500">
+                    {lang === "fr" ? "Aucune vente pour l'instant" : "No sales yet"}
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-slate-100 bg-slate-50/50">
+                          {[
+                            lang === "fr" ? "Client" : "Customer",
+                            lang === "fr" ? "Forfait" : "Plan",
+                            "Commission",
+                            "Date",
+                          ].map((h) => (
+                            <th
+                              key={h}
+                              className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-400"
+                            >
+                              {h}
+                            </th>
+                          ))}
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody>
+                        {sales.map((sale) => (
+                          <tr key={sale.id} className="border-b border-slate-50 last:border-0">
+                            <td className="px-5 py-3.5 font-medium text-indigo-950">
+                              {sale.customer_name}
+                            </td>
+                            <td className="px-5 py-3.5">
+                              <span className="rounded-full bg-indigo-950/5 px-2.5 py-0.5 text-xs font-medium text-indigo-950">
+                                {lang === "fr" ? (sale.plan_name_fr ?? "—") : (sale.plan_name_en ?? "—")}
+                              </span>
+                            </td>
+                            <td className="px-5 py-3.5 font-medium text-emerald-600">
+                              {formatXOF(sale.commission_xof)}
+                            </td>
+                            <td className="px-5 py-3.5 text-slate-500">
+                              {new Date(sale.date).toLocaleDateString(lang === "fr" ? "fr-FR" : "en-US", { day: "2-digit", month: "short", year: "numeric" })}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -295,36 +339,40 @@ export default function PartnerDashboardPage() {
               <h2 className="mb-4 text-lg font-medium text-indigo-950">
                 {lang === "fr" ? "Versements" : "Payouts"}
               </h2>
-              <div className="space-y-3">
-                {MOCK_PAYOUTS.map((payout) => (
-                  <div
-                    key={payout.id}
-                    className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="text-lg font-medium text-indigo-950">{payout.amount}</div>
-                        <div className="mt-0.5 text-xs text-slate-500">
-                          {payout.method} &middot; {payout.date}
-                        </div>
-                      </div>
-                      <StatusBadge status="completed" label={lang === "fr" ? "Verse" : "Paid"} />
+              {payoutsLoading ? (
+                <div className="space-y-3">
+                  {[...Array(2)].map((_, i) => (
+                    <div key={i} className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
+                      <div className="h-6 w-32 animate-pulse rounded bg-slate-200" />
+                      <div className="mt-2 h-4 w-24 animate-pulse rounded bg-slate-200" />
                     </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="mt-6 rounded-2xl border border-yellow-400/20 bg-yellow-400/5 p-5">
-                <div className="text-xs font-medium uppercase tracking-wider text-yellow-600">
-                  {lang === "fr" ? "Prochaine commission" : "Next commission"}
+                  ))}
                 </div>
-                <div className="mt-2 text-2xl font-medium tracking-tight text-indigo-950">4 200 XOF</div>
-                <div className="mt-1 text-xs text-slate-500">
-                  {lang === "fr"
-                    ? "Versement prevu le 01 Avr 2026"
-                    : "Payout expected Apr 01, 2026"}
+              ) : payouts.length === 0 ? (
+                <div className="rounded-2xl border border-slate-200/80 bg-white py-10 text-center text-sm text-slate-500 shadow-sm">
+                  {lang === "fr" ? "Aucun versement" : "No payouts yet"}
                 </div>
-              </div>
+              ) : (
+                <div className="space-y-3">
+                  {payouts.map((payout) => (
+                    <div
+                      key={payout.id}
+                      className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="text-lg font-medium text-indigo-950">{formatXOF(payout.amount_xof)}</div>
+                          <div className="mt-0.5 text-xs text-slate-500">
+                            {payout.payout_method} &middot;{" "}
+                            {new Date(payout.paid_at).toLocaleDateString(lang === "fr" ? "fr-FR" : "en-US", { day: "2-digit", month: "short", year: "numeric" })}
+                          </div>
+                        </div>
+                        <StatusBadge status="completed" label={lang === "fr" ? "Verse" : "Paid"} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -336,7 +384,7 @@ export default function PartnerDashboardPage() {
           <button
             type="button"
             className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-            onClick={() => { if (!submitting) closeModal(); }}
+            onClick={() => { if (!createClient.isPending) closeModal(); }}
             aria-label={lang === "fr" ? "Fermer" : "Close"}
           />
           <div className="relative w-full max-w-md rounded-2xl border border-slate-200/80 bg-white p-6 shadow-2xl">
@@ -361,13 +409,13 @@ export default function PartnerDashboardPage() {
                   </p>
                   <div className="flex items-center gap-2">
                     <code className="flex-1 truncate rounded-lg bg-white px-3 py-2 text-xs text-indigo-950 shadow-sm ring-1 ring-slate-200">
-                      {`/inscription?partner=${PARTNER_SLUG}&client=${newClientId}`}
+                      {`/inscription?partner=${partnerSlug}&client=${newClientId}`}
                     </code>
                     <button
                       type="button"
                       onClick={() => {
                         navigator.clipboard.writeText(
-                          `${window.location.origin}/inscription?partner=${PARTNER_SLUG}&client=${newClientId}`
+                          `${window.location.origin}/inscription?partner=${partnerSlug}&client=${newClientId}`
                         );
                         setCopied(true);
                         setTimeout(() => setCopied(false), 2000);
@@ -438,13 +486,19 @@ export default function PartnerDashboardPage() {
                   </FormField>
                 </div>
 
+                {createClient.isError && (
+                  <div className="mt-3 rounded-xl border border-red-200/60 bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
+                    {lang === "fr" ? "Une erreur est survenue. Réessayez." : "An error occurred. Please try again."}
+                  </div>
+                )}
+
                 <div className="mt-6 flex gap-3">
                   <Button
                     variant="ghost"
                     size="md"
                     className="flex-1"
                     onClick={closeModal}
-                    disabled={submitting}
+                    disabled={createClient.isPending}
                   >
                     {lang === "fr" ? "Annuler" : "Cancel"}
                   </Button>
@@ -453,11 +507,10 @@ export default function PartnerDashboardPage() {
                     size="md"
                     className="flex-2"
                     onClick={handleInvolve}
-                    disabled={!canSubmit || submitting}
+                    loading={createClient.isPending}
+                    disabled={!canSubmit || createClient.isPending}
                   >
-                    {submitting
-                      ? lang === "fr" ? "Ajout en cours..." : "Adding..."
-                      : lang === "fr" ? "Impliquer →" : "Add →"}
+                    {lang === "fr" ? "Impliquer →" : "Add →"}
                   </Button>
                 </div>
               </>

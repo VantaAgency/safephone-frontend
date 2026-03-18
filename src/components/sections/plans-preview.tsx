@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import Link from "next/link";
 
+import { usePlans } from "@/lib/api/hooks";
 import { useLanguage } from "@/lib/language-context";
 
 function CheckIcon({ className }: { className?: string }) {
@@ -30,104 +31,32 @@ function StarIcon() {
   );
 }
 
-interface PlanItem {
-  name: string;
-  desc: string;
-  monthlyPrice: number;
-  annualPrice: number;
-  featured: boolean;
-  features: { text: string; bold?: string; suffix?: string; included: boolean }[];
-  ctaLabel: string;
+function PlanCardSkeleton({ featured }: { featured?: boolean }) {
+  return (
+    <div className={`flex h-full flex-col rounded-[2rem] border p-8 lg:p-10 ${featured ? "border-indigo-800 bg-indigo-950" : "border-slate-200/80 bg-white"}`}>
+      <div className="mb-8 space-y-3">
+        <div className={`h-4 w-24 animate-pulse rounded-full ${featured ? "bg-indigo-800" : "bg-slate-100"}`} />
+        <div className={`h-6 w-36 animate-pulse rounded-full ${featured ? "bg-indigo-800" : "bg-slate-100"}`} />
+        <div className={`h-4 w-full animate-pulse rounded-full ${featured ? "bg-indigo-800" : "bg-slate-100"}`} />
+      </div>
+      <div className={`mb-8 h-12 w-40 animate-pulse rounded-full ${featured ? "bg-indigo-800" : "bg-slate-100"}`} />
+      <div className="mb-8 space-y-3 flex-grow">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className={`h-4 w-full animate-pulse rounded-full ${featured ? "bg-indigo-800" : "bg-slate-100"}`} />
+        ))}
+      </div>
+      <div className={`h-12 w-full animate-pulse rounded-xl ${featured ? "bg-indigo-800" : "bg-slate-100"}`} />
+    </div>
+  );
 }
-
-const PLANS_FR: PlanItem[] = [
-  {
-    name: "Forfait Essentiel",
-    desc: "La couverture de base pour les appareils d'une valeur inférieure à 100 000 FCFA.",
-    monthlyPrice: 2500,
-    annualPrice: 25500,
-    featured: false,
-    ctaLabel: "Souscrire Essentiel",
-    features: [
-      { bold: "1 réparation d'écran", suffix: " payée par an", included: true },
-      { text: "Réparation en centre agréé MobiTech", included: true },
-      { text: "Non couvert contre l'oxydation (eau)", included: false },
-    ],
-  },
-  {
-    name: "Forfait Écran+",
-    desc: "L'équilibre parfait. La protection idéale pour la majorité des smartphones récents.",
-    monthlyPrice: 4000,
-    annualPrice: 40800,
-    featured: true,
-    ctaLabel: "Souscrire Écran+",
-    features: [
-      { bold: "2 réparations d'écran", suffix: " payées par an", included: true },
-      { text: "Prise en charge des dommages accidentels", included: true },
-      { text: "Coupe-file au comptoir MobiTech", included: true },
-    ],
-  },
-  {
-    name: "Forfait Premium",
-    desc: "Tranquillité absolue pour les smartphones haut de gamme (iPhone, Samsung Galaxy).",
-    monthlyPrice: 6500,
-    annualPrice: 66300,
-    featured: false,
-    ctaLabel: "Souscrire Premium",
-    features: [
-      { text: "Réparations d'écran ", bold: "illimitées", included: true },
-      { text: "Oxydation et dégâts d'eau couverts", included: true },
-      { text: "Téléphone de prêt pendant la réparation", included: true },
-    ],
-  },
-];
-
-const PLANS_EN: PlanItem[] = [
-  {
-    name: "Essential Plan",
-    desc: "Basic coverage for devices valued under 100,000 FCFA.",
-    monthlyPrice: 2500,
-    annualPrice: 25500,
-    featured: false,
-    ctaLabel: "Subscribe Essential",
-    features: [
-      { bold: "1 screen repair", suffix: " covered per year", included: true },
-      { text: "Repair at certified MobiTech center", included: true },
-      { text: "Water damage not covered", included: false },
-    ],
-  },
-  {
-    name: "Screen+ Plan",
-    desc: "The perfect balance. Ideal protection for most recent smartphones.",
-    monthlyPrice: 4000,
-    annualPrice: 40800,
-    featured: true,
-    ctaLabel: "Subscribe Screen+",
-    features: [
-      { bold: "2 screen repairs", suffix: " covered per year", included: true },
-      { text: "Accidental damage coverage", included: true },
-      { text: "Priority counter at MobiTech", included: true },
-    ],
-  },
-  {
-    name: "Premium Plan",
-    desc: "Absolute peace of mind for high-end smartphones (iPhone, Samsung Galaxy).",
-    monthlyPrice: 6500,
-    annualPrice: 66300,
-    featured: false,
-    ctaLabel: "Subscribe Premium",
-    features: [
-      { text: "Screen repairs ", bold: "unlimited", included: true },
-      { text: "Water and oxidation damage covered", included: true },
-      { text: "Loaner phone during repair", included: true },
-    ],
-  },
-];
 
 export function PlansPreview() {
   const { lang } = useLanguage();
   const [annual, setAnnual] = useState(false);
-  const plans = lang === "fr" ? PLANS_FR : PLANS_EN;
+  const { data: allPlans, isLoading } = usePlans();
+
+  // Show first 3 plans by sort_order (already sorted by API)
+  const plans = allPlans?.slice(0, 3) ?? [];
 
   return (
     <section className="relative overflow-hidden bg-slate-50 py-24 md:py-32">
@@ -180,113 +109,126 @@ export function PlansPreview() {
 
         {/* Pricing Grid */}
         <div className="grid grid-cols-1 items-center gap-6 md:grid-cols-3 lg:gap-8">
-          {plans.map((plan) => {
-            const price = annual ? plan.annualPrice : plan.monthlyPrice;
-            const period = lang === "fr"
-              ? (annual ? "FCFA / an" : "FCFA / mois")
-              : (annual ? "FCFA / year" : "FCFA / month");
+          {isLoading ? (
+            <>
+              <PlanCardSkeleton />
+              <PlanCardSkeleton featured />
+              <PlanCardSkeleton />
+            </>
+          ) : (
+            plans.map((plan) => {
+              const name = lang === "fr" ? plan.name_fr : plan.name_en;
+              const desc = lang === "fr" ? plan.device_range_fr : plan.device_range_en;
+              const features = lang === "fr" ? plan.features_fr : plan.features_en;
+              const notCovered = lang === "fr" ? plan.not_covered_fr : plan.not_covered_en;
+              const price = annual ? plan.price_annual : plan.price_monthly;
+              const period = lang === "fr"
+                ? (annual ? "FCFA / an" : "FCFA / mois")
+                : (annual ? "FCFA / year" : "FCFA / month");
+              const ctaLabel = lang === "fr" ? `Souscrire ${name}` : `Subscribe ${name}`;
 
-            if (plan.featured) {
+              if (plan.is_popular) {
+                return (
+                  <div
+                    key={plan.id}
+                    className="relative z-10 flex h-full flex-col overflow-hidden rounded-[2.5rem] border border-indigo-800 bg-indigo-950 p-8 shadow-2xl shadow-indigo-900/30 group md:scale-[1.03] lg:p-10"
+                  >
+                    {/* Ambient glows */}
+                    <div className="pointer-events-none absolute top-0 right-0 h-64 w-64 -translate-y-1/2 translate-x-1/3 rounded-full bg-indigo-500/20 blur-3xl transition-transform duration-700 group-hover:translate-x-1/4" />
+                    <div className="pointer-events-none absolute bottom-0 left-0 h-48 w-48 -translate-x-1/3 translate-y-1/3 rounded-full bg-yellow-400/10 blur-3xl" />
+
+                    <div className="relative z-10 mb-8">
+                      <div className="mb-6 inline-flex items-center gap-1.5 rounded-full border border-indigo-400/30 bg-indigo-500/20 px-3 py-1 text-xs font-medium text-yellow-400 backdrop-blur-md">
+                        <StarIcon />
+                        {lang === "fr" ? "Le plus populaire" : "Most popular"}
+                      </div>
+                      <h3 className="mb-2 text-xl font-medium tracking-tight text-white">{name}</h3>
+                      {desc && <p className="text-sm leading-relaxed text-indigo-200/80">{desc}</p>}
+                    </div>
+
+                    <div className="relative z-10 mb-8 flex items-end gap-2">
+                      <span className="text-4xl font-normal tracking-tighter text-white lg:text-5xl">
+                        {price.toLocaleString("fr-FR")}
+                      </span>
+                      <span className="mb-1.5 text-sm font-medium text-indigo-300">{period}</span>
+                    </div>
+
+                    <div className="relative z-10 mb-8 h-px w-full bg-indigo-800/60" />
+
+                    <ul className="relative z-10 mb-10 flex-grow space-y-4">
+                      {features.slice(0, 4).map((f) => (
+                        <li key={f} className="flex items-start gap-3 text-sm text-indigo-100">
+                          <CheckIcon className="mt-0.5 flex-shrink-0 text-yellow-400" />
+                          <span>{f}</span>
+                        </li>
+                      ))}
+                      {notCovered.slice(0, 1).map((f) => (
+                        <li key={f} className="flex items-start gap-3 text-sm text-indigo-300/60">
+                          <DashIcon className="mt-0.5 flex-shrink-0 text-indigo-600" />
+                          <span>{f}</span>
+                        </li>
+                      ))}
+                    </ul>
+
+                    <Link
+                      href={`/inscription?plan=${plan.slug}`}
+                      className="relative z-10 w-full rounded-xl border border-yellow-300 bg-yellow-400 py-3.5 text-center text-sm font-medium text-indigo-950 transition-all duration-300 hover:bg-yellow-500 hover:shadow-lg hover:shadow-yellow-400/20"
+                    >
+                      {ctaLabel}
+                    </Link>
+                  </div>
+                );
+              }
+
+              const isFirst = plans.indexOf(plan) === 0;
               return (
                 <div
-                  key={plan.name}
-                  className="relative z-10 flex h-full flex-col overflow-hidden rounded-[2.5rem] border border-indigo-800 bg-indigo-950 p-8 shadow-2xl shadow-indigo-900/30 group md:scale-[1.03] lg:p-10"
+                  key={plan.id}
+                  className="relative z-0 flex h-full flex-col rounded-[2rem] border border-slate-200/80 bg-white p-8 shadow-sm transition-all duration-300 hover:shadow-md lg:p-10"
                 >
-                  {/* Ambient glows */}
-                  <div className="pointer-events-none absolute top-0 right-0 h-64 w-64 -translate-y-1/2 translate-x-1/3 rounded-full bg-indigo-500/20 blur-3xl transition-transform duration-700 group-hover:translate-x-1/4" />
-                  <div className="pointer-events-none absolute bottom-0 left-0 h-48 w-48 -translate-x-1/3 translate-y-1/3 rounded-full bg-yellow-400/10 blur-3xl" />
-
-                  <div className="relative z-10 mb-8">
-                    <div className="mb-6 inline-flex items-center gap-1.5 rounded-full border border-indigo-400/30 bg-indigo-500/20 px-3 py-1 text-xs font-medium text-yellow-400 backdrop-blur-md">
-                      <StarIcon />
-                      {lang === "fr" ? "Le plus populaire" : "Most popular"}
-                    </div>
-                    <h3 className="mb-2 text-xl font-medium tracking-tight text-white">{plan.name}</h3>
-                    <p className="text-sm leading-relaxed text-indigo-200/80">{plan.desc}</p>
+                  <div className="mb-8">
+                    <h3 className="mb-2 text-lg font-medium tracking-tight text-indigo-950">{name}</h3>
+                    {desc && <p className="text-sm leading-relaxed text-slate-500">{desc}</p>}
                   </div>
 
-                  <div className="relative z-10 mb-8 flex items-end gap-2">
-                    <span className="text-4xl font-normal tracking-tighter text-white lg:text-5xl">
+                  <div className="mb-8 flex items-end gap-2">
+                    <span className="text-4xl font-normal tracking-tighter text-indigo-950 lg:text-5xl">
                       {price.toLocaleString("fr-FR")}
                     </span>
-                    <span className="mb-1.5 text-sm font-medium text-indigo-300">{period}</span>
+                    <span className="mb-1.5 text-sm font-medium text-slate-400">{period}</span>
                   </div>
 
-                  <div className="relative z-10 mb-8 h-px w-full bg-indigo-800/60" />
+                  <div className="mb-8 h-px w-full bg-slate-100" />
 
-                  <ul className="relative z-10 mb-10 flex-grow space-y-4">
-                    {plan.features.map((f) => (
-                      <li key={`${f.text ?? ""}-${f.bold ?? ""}`} className="flex items-start gap-3 text-sm text-indigo-100">
-                        <CheckIcon className="mt-0.5 flex-shrink-0 text-yellow-400" />
-                        <span>
-                          {f.bold && !f.text && <span className="font-medium text-white">{f.bold}</span>}
-                          {f.bold && !f.text && f.suffix}
-                          {f.text && !f.bold && f.text}
-                          {f.text && f.bold && <>{f.text}<span className="font-medium text-white">{f.bold}</span></>}
-                        </span>
+                  <ul className="mb-10 flex-grow space-y-4">
+                    {features.slice(0, 3).map((f) => (
+                      <li key={f} className="flex items-start gap-3 text-sm text-slate-600">
+                        <CheckIcon className="mt-0.5 flex-shrink-0 text-indigo-500" />
+                        <span>{f}</span>
+                      </li>
+                    ))}
+                    {notCovered.slice(0, 2).map((f) => (
+                      <li key={f} className="flex items-start gap-3 text-sm text-slate-400">
+                        <DashIcon className="mt-0.5 flex-shrink-0 text-slate-300" />
+                        <span>{f}</span>
                       </li>
                     ))}
                   </ul>
 
                   <Link
-                    href="/inscription"
-                    className="relative z-10 w-full rounded-xl border border-yellow-300 bg-yellow-400 py-3.5 text-center text-sm font-medium text-indigo-950 transition-all duration-300 hover:bg-yellow-500 hover:shadow-lg hover:shadow-yellow-400/20"
+                    href={`/inscription?plan=${plan.slug}`}
+                    className={`w-full rounded-xl py-3.5 text-center text-sm font-medium transition-all duration-200 ${
+                      isFirst
+                        ? "border border-slate-200 bg-white text-indigo-950 shadow-sm hover:border-slate-300 hover:bg-slate-50"
+                        : "border border-transparent bg-slate-100 text-indigo-950 hover:bg-slate-200"
+                    }`}
                   >
-                    {plan.ctaLabel}
+                    {ctaLabel}
                   </Link>
                 </div>
               );
-            }
-
-            return (
-              <div
-                key={plan.name}
-                className="relative z-0 flex h-full flex-col rounded-[2rem] border border-slate-200/80 bg-white p-8 shadow-sm transition-all duration-300 hover:shadow-md lg:p-10"
-              >
-                <div className="mb-8">
-                  <h3 className="mb-2 text-lg font-medium tracking-tight text-indigo-950">{plan.name}</h3>
-                  <p className="text-sm leading-relaxed text-slate-500">{plan.desc}</p>
-                </div>
-
-                <div className="mb-8 flex items-end gap-2">
-                  <span className="text-4xl font-normal tracking-tighter text-indigo-950 lg:text-5xl">
-                    {price.toLocaleString("fr-FR")}
-                  </span>
-                  <span className="mb-1.5 text-sm font-medium text-slate-400">{period}</span>
-                </div>
-
-                <div className="mb-8 h-px w-full bg-slate-100" />
-
-                <ul className="mb-10 flex-grow space-y-4">
-                  {plan.features.map((f) => (
-                    <li key={`${f.text ?? ""}-${f.bold ?? ""}`} className={`flex items-start gap-3 text-sm ${f.included ? "text-slate-600" : "text-slate-400"}`}>
-                      {f.included
-                        ? <CheckIcon className="mt-0.5 flex-shrink-0 text-indigo-500" />
-                        : <DashIcon className="mt-0.5 flex-shrink-0 text-slate-300" />
-                      }
-                      <span>
-                        {f.bold && !f.text && <span className="font-medium text-slate-900">{f.bold}</span>}
-                        {f.bold && !f.text && f.suffix}
-                        {f.text && !f.bold && f.text}
-                        {f.text && f.bold && <>{f.text}<span className="font-medium text-slate-900">{f.bold}</span></>}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-
-                <Link
-                  href="/inscription"
-                  className={`w-full rounded-xl py-3.5 text-center text-sm font-medium transition-all duration-200 ${
-                    plans.indexOf(plan) === 0
-                      ? "border border-slate-200 bg-white text-indigo-950 shadow-sm hover:border-slate-300 hover:bg-slate-50"
-                      : "border border-transparent bg-slate-100 text-indigo-950 hover:bg-slate-200"
-                  }`}
-                >
-                  {plan.ctaLabel}
-                </Link>
-              </div>
-            );
-          })}
+            })
+          )}
         </div>
       </div>
     </section>

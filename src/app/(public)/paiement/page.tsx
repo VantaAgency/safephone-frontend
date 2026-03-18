@@ -6,10 +6,9 @@ import { useLanguage } from "@/lib/language-context";
 import { Button } from "@/components/ui/button";
 import { FormField, Input } from "@/components/ui/form-field";
 import { ShieldCheckIcon, CheckCircleIcon } from "@/components/ui/icons";
-import { PAYMENT_METHODS, DEVICE_BRANDS } from "@/lib/data";
-import { usePlans, useCreateDevice, useCreateSubscription, useCreatePayment } from "@/lib/api/hooks";
-import type { PaymentMethod } from "@/lib/api/types";
-import { cn } from "@/lib/utils";
+import { DEVICE_BRANDS } from "@/lib/data";
+import { usePlans, useCreatePayment } from "@/lib/api/hooks";
+import { ApiError } from "@/lib/api/client";
 
 export default function PaiementPage() {
   return (
@@ -29,20 +28,12 @@ function PaiementContent() {
   const annual = searchParams.get("annual") === "true";
 
   const { data: plans } = usePlans();
-  const createDevice = useCreateDevice();
-  const createSubscription = useCreateSubscription();
   const createPayment = useCreatePayment();
 
   const selectedPlan = plans?.find((p) => p.id === planId || p.slug === planId);
   const brandLabel = DEVICE_BRANDS.find((b) => b.id === brandSlug);
 
-  const [method, setMethod] = useState("wave");
-  const [phone, setPhone] = useState("");
   const [model, setModel] = useState("");
-  const [imei, setImei] = useState("");
-  const [card, setCard] = useState("");
-  const [expiry, setExpiry] = useState("");
-  const [cvv, setCvv] = useState("");
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
@@ -54,48 +45,40 @@ function PaiementContent() {
     ? lang === "fr" ? selectedPlan.name_fr : selectedPlan.name_en
     : "";
 
-  const paymentMethodMap: Record<string, PaymentMethod> = {
-    wave: "wave",
-    orange: "orange_money",
-    free: "free_money",
-    stripe: "card",
-  };
-
   const handlePay = async () => {
     if (!selectedPlan) return;
     setLoading(true);
     setError("");
 
     try {
-      // 1. Create device
-      const device = await createDevice.mutateAsync({
+      const result = await createPayment.mutateAsync({
         brand: brandLabel ? (lang === "fr" ? brandLabel.labelFr : brandLabel.labelEn) : brandSlug,
         model: model || "Unknown",
-        imei: imei || "000000000000000",
-      });
-
-      // 2. Create subscription
-      const subscription = await createSubscription.mutateAsync({
-        device_id: device.id,
+        imei: "",
         plan_id: selectedPlan.id,
         billing_cycle: annual ? "annual" : "monthly",
-      });
-
-      // 3. Create payment
-      await createPayment.mutateAsync({
-        subscription_id: subscription.id,
-        payment_method: paymentMethodMap[method] || "wave",
+        payment_method: "wave",
         idempotency_key: crypto.randomUUID(),
       });
 
-      setSuccess(true);
+      if (result.payment_url) {
+        // Production: redirect to DEXPAY hosted payment page
+        window.location.href = result.payment_url;
+      } else {
+        // Dev mode: payment auto-completed
+        setSuccess(true);
+      }
     } catch (err) {
-      setError(
-        lang === "fr"
-          ? "Le paiement a échoué. Veuillez réessayer."
-          : "Payment failed. Please try again."
-      );
       console.error("Payment flow error:", err);
+      if (err instanceof ApiError) {
+        setError(`[${err.code}] ${err.message}`);
+      } else {
+        setError(
+          lang === "fr"
+            ? "Le paiement a échoué. Veuillez réessayer."
+            : "Payment failed. Please try again."
+        );
+      }
     } finally {
       setLoading(false);
     }
@@ -158,95 +141,27 @@ function PaiementContent() {
           <h3 className="mb-4 text-sm font-medium text-indigo-950">
             {lang === "fr" ? "Détails de l'appareil" : "Device details"}
           </h3>
-          <div className="space-y-4">
-            <FormField label={lang === "fr" ? "Modèle" : "Model"}>
-              <Input
-                value={model}
-                onChange={(e) => setModel(e.target.value)}
-                placeholder={lang === "fr" ? "Ex: Galaxy A54, iPhone 13..." : "E.g. Galaxy A54, iPhone 13..."}
-              />
-            </FormField>
-            <FormField
-              label="IMEI"
-              hint={lang === "fr" ? "Composez *#06# pour le trouver" : "Dial *#06# to find it"}
-            >
-              <Input
-                value={imei}
-                onChange={(e) => setImei(e.target.value.replace(/\D/g, "").slice(0, 15))}
-                placeholder="357841092648301"
-                className="font-mono tracking-wider"
-              />
-            </FormField>
-          </div>
+          <FormField label={lang === "fr" ? "Modèle" : "Model"}>
+            <Input
+              value={model}
+              onChange={(e) => setModel(e.target.value)}
+              placeholder={lang === "fr" ? "Ex: Galaxy A54, iPhone 13..." : "E.g. Galaxy A54, iPhone 13..."}
+            />
+          </FormField>
+          <p className="mt-3 text-xs text-slate-400">
+            {lang === "fr"
+              ? "L'IMEI sera demandé depuis votre tableau de bord après souscription."
+              : "The IMEI will be requested from your dashboard after subscription."}
+          </p>
         </div>
 
-        {/* Payment Method Selection */}
-        <div className="mb-6">
-          <h3 className="mb-3 text-sm font-medium text-indigo-950">{t.payment.method}</h3>
-          <div className="grid grid-cols-2 gap-3">
-            {PAYMENT_METHODS.map((m) => {
-              const label = m.id === "stripe"
-                ? (lang === "fr" ? m.labelFr : m.labelEn) || m.label
-                : m.label;
-              return (
-                <button
-                  key={m.id}
-                  onClick={() => setMethod(m.id)}
-                  className={cn(
-                    "flex cursor-pointer items-center gap-3 rounded-2xl border p-4 text-left transition-all",
-                    method === m.id
-                      ? "border-indigo-950 bg-indigo-950/5 ring-1 ring-indigo-950/20"
-                      : "border-slate-200/80 bg-white hover:border-slate-300 hover:shadow-lg"
-                  )}
-                >
-                  <div
-                    className="flex h-8 w-8 items-center justify-center rounded-lg"
-                    style={{ backgroundColor: `${m.color}15` }}
-                  >
-                    <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: m.color }} />
-                  </div>
-                  <span className="text-sm font-medium text-indigo-950">{label}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Payment Form */}
-        <div className="rounded-[2rem] border border-slate-200/80 bg-white p-6 shadow-sm">
-          {method !== "stripe" ? (
-            <FormField
-              label={t.payment.phone}
-              hint={lang === "fr"
-                ? `Vous recevrez une notification sur votre application ${method === "wave" ? "Wave" : method === "orange" ? "Orange Money" : "Free Money"}.`
-                : `You'll receive a notification in your ${method === "wave" ? "Wave" : method === "orange" ? "Orange Money" : "Free Money"} app.`
-              }
-            >
-              <Input
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="+221 77 000 00 00"
-              />
-            </FormField>
-          ) : (
-            <div className="space-y-4">
-              <FormField label={t.payment.card}>
-                <Input
-                  value={card}
-                  onChange={(e) => setCard(e.target.value.replace(/\D/g, "").slice(0, 16))}
-                  placeholder="4242 4242 4242 4242"
-                />
-              </FormField>
-              <div className="grid grid-cols-2 gap-3">
-                <FormField label={t.payment.expiry}>
-                  <Input value={expiry} onChange={(e) => setExpiry(e.target.value)} placeholder="MM/YY" />
-                </FormField>
-                <FormField label={t.payment.cvv}>
-                  <Input value={cvv} onChange={(e) => setCvv(e.target.value.slice(0, 4))} placeholder="123" />
-                </FormField>
-              </div>
-            </div>
-          )}
+        {/* Payment Info */}
+        <div className="mb-6 rounded-[2rem] border border-slate-200/80 bg-white p-6 shadow-sm">
+          <p className="text-sm text-slate-500">
+            {lang === "fr"
+              ? "Vous serez redirigé vers notre partenaire de paiement sécurisé pour finaliser votre souscription. Les méthodes de paiement disponibles incluent Wave, Orange Money et Free Money."
+              : "You will be redirected to our secure payment partner to finalize your subscription. Available payment methods include Wave, Orange Money, and Free Money."}
+          </p>
         </div>
 
         {/* Security Note */}

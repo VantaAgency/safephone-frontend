@@ -9,7 +9,8 @@ export type ClaimStatus = "pending" | "review" | "approved" | "rejected" | "sett
 export type PaymentMethod = "wave" | "orange_money" | "free_money" | "card";
 export type PaymentStatus = "pending" | "completed" | "failed" | "refunded";
 export type PlanTier = "entry" | "mid" | "mid-high" | "premium" | "household";
-export type UserRole = "admin" | "member" | "viewer";
+export type UserRole = "admin" | "member" | "partner" | "viewer";
+export type PartnerApplicationStatus = "pending" | "approved" | "rejected";
 
 // --- Domain models ---
 
@@ -118,6 +119,162 @@ export interface Payment {
 
 // --- Request types ---
 
+export interface UpdateProfileRequest {
+  phone: string;
+}
+
+export interface CreateContactRequest {
+  name: string;
+  email: string;
+  subject?: string;
+  message: string;
+}
+
+export interface ContactMessage {
+  id: string;
+  name: string;
+  email: string;
+  subject?: string;
+  message: string;
+  created_at: string;
+}
+
+export interface CreatePartnerApplicationRequest {
+  store_name: string;
+  full_name: string;
+  phone: string;
+  city: string;
+}
+
+export interface PartnerApplication {
+  id: string;
+  org_id: string;
+  user_id: string;
+  store_name: string;
+  full_name: string;
+  phone: string;
+  city: string;
+  status: PartnerApplicationStatus;
+  reviewed_by?: string;
+  rejection_reason?: string;
+  created_at: string;
+  reviewed_at?: string;
+}
+
+export interface AdminPartnerApplication {
+  id: string;
+  org_id: string;
+  user_id: string;
+  store_name: string;
+  full_name: string;
+  phone: string;
+  email: string;
+  city: string;
+  status: PartnerApplicationStatus;
+  rejection_reason?: string;
+  created_at: string;
+  reviewed_at?: string;
+}
+
+export interface ReviewPartnerApplicationRequest {
+  decision: "approved" | "rejected";
+  rejection_reason?: string;
+}
+
+export interface AdminPartnerApplicationParams extends PaginationParams {
+  status?: PartnerApplicationStatus;
+}
+
+export interface PartnerProfile {
+  id: string;
+  store_name: string;
+  city: string;
+  commission_rate: number;
+  status: string;
+  total_clients: number;
+  active_clients: number;
+  plans_purchased: number;
+  month_commission_xof: number;
+}
+
+export interface PartnerClient {
+  id: string;
+  org_id: string;
+  partner_id: string;
+  client_name: string;
+  client_phone?: string;
+  plan_id?: string;
+  status: string;
+  invited_at: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PartnerSale {
+  id: string;
+  customer_name: string;
+  plan_name_fr?: string;
+  plan_name_en?: string;
+  amount_xof: number;
+  commission_xof: number;
+  date: string;
+}
+
+export interface PartnerPayout {
+  id: string;
+  amount_xof: number;
+  payout_method: string;
+  status: string;
+  paid_at: string;
+}
+
+export interface AdminPartner {
+  id: string;
+  store_name: string;
+  owner_name: string;
+  city: string;
+  clients_count: number;
+  active_clients: number;
+  commission_this_month: number;
+  status: string;
+  joined_at: string;
+}
+
+export interface RepairBooking {
+  id: string;
+  reference: string;
+  device_type: string;
+  repair_type: string;
+  location_id: string;
+  booking_date: string;
+  booking_time: string;
+  customer_name: string;
+  customer_phone: string;
+  status: string;
+  created_at: string;
+}
+
+export interface CreateRepairBookingRequest {
+  device_type: string;
+  repair_type: string;
+  location_id: string;
+  booking_date: string;
+  booking_time: string;
+  customer_name: string;
+  customer_phone: string;
+}
+
+export interface CreatePartnerClientRequest {
+  client_name: string;
+  client_phone?: string;
+  plan_id?: string;
+}
+
+export interface UpdatePartnerClientStatusRequest {
+  status: string;
+  plan_id?: string;
+}
+
 export interface CreateDeviceRequest {
   brand: string;
   model: string;
@@ -128,6 +285,7 @@ export interface UpdateDeviceRequest {
   brand: string;
   model: string;
   status: DeviceStatus;
+  imei?: string;
 }
 
 export interface CreateSubscriptionRequest {
@@ -149,9 +307,20 @@ export interface UpdateClaimStatusRequest {
 }
 
 export interface CreatePaymentRequest {
-  subscription_id: string;
+  brand: string;
+  model: string;
+  imei: string;
+  plan_id: string;
+  billing_cycle: "monthly" | "annual";
   payment_method: PaymentMethod;
   idempotency_key?: string;
+}
+
+export interface CheckoutResult {
+  payment: Payment;
+  device: Device;
+  subscription: Subscription;
+  payment_url?: string;
 }
 
 // --- Response envelope ---
@@ -175,6 +344,40 @@ export interface ApiErrorDetail {
 
 export interface ApiErrorResponse {
   error: ApiErrorDetail;
+}
+
+// --- Admin types ---
+
+export interface AdminStats {
+  active_subscribers: number;
+  monthly_revenue_xof: number;
+  open_claims: number;
+  revenue_by_method: Record<string, number>;
+  total_customers: number;
+  total_devices: number;
+}
+
+export interface AdminCustomer {
+  id: string;
+  full_name: string;
+  phone?: string;
+  email: string;
+  plan_name_fr?: string;
+  plan_name_en?: string;
+  device_count: number;
+  subscription_status?: string;
+}
+
+export interface AdminPayment {
+  id: string;
+  customer_name: string;
+  plan_name_fr?: string;
+  plan_name_en?: string;
+  amount_xof: number;
+  payment_method: PaymentMethod;
+  status: PaymentStatus;
+  paid_at?: string;
+  created_at: string;
 }
 
 // --- Pagination params ---

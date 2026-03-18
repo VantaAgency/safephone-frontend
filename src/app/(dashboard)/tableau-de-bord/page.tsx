@@ -118,7 +118,7 @@ export default function DashboardPage() {
     try {
       await updateDevice.mutateAsync({
         id: deviceId,
-        data: { brand: device.brand, model: device.model, status: "active" },
+        data: { brand: device.brand, model: device.model, status: "active", imei: imeiValue },
       });
       setImeiFormDevice(null);
       setImeiValue("");
@@ -130,6 +130,10 @@ export default function DashboardPage() {
   const pendingDevices = devices?.filter((d) => d.status === "pending") ?? [];
   const activeDevices = devices?.filter((d) => d.status === "active") ?? [];
   const activeSubscriptions = subscriptions?.filter((s) => s.status === "active") ?? [];
+  // Devices eligible for claims: active device + active subscription covering it
+  const eligibleDevices = activeDevices.filter((d) =>
+    subscriptions?.some((s) => s.device_id === d.id && s.status === "active")
+  );
 
   const userName = user?.name || "Utilisateur";
 
@@ -375,7 +379,7 @@ export default function DashboardPage() {
 
         {/* -- CLAIMS TAB -- */}
         {tab === "claims" && (
-          <div className="mx-auto max-w-3xl">
+          <div>
             <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h2 className="text-xl font-medium text-indigo-950">{t.claims.title}</h2>
@@ -413,7 +417,7 @@ export default function DashboardPage() {
                   <FormField label={t.claims.device}>
                     <Select value={claimDeviceId} onChange={(e) => setClaimDeviceId((e.target as HTMLSelectElement).value)}>
                       <option value="">{lang === "fr" ? "Sélectionnez un appareil" : "Select a device"}</option>
-                      {activeDevices.map((d) => (
+                      {eligibleDevices.map((d) => (
                         <option key={d.id} value={d.id}>
                           {d.brand} {d.model}{d.imei && d.imei !== "000000000000000" ? ` — IMEI: ${d.imei}` : ""}
                         </option>
@@ -473,7 +477,7 @@ export default function DashboardPage() {
                 {claimsLoading ? (
                   <div className="space-y-3">{Array.from({ length: 3 }).map((_, i) => <CardSkeleton key={i} />)}</div>
                 ) : !claims || claims.length === 0 ? (
-                  <EmptyState icon={<ShieldCheckIcon size={28} />} title={t.claims.empty} description={t.claims.emptyDesc} action={{ label: t.claims.new, onClick: () => setClaimView("new") }} />
+                  <EmptyState icon={<ShieldCheckIcon size={28} />} title={t.claims.empty} description={t.claims.emptyDesc} />
                 ) : (
                   <div className="space-y-3">
                     {claims.map((claim) => {
@@ -524,7 +528,7 @@ export default function DashboardPage() {
             {devicesLoading ? (
               <div className="space-y-4">{Array.from({ length: 3 }).map((_, i) => <CardSkeleton key={i} />)}</div>
             ) : !devices || devices.length === 0 ? (
-              <EmptyState icon={<PhoneIcon size={28} />} title={lang === "fr" ? "Aucun appareil" : "No devices"} description={lang === "fr" ? "Enregistrez votre premier appareil." : "Register your first device."} action={{ label: t.dashboard.addDevice, onClick: () => window.location.href = "/inscription" }} />
+              <EmptyState icon={<PhoneIcon size={28} />} title={lang === "fr" ? "Aucun appareil" : "No devices"} description={lang === "fr" ? "Enregistrez votre premier appareil." : "Register your first device."} />
             ) : (
               <div className="space-y-4">
                 {devices.map((d) => (

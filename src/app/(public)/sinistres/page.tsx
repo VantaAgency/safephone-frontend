@@ -32,7 +32,11 @@ export default function SinistresPage() {
   const { data: subscriptions } = useSubscriptions();
   const createClaim = useCreateClaim();
 
-  const activeDevices = devices?.filter((d) => d.status === "active") ?? [];
+  // Only show devices that are active AND have an active subscription
+  const eligibleDevices = devices?.filter((d) => {
+    if (d.status !== "active") return false;
+    return subscriptions?.some((s) => s.device_id === d.id && s.status === "active");
+  }) ?? [];
 
   const statusLabels: Record<string, string> = {
     pending: t.claims.pending,
@@ -102,7 +106,8 @@ export default function SinistresPage() {
         {/* Error state */}
         {createClaim.isError && (
           <div className="mb-6 rounded-2xl border border-red-200/80 bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
-            {lang === "fr" ? "Impossible de soumettre le sinistre." : "Could not submit the claim."}
+            {(createClaim.error as { message?: string })?.message ||
+              (lang === "fr" ? "Impossible de soumettre le sinistre." : "Could not submit the claim.")}
           </div>
         )}
 
@@ -114,7 +119,7 @@ export default function SinistresPage() {
               <FormField label={t.claims.device}>
                 <Select value={selectedDeviceId} onChange={(e) => setSelectedDeviceId((e.target as HTMLSelectElement).value)}>
                   <option value="">{lang === "fr" ? "Sélectionnez un appareil" : "Select a device"}</option>
-                  {activeDevices.map((d) => (
+                  {eligibleDevices.map((d) => (
                     <option key={d.id} value={d.id}>
                       {d.brand} {d.model} — IMEI: {d.imei}
                     </option>

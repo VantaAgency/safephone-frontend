@@ -19,8 +19,8 @@ export default function PlansPage() {
   };
 
   return (
-    <div className="bg-slate-50 py-24 md:py-32">
-      <div className="mx-auto max-w-7xl px-5 md:px-10">
+    <div className="bg-slate-50 py-10 md:py-14">
+      <div className="mx-auto max-w-400 px-5 md:px-10">
         {/* Header */}
         <div className="mx-auto max-w-2xl text-center mb-14">
           <div className="mb-4 inline-flex items-center rounded-full border border-slate-200/80 bg-white px-4 py-1.5 text-xs font-medium uppercase tracking-wider text-slate-500">
