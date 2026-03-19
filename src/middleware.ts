@@ -12,7 +12,10 @@ const PARTNER_ROUTES = ["/espace-partenaire"];
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  const sessionToken = request.cookies.get("better-auth.session_token")?.value;
+  const sessionToken =
+    request.cookies.get("__Secure-better-auth.session_token")?.value ||
+    request.cookies.get("__Host-better-auth.session_token")?.value ||
+    request.cookies.get("better-auth.session_token")?.value;
 
   const isProtected = PROTECTED_ROUTES.some((r) => pathname.startsWith(r));
   const isAdmin = ADMIN_ROUTES.some((r) => pathname.startsWith(r));
