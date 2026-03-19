@@ -36,10 +36,10 @@ export function WhySafephoneSection() {
                     <line x1="2" x2="22" y1="10" y2="10" />
                   </svg>
                 </div>
-                <h3 className="mb-4 text-xl font-medium tracking-tight text-indigo-950">
+                <h3 className="mb-3 text-xl font-medium tracking-tight text-indigo-950">
                   {t.home.whyFeature1Title}
                 </h3>
-                <p className="mt-auto text-base leading-relaxed text-slate-500">
+                <p className="text-base leading-relaxed text-slate-500">
                   {t.home.whyFeature1Desc}
                 </p>
               </div>
@@ -52,10 +52,10 @@ export function WhySafephoneSection() {
                     <path d="M3.34 19a10 10 0 1 1 17.32 0" />
                   </svg>
                 </div>
-                <h3 className="mb-4 text-xl font-medium tracking-tight text-indigo-950">
+                <h3 className="mb-3 text-xl font-medium tracking-tight text-indigo-950">
                   {t.home.whyFeature2Title}
                 </h3>
-                <p className="mt-auto text-base leading-relaxed text-slate-500">
+                <p className="text-base leading-relaxed text-slate-500">
                   {t.home.whyFeature2Desc}
                 </p>
               </div>

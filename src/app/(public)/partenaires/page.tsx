@@ -76,7 +76,7 @@ export default function PartenairesPage() {
   const renderFormSection = () => {
     if (authPending || appLoading) {
       return (
-        <div className="rounded-[2rem] border border-slate-200/80 bg-white p-8 shadow-sm text-center">
+        <div className="rounded-[2rem] border border-slate-200/80 bg-white p-8 text-center shadow-sm">
           <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-slate-200 border-t-indigo-600" />
         </div>
       );
@@ -85,7 +85,7 @@ export default function PartenairesPage() {
     // Not authenticated: prompt to sign in
     if (!isAuthenticated) {
       return (
-        <div className="rounded-[2rem] border border-slate-200/80 bg-white p-8 text-center shadow-sm">
+        <div className="rounded-[2rem] border border-slate-200/80 bg-white p-8 text-center shadow-sm md:p-10">
           <ShieldCheckIcon size={48} className="mx-auto mb-4 text-slate-300" />
           <h3 className="text-lg font-medium text-indigo-950">
             {lang === "fr" ? "Connexion requise" : "Sign in required"}
@@ -115,7 +115,7 @@ export default function PartenairesPage() {
     if (myApplication) {
       if (myApplication.status === "pending") {
         return (
-          <div className="rounded-[2rem] border border-yellow-200/60 bg-yellow-50 p-8 text-center">
+          <div className="rounded-[2rem] border border-yellow-200/60 bg-yellow-50 p-8 text-center md:p-10">
             <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-yellow-100">
               <ShieldCheckIcon size={24} className="text-yellow-600" />
             </div>
@@ -140,7 +140,7 @@ export default function PartenairesPage() {
 
       if (myApplication.status === "approved") {
         return (
-          <div className="rounded-[2rem] border border-emerald-200/60 bg-emerald-50 p-8 text-center">
+          <div className="rounded-[2rem] border border-emerald-200/60 bg-emerald-50 p-8 text-center md:p-10">
             <CheckCircleIcon size={48} className="mx-auto mb-4 text-emerald-500" />
             <h3 className="text-lg font-medium text-indigo-950">
               {lang === "fr" ? "Vous êtes partenaire SafePhone !" : "You are a SafePhone partner!"}
@@ -188,7 +188,7 @@ export default function PartenairesPage() {
     // No application or success state
     if (success) {
       return (
-        <div className="rounded-[2rem] border border-emerald-200/60 bg-emerald-50 p-8 text-center">
+        <div className="rounded-[2rem] border border-emerald-200/60 bg-emerald-50 p-8 text-center md:p-10">
           <CheckCircleIcon size={48} className="mx-auto mb-4 text-emerald-500" />
           <h3 className="text-lg font-medium text-indigo-950">{t.partners.success}</h3>
         </div>
@@ -200,6 +200,16 @@ export default function PartenairesPage() {
 
   const renderForm = () => (
     <div className="rounded-[2rem] border border-slate-200/80 bg-white p-6 shadow-sm md:p-8">
+      <div className="mb-6">
+        <div className="mb-3 inline-flex items-center rounded-full border border-slate-200/80 bg-slate-50 px-3 py-1 text-[11px] font-medium uppercase tracking-wider text-slate-500">
+          {lang === "fr" ? "Candidature partenaire" : "Partner application"}
+        </div>
+        <p className="text-sm text-slate-500">
+          {lang === "fr"
+            ? "Renseignez votre boutique pour rejoindre le réseau revendeur SafePhone."
+            : "Tell us about your shop to join the SafePhone reseller network."}
+        </p>
+      </div>
       <div className="space-y-5">
         <FormField label={t.partners.name} error={fieldErrors.store}>
           <Input
@@ -257,43 +267,36 @@ export default function PartenairesPage() {
   );
 
   return (
-    <div className="bg-slate-50">
-      {/* Hero Section */}
-      <section className="relative overflow-hidden bg-indigo-950 py-10 md:py-14">
-        <div className="pointer-events-none absolute -top-24 -left-24 h-72 w-72 rounded-full bg-yellow-400/10 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-32 -right-32 h-96 w-96 rounded-full bg-indigo-500/10 blur-3xl" />
-
-        <div className="relative mx-auto max-w-7xl px-5 md:px-8">
-          <div className="mx-auto max-w-2xl text-center">
-            <div className="mb-6 inline-flex items-center rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-xs font-medium uppercase tracking-wider text-slate-300 backdrop-blur-sm">
-              {lang === "fr" ? "Programme partenaire" : "Partner program"}
-            </div>
-            <h1 className="text-3xl font-medium tracking-tight text-white md:text-4xl lg:text-5xl">
-              {t.partners.title}
-            </h1>
-            <p className="mx-auto mt-4 max-w-lg text-base text-slate-400 md:text-lg">
-              {t.partners.sub}
-            </p>
+    <div className="bg-slate-50 py-10 md:py-14">
+      <div className="mx-auto max-w-6xl px-5 md:px-10">
+        <section className="mx-auto mb-14 max-w-3xl text-center">
+          <div className="mb-4 inline-flex items-center rounded-full border border-slate-200/80 bg-white px-4 py-1.5 text-xs font-medium uppercase tracking-wider text-slate-500">
+            {lang === "fr" ? "Programme partenaire" : "Partner program"}
           </div>
-        </div>
-      </section>
-
-      {/* How it works */}
-      <section className="py-10 md:py-14">
-        <div className="mx-auto max-w-7xl px-5 md:px-8">
-          <div className="mb-8 text-center">
-            <div className="mb-3 inline-flex items-center rounded-full border border-slate-200/80 bg-white px-4 py-1.5 text-xs font-medium uppercase tracking-wider text-slate-500">
-              {lang === "fr" ? "Comment ça marche" : "How it works"}
-            </div>
-            <h2 className="text-2xl font-medium tracking-tight text-indigo-950 md:text-3xl">
+          <h1 className="text-3xl font-medium tracking-tight text-indigo-950 md:text-4xl lg:text-5xl">
+            {t.partners.title}
+          </h1>
+          <p className="mt-4 text-lg text-slate-500">
+            {t.partners.sub}
+          </p>
+          <div className="mt-10">
+            <h2 className="text-xl font-medium tracking-tight text-indigo-950 md:text-2xl">
               {lang === "fr" ? "4 étapes pour gagner des commissions" : "4 steps to earn commissions"}
             </h2>
+            <p className="mx-auto mt-3 max-w-2xl text-sm text-slate-500 md:text-base">
+              {lang === "fr"
+                ? "Un parcours simple, pensé pour les boutiques qui veulent proposer SafePhone sans alourdir la vente."
+                : "A simple flow for shops that want to offer SafePhone without slowing down the sale."}
+            </p>
           </div>
+        </section>
+
+        <section className="mb-14">
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {steps.map((s, i) => {
               const Icon = s.icon;
               return (
-                <div key={i} className="rounded-[2rem] border border-slate-200/80 bg-white p-6 shadow-sm transition-all hover:shadow-lg">
+                <div key={i} className="rounded-[2rem] border border-slate-200/80 bg-white p-6 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg">
                   <div className="mb-4 flex items-center gap-3">
                     <span className="text-xs font-semibold text-slate-300">
                       {String(i + 1).padStart(2, "0")}
@@ -308,18 +311,15 @@ export default function PartenairesPage() {
               );
             })}
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Application Form */}
-      <section className="bg-slate-100/50 py-10 md:py-14">
-        <div className="mx-auto max-w-xl px-5 md:px-8">
-          <div className="mb-8">
-            <h2 className="text-2xl font-medium tracking-tight text-indigo-950">{t.partners.apply}</h2>
+        <section className="mx-auto max-w-2xl">
+          <div className="mb-8 text-center">
+            <h2 className="text-2xl font-medium tracking-tight text-indigo-950 md:text-3xl">{t.partners.apply}</h2>
           </div>
           {renderFormSection()}
-        </div>
-      </section>
+        </section>
+      </div>
     </div>
   );
 }

@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { partner } from "../endpoints";
-import type { CreatePartnerClientRequest, UpdatePartnerClientStatusRequest } from "../types";
+import type { CreatePartnerClientRequest } from "../types";
 
 export function usePartnerProfile() {
   return useQuery({
@@ -29,12 +29,32 @@ export function useCreatePartnerClient() {
   });
 }
 
-export function useUpdatePartnerClientStatus() {
+export function useRefreshPartnerInvitation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ clientId, data }: { clientId: string; data: UpdatePartnerClientStatusRequest }) =>
-      partner.updateClientStatus(clientId, data),
+    mutationFn: (clientId: string) => partner.refreshInvitation(clientId),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["partner", "clients"] });
+      queryClient.invalidateQueries({ queryKey: ["partner", "profile"] });
+    },
+  });
+}
+
+export function usePartnerInvitation(token?: string, { enabled = true }: { enabled?: boolean } = {}) {
+  return useQuery({
+    queryKey: ["partner", "invitation", token],
+    queryFn: () => partner.getInvitation(token!),
+    enabled: enabled && !!token,
+    retry: false,
+  });
+}
+
+export function useClaimPartnerInvitation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (token: string) => partner.claimInvitation(token),
+    onSuccess: (_, token) => {
+      queryClient.invalidateQueries({ queryKey: ["partner", "invitation", token] });
       queryClient.invalidateQueries({ queryKey: ["partner", "clients"] });
       queryClient.invalidateQueries({ queryKey: ["partner", "profile"] });
     },

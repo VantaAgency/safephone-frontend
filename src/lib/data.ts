@@ -58,10 +58,34 @@ export const REPAIR_TYPES = [
 ];
 
 export const REPAIR_LOCATIONS = [
-  { id: "plateau", name: "MobiTech Plateau", address: "Av. Léopold Sédar Senghor, Dakar Plateau", hours: "8h–20h", distance: "0.8 km" },
-  { id: "almadies", name: "MobiTech Almadies", address: "Route des Almadies, Centre Commercial", hours: "9h–21h", distance: "4.2 km" },
-  { id: "parcelles", name: "MobiTech Parcelles Assainies", address: "Unité 17, Parcelles Assainies", hours: "8h–19h", distance: "6.1 km" },
-  { id: "guediawaye", name: "MobiTech Guédiawaye", address: "Marché HLM, Guédiawaye", hours: "8h–19h", distance: "8.4 km" },
+  {
+    id: "plateau",
+    name: "MobiTech Plateau",
+    address: "Av. Léopold Sédar Senghor, Dakar Plateau",
+    hours: "8h–20h",
+    distance: "0.8 km",
+  },
+  {
+    id: "almadies",
+    name: "MobiTech Almadies",
+    address: "Route des Almadies, Centre Commercial",
+    hours: "9h–21h",
+    distance: "4.2 km",
+  },
+  {
+    id: "parcelles",
+    name: "MobiTech Parcelles Assainies",
+    address: "Unité 17, Parcelles Assainies",
+    hours: "8h–19h",
+    distance: "6.1 km",
+  },
+  {
+    id: "guediawaye",
+    name: "MobiTech Guédiawaye",
+    address: "Marché HLM, Guédiawaye",
+    hours: "8h–19h",
+    distance: "8.4 km",
+  },
 ];
 
 export const DEVICE_BRANDS = [
@@ -73,11 +97,70 @@ export const DEVICE_BRANDS = [
   { id: "other", labelFr: "Autre marque", labelEn: "Other brand" },
 ];
 
+export const DEVICE_BRAND_PREVIEW = {
+  iphone: { labelFr: "Apple", labelEn: "Apple" },
+  samsung: { labelFr: "Samsung", labelEn: "Samsung" },
+  tecno: { labelFr: "Tecno", labelEn: "Tecno" },
+  itel: { labelFr: "Itel", labelEn: "Itel" },
+  huawei: { labelFr: "Huawei", labelEn: "Huawei" },
+  other: { labelFr: "Téléphone", labelEn: "Phone" },
+} as const;
+
+export const DEVICE_MODEL_SUGGESTIONS = {
+  iphone: [
+    "iPhone 13",
+    "iPhone 13 mini",
+    "iPhone 13 Pro",
+    "iPhone 13 Pro Max",
+    "iPhone 14",
+    "iPhone 14 Plus",
+    "iPhone 14 Pro",
+    "iPhone 15",
+    "iPhone 15 Pro",
+    "iPhone 15 Pro Max",
+  ],
+  samsung: [
+    "Galaxy A13",
+    "Galaxy A14",
+    "Galaxy A24",
+    "Galaxy A34",
+    "Galaxy A54",
+    "Galaxy S22",
+    "Galaxy S23",
+    "Galaxy S24",
+    "Galaxy Z Flip 5",
+  ],
+  tecno: [
+    "Spark 10",
+    "Spark 20",
+    "Camon 20",
+    "Camon 30",
+    "Phantom V Fold",
+    "Infinix Hot 40i",
+    "Infinix Note 30",
+    "Infinix Note 40",
+  ],
+  itel: ["Itel A70", "Itel P55", "Itel S23", "Wiko T10", "Wiko Y62"],
+  huawei: [
+    "Huawei nova 11i",
+    "Huawei Y9a",
+    "Honor X7a",
+    "Honor 90 Lite",
+    "Honor X8b",
+  ],
+  other: [],
+} as const;
+
 export const PAYMENT_METHODS = [
   { id: "wave", label: "Wave", color: "#1B95C8" },
   { id: "orange", label: "Orange Money", color: "#F77F00" },
   { id: "free", label: "Free Money", color: "#003087" },
-  { id: "stripe", labelFr: "Carte bancaire", labelEn: "Bank card", color: "#635BFF" },
+  {
+    id: "stripe",
+    labelFr: "Carte bancaire",
+    labelEn: "Bank card",
+    color: "#635BFF",
+  },
 ];
 
 export const TESTIMONIALS = [
@@ -92,7 +175,10 @@ export const TESTIMONIALS = [
   },
   {
     name: "Ousmane Ndiaye",
-    role: { fr: "Commerçant, Parcelles Assainies", en: "Merchant, Parcelles Assainies" },
+    role: {
+      fr: "Commerçant, Parcelles Assainies",
+      en: "Merchant, Parcelles Assainies",
+    },
     text: {
       fr: "J'ai perdu mon Samsung au marché. Avec la formule Haute, j'ai eu un téléphone de remplacement le lendemain. Excellent service.",
       en: "I lost my Samsung at the market. With the Premium plan, I had a replacement phone the next day. Excellent service.",

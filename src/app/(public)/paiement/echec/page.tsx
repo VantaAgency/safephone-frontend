@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useLanguage } from "@/lib/language-context";
 import { Button } from "@/components/ui/button";
 import { ShieldCheckIcon } from "@/components/ui/icons";
@@ -17,8 +17,6 @@ export default function PaiementEchecPage() {
 function PaiementEchecContent() {
   const { lang } = useLanguage();
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const _subId = searchParams.get("sub_id");
 
   return (
     <div className="flex min-h-[60vh] items-center justify-center bg-slate-50 px-5 py-24">
@@ -27,20 +25,20 @@ function PaiementEchecContent() {
           <ShieldCheckIcon size={40} className="text-red-500" />
         </div>
         <h2 className="text-2xl font-medium tracking-tight text-indigo-950">
-          {lang === "fr" ? "Paiement échoué" : "Payment failed"}
+          {lang === "fr" ? "Paiement non finalisé" : "Payment not completed"}
         </h2>
         <p className="mt-3 text-slate-500">
           {lang === "fr"
-            ? "Le paiement n'a pas pu être complété. Veuillez réessayer ou choisir un autre moyen de paiement."
-            : "The payment could not be completed. Please try again or choose a different payment method."}
+            ? "Aucune protection n'a été activée. Si le checkout est encore valide, vous pourrez reprendre ce paiement depuis votre tableau de bord."
+            : "No protection has been activated. If the checkout is still valid, you can resume it later from your dashboard."}
         </p>
         <div className="mt-8 flex justify-center gap-3">
           <Button
             variant="primary"
             size="lg"
-            onClick={() => router.back()}
+            onClick={() => router.push("/tableau-de-bord")}
           >
-            {lang === "fr" ? "Réessayer" : "Try again"}
+            {lang === "fr" ? "Voir mes paiements" : "View my payments"}
           </Button>
           <Button
             variant="outline"

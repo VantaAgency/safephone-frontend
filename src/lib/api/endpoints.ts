@@ -22,6 +22,7 @@ import type {
   PaginationParams,
   PartnerApplication,
   PartnerClient,
+  PartnerInvitation,
   PartnerPayout,
   PartnerProfile,
   PartnerSale,
@@ -32,17 +33,18 @@ import type {
   Subscription,
   UpdateClaimStatusRequest,
   UpdateDeviceRequest,
-  UpdatePartnerClientStatusRequest,
   UpdateProfileRequest,
   User,
 } from "./types";
 
 export const users = {
-  updateProfile: (data: UpdateProfileRequest) => api.patch<User>("/users/me", data),
+  updateProfile: (data: UpdateProfileRequest) =>
+    api.patch<User>("/users/me", data),
 };
 
 export const contact = {
-  submit: (data: CreateContactRequest) => api.post<ContactMessage>("/contact", data),
+  submit: (data: CreateContactRequest) =>
+    api.post<ContactMessage>("/contact", data),
 };
 
 export const partnerApplications = {
@@ -71,25 +73,42 @@ export const subscriptions = {
   list: (params?: PaginationParams) =>
     api.get<Subscription[]>(
       "/subscriptions",
-      params as Record<string, string | number>
+      params as Record<string, string | number>,
     ),
   get: (id: string) => api.get<Subscription>(`/subscriptions/${id}`),
-  cancel: (id: string) =>
-    api.post<Subscription>(`/subscriptions/${id}/cancel`),
+  cancel: (id: string) => api.post<Subscription>(`/subscriptions/${id}/cancel`),
 };
 
 export const admin = {
   stats: () => api.get<AdminStats>("/admin/stats"),
   customers: (params?: PaginationParams & { search?: string }) =>
-    api.get<AdminCustomer[]>("/admin/customers", params as Record<string, string | number>),
+    api.get<AdminCustomer[]>(
+      "/admin/customers",
+      params as Record<string, string | number>,
+    ),
   payments: (params?: PaginationParams) =>
-    api.get<AdminPayment[]>("/admin/payments", params as Record<string, string | number>),
+    api.get<AdminPayment[]>(
+      "/admin/payments",
+      params as Record<string, string | number>,
+    ),
   partners: (params?: PaginationParams) =>
-    api.get<AdminPartner[]>("/admin/partners", params as Record<string, string | number>),
+    api.get<AdminPartner[]>(
+      "/admin/partners",
+      params as Record<string, string | number>,
+    ),
   partnerApplications: (params?: AdminPartnerApplicationParams) =>
-    api.get<AdminPartnerApplication[]>("/admin/partner-applications", params as Record<string, string | number>),
-  reviewPartnerApplication: (id: string, data: ReviewPartnerApplicationRequest) =>
-    api.put<PartnerApplication>(`/admin/partner-applications/${id}/review`, data),
+    api.get<AdminPartnerApplication[]>(
+      "/admin/partner-applications",
+      params as Record<string, string | number>,
+    ),
+  reviewPartnerApplication: (
+    id: string,
+    data: ReviewPartnerApplicationRequest,
+  ) =>
+    api.put<PartnerApplication>(
+      `/admin/partner-applications/${id}/review`,
+      data,
+    ),
 };
 
 export const repairs = {
@@ -100,15 +119,28 @@ export const repairs = {
 export const partner = {
   getProfile: () => api.get<PartnerProfile>("/partner/profile"),
   listClients: (params?: PaginationParams) =>
-    api.get<PartnerClient[]>("/partner/clients", params as Record<string, string | number>),
+    api.get<PartnerClient[]>(
+      "/partner/clients",
+      params as Record<string, string | number>,
+    ),
   createClient: (data: CreatePartnerClientRequest) =>
     api.post<PartnerClient>("/partner/clients", data),
-  updateClientStatus: (clientId: string, data: UpdatePartnerClientStatusRequest) =>
-    api.patch<{ status: string }>(`/partner-clients/${clientId}/status`, data),
+  refreshInvitation: (clientId: string) =>
+    api.post<PartnerClient>(`/partner/clients/${clientId}/refresh-invitation`),
+  getInvitation: (token: string) =>
+    api.get<PartnerInvitation>(`/partner-invitations/${token}`),
+  claimInvitation: (token: string) =>
+    api.post<PartnerInvitation>(`/partner-invitations/${token}/claim`),
   listSales: (params?: PaginationParams) =>
-    api.get<PartnerSale[]>("/partner/sales", params as Record<string, string | number>),
+    api.get<PartnerSale[]>(
+      "/partner/sales",
+      params as Record<string, string | number>,
+    ),
   listPayouts: (params?: PaginationParams) =>
-    api.get<PartnerPayout[]>("/partner/payouts", params as Record<string, string | number>),
+    api.get<PartnerPayout[]>(
+      "/partner/payouts",
+      params as Record<string, string | number>,
+    ),
 };
 
 export const claims = {
@@ -119,7 +151,7 @@ export const claims = {
   adminList: (params?: AdminClaimParams) =>
     api.get<Claim[]>(
       "/admin/claims",
-      params as Record<string, string | number>
+      params as Record<string, string | number>,
     ),
   adminUpdateStatus: (id: string, data: UpdateClaimStatusRequest) =>
     api.put<Claim>(`/admin/claims/${id}/status`, data),
@@ -131,4 +163,5 @@ export const payments = {
   list: (params?: PaginationParams) =>
     api.get<Payment[]>("/payments", params as Record<string, string | number>),
   get: (id: string) => api.get<Payment>(`/payments/${id}`),
+  resume: (id: string) => api.post<CheckoutResult>(`/payments/${id}/resume`),
 };

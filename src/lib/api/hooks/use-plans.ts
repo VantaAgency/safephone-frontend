@@ -3,10 +3,17 @@
 import { useQuery } from "@tanstack/react-query";
 import { plans } from "../endpoints";
 import type { Plan } from "../types";
+import { DEVELOPMENT_TEST_PLAN_SLUG, isDevelopmentRuntime } from "@/lib/plans";
 
 export function usePlans() {
   return useQuery<Plan[]>({
     queryKey: ["plans"],
-    queryFn: () => plans.list(),
+    queryFn: async () => {
+      const result = await plans.list();
+      if (isDevelopmentRuntime()) {
+        return result;
+      }
+      return result.filter((plan) => plan.slug !== DEVELOPMENT_TEST_PLAN_SLUG);
+    },
   });
 }

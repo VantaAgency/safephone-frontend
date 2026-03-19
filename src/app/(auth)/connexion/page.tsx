@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useLanguage } from "@/lib/language-context";
 import { Button } from "@/components/ui/button";
 import { FormField, Input } from "@/components/ui/form-field";
@@ -11,10 +11,12 @@ import { authClient } from "@/lib/auth/client";
 export default function LoginPage() {
   const { lang, t } = useLanguage();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const redirect = searchParams.get("redirect") || "/tableau-de-bord";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,16 +29,16 @@ export default function LoginPage() {
         setError(
           lang === "fr"
             ? "Email ou mot de passe incorrect."
-            : "Invalid email or password."
+            : "Invalid email or password.",
         );
         return;
       }
-      router.push("/tableau-de-bord");
+      router.push(redirect);
     } catch {
       setError(
         lang === "fr"
           ? "Une erreur est survenue. Réessayez."
-          : "An error occurred. Please try again."
+          : "An error occurred. Please try again.",
       );
     } finally {
       setLoading(false);
@@ -99,7 +101,10 @@ export default function LoginPage() {
       <p className="mt-6 text-center text-sm text-slate-500">
         {lang === "fr" ? "Pas encore de compte ?" : "Don't have an account?"}{" "}
         <Link
-          href="/inscription-compte"
+          href={{
+            pathname: "/inscription-compte",
+            query: redirect ? { redirect } : undefined,
+          }}
           className="font-semibold text-indigo-600 hover:underline"
         >
           {lang === "fr" ? "Créer un compte" : "Create an account"}

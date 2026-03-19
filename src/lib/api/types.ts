@@ -6,11 +6,13 @@ export type DeviceStatus = "pending" | "active" | "expired" | "suspended";
 export type SubscriptionStatus = "pending" | "active" | "cancelled" | "expired";
 export type ClaimType = "screen" | "water" | "theft" | "breakdown";
 export type ClaimStatus = "pending" | "review" | "approved" | "rejected" | "settled";
-export type PaymentMethod = "wave" | "orange_money" | "free_money" | "card";
-export type PaymentStatus = "pending" | "completed" | "failed" | "refunded";
+export type PaymentMethod = string;
+export type PaymentProvider = string;
+export type PaymentStatus = "pending" | "completed" | "failed" | "cancelled" | "expired" | "refunded";
 export type PlanTier = "entry" | "mid" | "mid-high" | "premium" | "household";
 export type UserRole = "admin" | "member" | "partner" | "viewer";
 export type PartnerApplicationStatus = "pending" | "approved" | "rejected";
+export type PartnerClientStatus = "draft" | "invited" | "account_created" | "payment_pending" | "active" | "expired" | "cancelled" | "failed";
 
 // --- Domain models ---
 
@@ -106,13 +108,19 @@ export interface Payment {
   id: string;
   org_id: string;
   user_id: string;
+  plan_id: string;
   subscription_id: string;
   amount_xof: number;
-  payment_method: PaymentMethod;
+  currency: string;
+  provider: PaymentProvider;
+  payment_method?: PaymentMethod;
   status: PaymentStatus;
   provider_ref?: string;
+  payment_url?: string;
   idempotency_key?: string;
   paid_at?: string;
+  failed_at?: string;
+  expires_at?: string;
   created_at: string;
   updated_at: string;
 }
@@ -201,13 +209,34 @@ export interface PartnerClient {
   id: string;
   org_id: string;
   partner_id: string;
+  linked_user_id?: string;
   client_name: string;
   client_phone?: string;
   plan_id?: string;
-  status: string;
+  status: PartnerClientStatus;
+  invitation_url?: string;
+  invitation_expires_at?: string;
+  invitation_claimed_at?: string;
   invited_at: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface PartnerInvitation {
+  client_id: string;
+  partner_id: string;
+  partner_store_name: string;
+  partner_city: string;
+  client_name: string;
+  client_phone?: string;
+  plan_id?: string;
+  plan_name_fr?: string;
+  plan_name_en?: string;
+  status: PartnerClientStatus;
+  invitation_url?: string;
+  invitation_expires_at?: string;
+  invitation_claimed_at?: string;
+  linked_user_id?: string;
 }
 
 export interface PartnerSale {
@@ -284,7 +313,6 @@ export interface CreateDeviceRequest {
 export interface UpdateDeviceRequest {
   brand: string;
   model: string;
-  status: DeviceStatus;
   imei?: string;
 }
 
@@ -312,7 +340,6 @@ export interface CreatePaymentRequest {
   imei: string;
   plan_id: string;
   billing_cycle: "monthly" | "annual";
-  payment_method: PaymentMethod;
   idempotency_key?: string;
 }
 
@@ -352,7 +379,7 @@ export interface AdminStats {
   active_subscribers: number;
   monthly_revenue_xof: number;
   open_claims: number;
-  revenue_by_method: Record<string, number>;
+  revenue_by_provider: Record<string, number>;
   total_customers: number;
   total_devices: number;
 }
@@ -374,7 +401,8 @@ export interface AdminPayment {
   plan_name_fr?: string;
   plan_name_en?: string;
   amount_xof: number;
-  payment_method: PaymentMethod;
+  provider: PaymentProvider;
+  payment_method?: PaymentMethod;
   status: PaymentStatus;
   paid_at?: string;
   created_at: string;

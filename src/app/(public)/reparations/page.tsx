@@ -59,45 +59,56 @@ export default function ReparationsPage() {
   };
 
   const stepLabels = [t.mobitech.stepDevice, t.mobitech.stepRepair, t.mobitech.stepLocation, t.mobitech.stepDateTime, t.mobitech.stepConfirm];
+  const selectedDeviceLabel = DEVICE_BRANDS.find((d) => d.id === deviceType)?.[lang === "fr" ? "labelFr" : "labelEn"] || deviceType;
+  const selectedRepair = REPAIR_TYPES.find((r) => r.id === repairType);
+  const selectedRepairLabel = selectedRepair?.[lang === "fr" ? "labelFr" : "labelEn"] || repairType;
+  const selectedLocation = REPAIR_LOCATIONS.find((l) => l.id === location);
 
   // Booking confirmed state
   if (bookedRef) {
-    const loc = REPAIR_LOCATIONS.find(l => l.id === location);
     return (
-      <div className="flex min-h-[70vh] items-center justify-center bg-slate-50 px-5 py-24">
-        <div className="mx-auto max-w-md text-center">
-          <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-emerald-50">
+      <div className="bg-slate-50 px-5 py-12 md:py-16">
+        <div className="mx-auto max-w-2xl">
+          <div className="mb-8 text-center">
+            <div className="mb-4 inline-flex items-center rounded-full border border-slate-200/80 bg-white px-4 py-1.5 text-xs font-medium uppercase tracking-wider text-slate-500">
+              {lang === "fr" ? "Réparation confirmée" : "Repair confirmed"}
+            </div>
+          </div>
+
+          <div className="rounded-[2rem] border border-slate-200/80 bg-white p-8 text-center shadow-sm md:p-10">
+            <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-emerald-50">
             <CheckCircleIcon size={40} className="text-emerald-500" />
-          </div>
-          <div className="mb-2 flex items-center justify-center gap-1">
-            <span className="text-xl font-medium text-indigo-950">Mobi</span>
-            <span className="text-xl font-medium text-indigo-600">Tech</span>
-          </div>
-          <h2 className="text-2xl font-medium tracking-tight text-indigo-950">{t.mobitech.booked}</h2>
-          <p className="mt-2 text-slate-500">{t.mobitech.bookedSub}</p>
+            </div>
+            <div className="mb-2 flex items-center justify-center gap-2">
+              <WrenchIcon size={20} className="text-indigo-600" />
+              <span className="text-sm font-medium uppercase tracking-[0.2em] text-slate-400">MobiTech</span>
+            </div>
+            <h2 className="text-2xl font-medium tracking-tight text-indigo-950 md:text-3xl">{t.mobitech.booked}</h2>
+            <p className="mx-auto mt-3 max-w-xl text-slate-500">{t.mobitech.bookedSub}</p>
 
-          <div className="mt-8 rounded-[2rem] border border-slate-200/80 bg-white p-5 text-left shadow-sm">
-            {[
-              [t.mobitech.reference, bookedRef],
-              [t.mobitech.stepDevice, DEVICE_BRANDS.find(d => d.id === deviceType)?.[lang === "fr" ? "labelFr" : "labelEn"] || deviceType],
-              [t.mobitech.stepRepair, REPAIR_TYPES.find(r => r.id === repairType)?.[lang === "fr" ? "labelFr" : "labelEn"] || repairType],
-              [t.mobitech.stepLocation, loc?.name || location],
-              [t.mobitech.stepDateTime, `${date} — ${time}`],
-            ].map(([k, v]) => (
-              <div key={k} className="flex justify-between border-b border-slate-100 py-2.5 last:border-0 text-sm">
-                <span className="text-slate-500">{k}</span>
-                <span className="font-medium text-indigo-950">{v}</span>
-              </div>
-            ))}
-          </div>
+            <div className="mt-8 rounded-[2rem] border border-slate-200/80 bg-slate-50/80 p-5 text-left shadow-inner">
+              {[
+                [t.mobitech.reference, bookedRef],
+                [t.mobitech.stepDevice, selectedDeviceLabel],
+                [t.mobitech.stepRepair, selectedRepairLabel],
+                [t.mobitech.stepLocation, selectedLocation?.name || location],
+                [t.mobitech.stepDateTime, `${date} — ${time}`],
+              ].map(([k, v]) => (
+                <div key={k} className="flex justify-between gap-4 border-b border-slate-200/80 py-3 last:border-0 text-sm">
+                  <span className="text-slate-500">{k}</span>
+                  <span className="text-right font-medium text-indigo-950">{v}</span>
+                </div>
+              ))}
+            </div>
 
-          <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
-            <Button variant="primary" onClick={() => router.push("/tableau-de-bord")}>
-              {lang === "fr" ? "Mon tableau de bord" : "My dashboard"}
-            </Button>
-            <Button variant="outline" onClick={reset}>
-              {t.mobitech.newRepair}
-            </Button>
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
+              <Button variant="primary" onClick={() => router.push("/tableau-de-bord")}>
+                {lang === "fr" ? "Mon tableau de bord" : "My dashboard"}
+              </Button>
+              <Button variant="outline" onClick={reset}>
+                {t.mobitech.newRepair}
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -105,23 +116,25 @@ export default function ReparationsPage() {
   }
 
   return (
-    <div className="bg-slate-50">
-      {/* Header */}
-      <section className="border-b border-slate-100 bg-white py-16 md:py-20">
-        <div className="mx-auto max-w-7xl px-5 text-center md:px-8">
-          <div className="mb-4 flex items-center justify-center gap-2">
-            <WrenchIcon size={24} className="text-indigo-600" />
-            <span className="text-xl font-medium text-indigo-950">Mobi</span>
-            <span className="text-xl font-medium text-indigo-600">Tech</span>
+    <div className="bg-slate-50 py-10 md:py-14">
+      <div className="mx-auto max-w-6xl px-5 md:px-10">
+        <div className="mx-auto mb-14 max-w-2xl text-center">
+          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-slate-200/80 bg-white px-4 py-1.5 text-xs font-medium uppercase tracking-wider text-slate-500">
+            <WrenchIcon size={14} className="text-indigo-600" />
+            <span>{lang === "fr" ? "Réseau MobiTech" : "MobiTech network"}</span>
           </div>
-          <h1 className="text-3xl font-medium tracking-tight text-indigo-950 md:text-4xl">{t.mobitech.title}</h1>
-          <p className="mx-auto mt-3 max-w-lg text-slate-500">{t.mobitech.sub}</p>
+          <h1 className="text-3xl font-medium tracking-tight text-indigo-950 md:text-4xl lg:text-5xl">
+            {t.mobitech.title}
+          </h1>
+          <p className="mt-4 text-lg text-slate-500">
+            {t.mobitech.sub}
+          </p>
         </div>
-      </section>
 
-      <div className="mx-auto max-w-2xl px-5 py-16 md:px-8 md:py-20">
+        <div className="mx-auto max-w-4xl">
         {/* Step Indicator */}
-        <div className="mb-10 flex items-center gap-1 overflow-x-auto">
+        <div className="mb-10 rounded-[2rem] border border-slate-200/80 bg-white px-5 py-4 shadow-sm">
+          <div className="flex items-center gap-1 overflow-x-auto">
           {stepLabels.map((label, i) => (
             <div key={i} className="flex flex-1 items-center gap-1.5 min-w-0">
               <div className={cn(
@@ -133,7 +146,7 @@ export default function ReparationsPage() {
                 {step > i + 1 ? "✓" : i + 1}
               </div>
               <span className={cn(
-                "hidden text-xs font-medium truncate sm:block",
+                "hidden truncate text-xs font-medium sm:block",
                 step === i + 1 ? "text-indigo-950" : "text-slate-400"
               )}>
                 {label}
@@ -142,33 +155,50 @@ export default function ReparationsPage() {
             </div>
           ))}
         </div>
+        </div>
 
         {/* Step 1: Device Type */}
         {step === 1 && (
-          <div>
-            <h2 className="mb-4 text-lg font-medium text-indigo-950">{t.mobitech.selectDevice}</h2>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <section className="rounded-[2rem] border border-slate-200/80 bg-white p-6 shadow-sm md:p-8">
+            <div className="mb-6">
+              <h2 className="text-2xl font-medium tracking-tight text-indigo-950">{t.mobitech.selectDevice}</h2>
+              <p className="mt-2 text-sm text-slate-500">
+                {lang === "fr"
+                  ? "Choisissez la marque de l'appareil à réparer pour continuer la réservation."
+                  : "Choose the device brand to continue your booking."}
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
               {DEVICE_BRANDS.map((d) => {
                 const label = lang === "fr" ? d.labelFr : d.labelEn;
                 return (
                   <button
                     key={d.id}
                     onClick={() => { setDeviceType(d.id); setStep(2); }}
-                    className="flex cursor-pointer flex-col items-center gap-2 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm transition-all hover:border-indigo-950 hover:shadow-lg"
+                    className="flex cursor-pointer flex-col items-center gap-3 rounded-[1.75rem] border border-slate-200/80 bg-slate-50/70 p-6 transition-all hover:-translate-y-0.5 hover:border-indigo-950 hover:bg-white hover:shadow-lg"
                   >
-                    <PhoneIcon size={28} className="text-slate-500" />
+                    <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white shadow-sm">
+                      <PhoneIcon size={28} className="text-slate-500" />
+                    </div>
                     <span className="text-sm font-medium text-indigo-950">{label}</span>
                   </button>
                 );
               })}
             </div>
-          </div>
+          </section>
         )}
 
         {/* Step 2: Repair Type */}
         {step === 2 && (
-          <div>
-            <h2 className="mb-4 text-lg font-medium text-indigo-950">{t.mobitech.selectRepair}</h2>
+          <section className="rounded-[2rem] border border-slate-200/80 bg-white p-6 shadow-sm md:p-8">
+            <div className="mb-6 flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-2xl font-medium tracking-tight text-indigo-950">{t.mobitech.selectRepair}</h2>
+                <p className="mt-2 text-sm text-slate-500">
+                  {selectedDeviceLabel}
+                </p>
+              </div>
+            </div>
             <div className="space-y-3">
               {REPAIR_TYPES.map((r) => {
                 const Icon = REPAIR_ICONS[r.id] || WrenchIcon;
@@ -178,10 +208,10 @@ export default function ReparationsPage() {
                   <button
                     key={r.id}
                     onClick={() => { setRepairType(r.id); setStep(3); }}
-                    className="flex w-full cursor-pointer items-center justify-between rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm transition-all hover:border-indigo-950 hover:shadow-lg"
+                    className="flex w-full cursor-pointer items-center justify-between rounded-[1.75rem] border border-slate-200/80 bg-slate-50/70 p-4 transition-all hover:-translate-y-0.5 hover:border-indigo-950 hover:bg-white hover:shadow-lg"
                   >
                     <div className="flex items-center gap-4">
-                      <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-slate-50">
+                      <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white shadow-sm">
                         <Icon size={20} className="text-slate-500" />
                       </div>
                       <div className="text-left">
@@ -202,22 +232,25 @@ export default function ReparationsPage() {
             <Button variant="ghost" size="sm" className="mt-4" onClick={() => setStep(1)}>
               ← {lang === "fr" ? "Retour" : "Back"}
             </Button>
-          </div>
+          </section>
         )}
 
         {/* Step 3: Location */}
         {step === 3 && (
-          <div>
-            <h2 className="mb-4 text-lg font-medium text-indigo-950">{t.mobitech.selectLocation}</h2>
+          <section className="rounded-[2rem] border border-slate-200/80 bg-white p-6 shadow-sm md:p-8">
+            <div className="mb-6">
+              <h2 className="text-2xl font-medium tracking-tight text-indigo-950">{t.mobitech.selectLocation}</h2>
+              <p className="mt-2 text-sm text-slate-500">{selectedRepairLabel}</p>
+            </div>
             <div className="space-y-3">
               {REPAIR_LOCATIONS.map((loc) => (
                 <button
                   key={loc.id}
                   onClick={() => { setLocation(loc.id); setStep(4); }}
-                  className="flex w-full cursor-pointer items-center justify-between rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm transition-all hover:border-indigo-950 hover:shadow-lg"
+                  className="flex w-full cursor-pointer items-center justify-between rounded-[1.75rem] border border-slate-200/80 bg-slate-50/70 p-4 transition-all hover:-translate-y-0.5 hover:border-indigo-950 hover:bg-white hover:shadow-lg"
                 >
                   <div className="flex items-center gap-4">
-                    <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-50">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white shadow-sm">
                       <MapPinIcon size={20} className="text-indigo-600" />
                     </div>
                     <div className="text-left">
@@ -235,7 +268,7 @@ export default function ReparationsPage() {
               {/* Home Service */}
               <button
                 onClick={() => { setLocation("home"); setStep(4); }}
-                className="flex w-full cursor-pointer items-center justify-between rounded-2xl border-2 border-dashed border-yellow-300/50 bg-yellow-50 p-4 transition-all hover:border-yellow-400/60"
+                className="flex w-full cursor-pointer items-center justify-between rounded-[1.75rem] border-2 border-dashed border-yellow-300/50 bg-yellow-50 p-4 transition-all hover:-translate-y-0.5 hover:border-yellow-400/60"
               >
                 <div className="flex items-center gap-4">
                   <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-yellow-100">
@@ -253,14 +286,19 @@ export default function ReparationsPage() {
             <Button variant="ghost" size="sm" className="mt-4" onClick={() => setStep(2)}>
               ← {lang === "fr" ? "Retour" : "Back"}
             </Button>
-          </div>
+          </section>
         )}
 
         {/* Step 4: Date & Time + Contact */}
         {step === 4 && (
-          <div>
-            <h2 className="mb-4 text-lg font-medium text-indigo-950">{t.mobitech.selectDateTime}</h2>
-            <div className="space-y-5 rounded-[2rem] border border-slate-200/80 bg-white p-6 shadow-sm">
+          <section className="rounded-[2rem] border border-slate-200/80 bg-white p-6 shadow-sm md:p-8">
+            <div className="mb-6">
+              <h2 className="text-2xl font-medium tracking-tight text-indigo-950">{t.mobitech.selectDateTime}</h2>
+              <p className="mt-2 text-sm text-slate-500">
+                {selectedLocation?.name || (location === "home" ? t.mobitech.homeService : location)}
+              </p>
+            </div>
+            <div className="space-y-5">
               <FormField label={t.mobitech.date}>
                 <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
               </FormField>
@@ -316,8 +354,9 @@ export default function ReparationsPage() {
             <Button variant="ghost" size="sm" className="mt-4" onClick={() => setStep(3)}>
               ← {lang === "fr" ? "Retour" : "Back"}
             </Button>
-          </div>
+          </section>
         )}
+        </div>
       </div>
     </div>
   );

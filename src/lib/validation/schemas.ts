@@ -42,8 +42,12 @@ export const createClaimSchema = z.object({
 });
 
 export const createPaymentSchema = z.object({
-  subscription_id: z.string().uuid(),
-  payment_method: z.enum(["wave", "orange_money", "free_money", "card"]),
+  brand: z.string().min(1, "Marque requise / Brand required"),
+  model: z.string().min(1, "Modèle requis / Model required"),
+  imei: z.string().regex(/^\d{15}$/, "IMEI: exactement 15 chiffres / Exactly 15 digits").optional().or(z.literal("")),
+  plan_id: z.string().uuid(),
+  billing_cycle: z.enum(["monthly", "annual"]),
+  idempotency_key: z.string().max(100).optional(),
 });
 
 export const contactFormSchema = z.object({

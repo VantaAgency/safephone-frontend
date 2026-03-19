@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useLanguage } from "@/lib/language-context";
 import { Button } from "@/components/ui/button";
 import { FormField, Input } from "@/components/ui/form-field";
@@ -12,6 +12,7 @@ import { users } from "@/lib/api/endpoints";
 export default function RegisterPage() {
   const { lang, t } = useLanguage();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -22,6 +23,7 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const redirect = searchParams.get("redirect") || "/tableau-de-bord";
 
   const validate = () => {
     const errors: Record<string, string> = {};
@@ -61,7 +63,7 @@ export default function RegisterPage() {
         setError(
           lang === "fr"
             ? "Impossible de créer le compte. Vérifiez vos informations."
-            : "Could not create account. Please check your information."
+            : "Could not create account. Please check your information.",
         );
         return;
       }
@@ -73,12 +75,12 @@ export default function RegisterPage() {
           // Non-blocking: phone update failure should not prevent dashboard access
         }
       }
-      router.push("/tableau-de-bord");
+      router.push(redirect);
     } catch {
       setError(
         lang === "fr"
           ? "Une erreur est survenue. Réessayez."
-          : "An error occurred. Please try again."
+          : "An error occurred. Please try again.",
       );
     } finally {
       setLoading(false);
@@ -159,7 +161,9 @@ export default function RegisterPage() {
         </FormField>
 
         <FormField
-          label={lang === "fr" ? "Confirmer le mot de passe" : "Confirm password"}
+          label={
+            lang === "fr" ? "Confirmer le mot de passe" : "Confirm password"
+          }
           error={fieldErrors.confirmPassword}
         >
           <Input
@@ -188,7 +192,10 @@ export default function RegisterPage() {
       <p className="mt-6 text-center text-sm text-slate-500">
         {lang === "fr" ? "Déjà un compte ?" : "Already have an account?"}{" "}
         <Link
-          href="/connexion"
+          href={{
+            pathname: "/connexion",
+            query: redirect ? { redirect } : undefined,
+          }}
           className="font-semibold text-indigo-600 hover:underline"
         >
           {t.nav.login}

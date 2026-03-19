@@ -32,11 +32,8 @@ const STATUS_TRANSITIONS: Record<string, ClaimStatus[]> = {
   approved: ["settled"],
 };
 
-const PAYMENT_METHOD_DISPLAY: Record<string, { label: string; color: string }> = {
-  wave: { label: "Wave", color: "#1B95C8" },
-  orange_money: { label: "Orange Money", color: "#F77F00" },
-  free_money: { label: "Free Money", color: "#003087" },
-  card: { label: "Stripe / Card", color: "#635BFF" },
+const PAYMENT_PROVIDER_DISPLAY: Record<string, { label: string; color: string }> = {
+  dexpay: { label: "DEXPAY", color: "#0066FF" },
 };
 
 export default function AdminPage() {
@@ -92,7 +89,37 @@ export default function AdminPage() {
     rejected: lang === "fr" ? "Rejete" : "Rejected",
     settled: lang === "fr" ? "Traite" : "Settled",
     completed: lang === "fr" ? "Paye" : "Paid",
+    failed: lang === "fr" ? "Échoué" : "Failed",
+    cancelled: lang === "fr" ? "Annulé" : "Cancelled",
+    expired: lang === "fr" ? "Expiré" : "Expired",
+    refunded: lang === "fr" ? "Remboursé" : "Refunded",
     active: lang === "fr" ? "Actif" : "Active",
+  };
+
+  const paymentMethodLabels: Record<string, string> = {
+    wave: "Wave",
+    orange_money: "Orange Money",
+    free_money: "Free Money",
+    card: lang === "fr" ? "Carte bancaire" : "Bank card",
+  };
+
+  const revenueByProviderEntries = Object.entries(stats?.revenue_by_provider ?? {});
+  const providerCards: Array<[string, number]> =
+    revenueByProviderEntries.length > 0 ? revenueByProviderEntries : [["dexpay", 0]];
+
+  const getProviderDisplay = (provider?: string) => {
+    if (!provider) {
+      return { label: "—", color: "#64748B" };
+    }
+    return PAYMENT_PROVIDER_DISPLAY[provider] ?? {
+      label: provider.toUpperCase(),
+      color: "#64748B",
+    };
+  };
+
+  const getPaymentMethodLabel = (method?: string) => {
+    if (!method) return null;
+    return paymentMethodLabels[method] ?? method;
   };
 
   const CLAIM_TYPE_LABELS: Record<string, string> = {
@@ -178,18 +205,18 @@ export default function AdminPage() {
             <div className="grid gap-6 md:grid-cols-2">
               <div>
                 <h3 className="mb-4 text-sm font-medium uppercase tracking-wider text-slate-400">
-                  {lang === "fr" ? "Revenu par methode" : "Revenue by method"}
+                  {lang === "fr" ? "Revenu par prestataire" : "Revenue by provider"}
                 </h3>
                 {statsLoading ? (
-                  <div className="grid grid-cols-2 gap-3">
-                    {Array.from({ length: 4 }).map((_, i) => <CardSkeleton key={i} />)}
+                  <div className="grid grid-cols-1 gap-3">
+                    {Array.from({ length: 1 }).map((_, i) => <CardSkeleton key={i} />)}
                   </div>
                 ) : (
-                  <div className="grid grid-cols-2 gap-3">
-                    {Object.entries(PAYMENT_METHOD_DISPLAY).map(([method, display]) => {
-                      const amount = stats?.revenue_by_method[method] ?? 0;
+                  <div className="grid grid-cols-1 gap-3">
+                    {providerCards.map(([provider, amount]) => {
+                      const display = getProviderDisplay(provider);
                       return (
-                        <div key={method} className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm">
+                        <div key={provider} className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm">
                           <div className="flex items-center gap-2">
                             <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: display.color }} />
                             <span className="text-xs font-medium text-slate-500">{display.label}</span>
@@ -353,11 +380,11 @@ export default function AdminPage() {
             </div>
 
             {!paymentsLoading && stats && (
-              <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-4">
-                {Object.entries(PAYMENT_METHOD_DISPLAY).map(([method, display]) => {
-                  const amount = stats.revenue_by_method[method] ?? 0;
+              <div className="mb-6 grid grid-cols-1 gap-3 md:grid-cols-2">
+                {providerCards.map(([provider, amount]) => {
+                  const display = getProviderDisplay(provider);
                   return (
-                    <div key={method} className="rounded-xl border border-slate-200/80 bg-white p-4 text-center shadow-sm">
+                    <div key={provider} className="rounded-xl border border-slate-200/80 bg-white p-4 text-center shadow-sm">
                       <div className="text-xs font-medium text-slate-500">{display.label}</div>
                       <div className="mt-1 text-lg font-medium" style={{ color: display.color }}>
                         {amount.toLocaleString("fr-FR")}
@@ -377,14 +404,24 @@ export default function AdminPage() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-slate-100 bg-slate-50/50">
-                        {["ID", "Client", lang === "fr" ? "Forfait" : "Plan", lang === "fr" ? "Montant" : "Amount", lang === "fr" ? "Methode" : "Method", lang === "fr" ? "Statut" : "Status", "Date"].map(h => (
+                        {[
+                          "ID",
+                          "Client",
+                          lang === "fr" ? "Forfait" : "Plan",
+                          lang === "fr" ? "Montant" : "Amount",
+                          lang === "fr" ? "Prestataire" : "Provider",
+                          lang === "fr" ? "Méthode finale" : "Final method",
+                          lang === "fr" ? "Statut" : "Status",
+                          "Date",
+                        ].map(h => (
                           <th key={h} className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-400 whitespace-nowrap">{h}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody>
                       {(adminPayments ?? []).map((p) => {
-                        const methodDisplay = PAYMENT_METHOD_DISPLAY[p.payment_method];
+                        const providerDisplay = getProviderDisplay(p.provider);
+                        const paymentMethodLabel = getPaymentMethodLabel(p.payment_method);
                         const planName = lang === "fr" ? p.plan_name_fr : p.plan_name_en;
                         return (
                           <tr key={p.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/30">
@@ -393,12 +430,13 @@ export default function AdminPage() {
                             <td className="px-5 py-3.5 text-slate-500">{planName || "—"}</td>
                             <td className="px-5 py-3.5 font-medium text-emerald-600">{p.amount_xof.toLocaleString("fr-FR")} XOF</td>
                             <td className="px-5 py-3.5">
-                              <span className="rounded-md px-2 py-0.5 text-xs font-medium text-white" style={{ backgroundColor: methodDisplay?.color ?? "#666" }}>
-                                {methodDisplay?.label ?? p.payment_method}
+                              <span className="rounded-md px-2 py-0.5 text-xs font-medium text-white" style={{ backgroundColor: providerDisplay.color }}>
+                                {providerDisplay.label}
                               </span>
                             </td>
+                            <td className="px-5 py-3.5 text-slate-500">{paymentMethodLabel || "—"}</td>
                             <td className="px-5 py-3.5">
-                              <StatusBadge status={p.status as "completed" | "pending"} label={statusLabels[p.status] || p.status} />
+                              <StatusBadge status={p.status as "completed" | "pending" | "failed" | "cancelled" | "expired" | "refunded"} label={statusLabels[p.status] || p.status} />
                             </td>
                             <td className="px-5 py-3.5 text-slate-500 whitespace-nowrap">
                               {new Date(p.created_at).toLocaleDateString(lang === "fr" ? "fr-FR" : "en-US")}
@@ -408,7 +446,7 @@ export default function AdminPage() {
                       })}
                       {(adminPayments ?? []).length === 0 && (
                         <tr>
-                          <td colSpan={7} className="px-5 py-8 text-center text-sm text-slate-400">
+                          <td colSpan={8} className="px-5 py-8 text-center text-sm text-slate-400">
                             {lang === "fr" ? "Aucun paiement trouvé" : "No payments found"}
                           </td>
                         </tr>
