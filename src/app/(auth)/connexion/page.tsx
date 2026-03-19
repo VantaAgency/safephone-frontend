@@ -5,8 +5,9 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useLanguage } from "@/lib/language-context";
 import { Button } from "@/components/ui/button";
-import { FormField, Input } from "@/components/ui/form-field";
+import { FormErrorAlert, FormField, Input, PasswordInput } from "@/components/ui/form-field";
 import { authClient } from "@/lib/auth/client";
+import { loginSchema } from "@/lib/validation/schemas";
 
 export default function LoginPage() {
   const { lang, t } = useLanguage();
@@ -16,11 +17,32 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const redirect = searchParams.get("redirect") || "/tableau-de-bord";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setFieldErrors({});
+
+    const parsed = loginSchema.safeParse({ email, password });
+    if (!parsed.success) {
+      const nextErrors: Record<string, string> = {};
+      for (const issue of parsed.error.issues) {
+        const key = issue.path[0];
+        if (typeof key === "string" && !nextErrors[key]) {
+          nextErrors[key] = issue.message.split(" / ")[lang === "fr" ? 0 : 1] ?? issue.message;
+        }
+      }
+      setFieldErrors(nextErrors);
+      setError(
+        lang === "fr"
+          ? "Corrigez les champs en rouge avant de continuer."
+          : "Please correct the highlighted fields before continuing."
+      );
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -59,31 +81,50 @@ export default function LoginPage() {
       </div>
 
       {error && (
-        <div className="mb-4 rounded-xl border border-red-200/60 bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
-          {error}
+        <div className="mb-4">
+          <FormErrorAlert message={error} />
         </div>
       )}
 
       <form onSubmit={handleSubmit} className="space-y-5">
-        <FormField label={lang === "fr" ? "Adresse email" : "Email address"}>
+        <FormField
+          label={lang === "fr" ? "Adresse email" : "Email address"}
+          error={fieldErrors.email}
+        >
           <Input
             type="email"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              if (fieldErrors.email) {
+                setFieldErrors((current) => ({ ...current, email: "" }));
+              }
+            }}
             placeholder="aminata@email.com"
             required
             autoComplete="email"
+            error={!!fieldErrors.email}
           />
         </FormField>
 
-        <FormField label={lang === "fr" ? "Mot de passe" : "Password"}>
-          <Input
-            type="password"
+        <FormField
+          label={lang === "fr" ? "Mot de passe" : "Password"}
+          error={fieldErrors.password}
+        >
+          <PasswordInput
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(e) => {
+              setPassword(e.target.value);
+              if (fieldErrors.password) {
+                setFieldErrors((current) => ({ ...current, password: "" }));
+              }
+            }}
             placeholder="••••••••"
             required
             autoComplete="current-password"
+            error={!!fieldErrors.password}
+            toggleLabel={lang === "fr" ? "Afficher le mot de passe" : "Show password"}
+            hideLabel={lang === "fr" ? "Masquer le mot de passe" : "Hide password"}
           />
         </FormField>
 

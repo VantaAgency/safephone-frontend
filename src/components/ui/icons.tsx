@@ -1,5 +1,3 @@
-import { cn } from "@/lib/utils";
-
 interface IconProps {
   className?: string;
   size?: number;
@@ -192,6 +190,26 @@ export function ChevronDownIcon({ className, size = 24 }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
       <path d="m6 9 6 6 6-6" />
+    </svg>
+  );
+}
+
+export function EyeIcon({ className, size = 24 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M2.06 12.35a1 1 0 0 1 0-.7C3.98 7.3 7.7 4 12 4s8.02 3.3 9.94 7.65a1 1 0 0 1 0 .7C20.02 16.7 16.3 20 12 20s-8.02-3.3-9.94-7.65Z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  );
+}
+
+export function EyeOffIcon({ className, size = 24 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M10.58 10.58A2 2 0 0 0 12 14a2 2 0 0 0 1.42-.58" />
+      <path d="M9.88 5.09A9.77 9.77 0 0 1 12 4c4.3 0 8.02 3.3 9.94 7.65a1 1 0 0 1 0 .7 14.72 14.72 0 0 1-4.12 5.3" />
+      <path d="M6.61 6.61A14.8 14.8 0 0 0 2.06 11.65a1 1 0 0 0 0 .7C3.98 16.7 7.7 20 12 20a9.8 9.8 0 0 0 5.39-1.61" />
+      <line x1="2" x2="22" y1="2" y2="22" />
     </svg>
   );
 }

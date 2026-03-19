@@ -11,9 +11,8 @@ export const registerSchema = z
     email: z.string().email("Email invalide / Invalid email"),
     phone: z
       .string()
-      .regex(/^(\+221\s?)?[0-9\s]{9,15}$/, "Format: +221 77 000 00 00")
-      .optional()
-      .or(z.literal("")),
+      .min(1, "Téléphone requis / Phone required")
+      .regex(/^(\+221\s?)?[0-9\s]{9,15}$/, "Format: +221 77 000 00 00"),
     password: z.string().min(8, "8 caractères minimum / Minimum 8 characters"),
     confirmPassword: z.string(),
   })

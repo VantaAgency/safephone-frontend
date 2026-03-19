@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
-import { forwardRef, type InputHTMLAttributes, type TextareaHTMLAttributes } from "react";
+import { EyeIcon, EyeOffIcon } from "@/components/ui/icons";
+import { forwardRef, useState, type InputHTMLAttributes, type TextareaHTMLAttributes } from "react";
 
 interface FormFieldProps {
   label: string;
@@ -20,8 +21,19 @@ export function FormField({ label, hint, error, className, children }: FormField
         <p className="text-xs text-slate-400">{hint}</p>
       )}
       {error && (
-        <p className="text-xs font-medium text-red-600">{error}</p>
+        <p className="rounded-lg border border-red-200/80 bg-red-50 px-3 py-2 text-xs font-medium text-red-700">
+          {error}
+        </p>
       )}
+    </div>
+  );
+}
+
+export function FormErrorAlert({ message }: { message: string }) {
+  return (
+    <div className="rounded-2xl border border-red-200/70 bg-red-50 px-4 py-3 text-sm text-red-700 shadow-sm">
+      <p className="font-semibold">Veuillez verifier le formulaire</p>
+      <p className="mt-1">{message}</p>
     </div>
   );
 }
@@ -51,6 +63,49 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
 );
 
 Input.displayName = "Input";
+
+interface PasswordInputProps extends Omit<InputProps, "type"> {
+  toggleLabel?: string;
+  hideLabel?: string;
+}
+
+export const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(
+  (
+    {
+      error,
+      className,
+      toggleLabel = "Afficher le mot de passe",
+      hideLabel = "Masquer le mot de passe",
+      ...props
+    },
+    ref
+  ) => {
+    const [visible, setVisible] = useState(false);
+
+    return (
+      <div className="relative">
+        <Input
+          ref={ref}
+          type={visible ? "text" : "password"}
+          error={error}
+          className={cn("pr-12", className)}
+          {...props}
+        />
+        <button
+          type="button"
+          onClick={() => setVisible((current) => !current)}
+          className="absolute inset-y-0 right-3 flex items-center text-slate-400 transition-colors hover:text-indigo-700"
+          aria-label={visible ? hideLabel : toggleLabel}
+          title={visible ? hideLabel : toggleLabel}
+        >
+          {visible ? <EyeOffIcon size={18} /> : <EyeIcon size={18} />}
+        </button>
+      </div>
+    );
+  }
+);
+
+PasswordInput.displayName = "PasswordInput";
 
 interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
   error?: boolean;

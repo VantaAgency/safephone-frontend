@@ -8,8 +8,9 @@ import { useAuth } from "@/lib/auth/auth-provider";
 import { authClient } from "@/lib/auth/client";
 import { users } from "@/lib/api/endpoints";
 import { Button } from "@/components/ui/button";
-import { FormField, Input } from "@/components/ui/form-field";
+import { FormErrorAlert, FormField, Input, PasswordInput } from "@/components/ui/form-field";
 import { XIcon } from "@/components/ui/icons";
+import { loginSchema, registerSchema } from "@/lib/validation/schemas";
 
 export type AuthView = "sign-in" | "sign-up";
 
@@ -137,10 +138,31 @@ function SignInForm({
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setFieldErrors({});
+
+    const parsed = loginSchema.safeParse({ email, password });
+    if (!parsed.success) {
+      const nextErrors: Record<string, string> = {};
+      for (const issue of parsed.error.issues) {
+        const key = issue.path[0];
+        if (typeof key === "string" && !nextErrors[key]) {
+          nextErrors[key] = issue.message.split(" / ")[lang === "fr" ? 0 : 1] ?? issue.message;
+        }
+      }
+      setFieldErrors(nextErrors);
+      setError(
+        lang === "fr"
+          ? "Corrigez les champs en rouge avant de continuer."
+          : "Please correct the highlighted fields before continuing."
+      );
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -179,31 +201,50 @@ function SignInForm({
       </div>
 
       {error && (
-        <div className="mb-4 rounded-xl border border-red-200/60 bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
-          {error}
+        <div className="mb-4">
+          <FormErrorAlert message={error} />
         </div>
       )}
 
       <form onSubmit={handleSubmit} className="space-y-5">
-        <FormField label={lang === "fr" ? "Adresse email" : "Email address"}>
+        <FormField
+          label={lang === "fr" ? "Adresse email" : "Email address"}
+          error={fieldErrors.email}
+        >
           <Input
             type="email"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              if (fieldErrors.email) {
+                setFieldErrors((current) => ({ ...current, email: "" }));
+              }
+            }}
             placeholder="aminata@email.com"
             required
             autoComplete="email"
+            error={!!fieldErrors.email}
           />
         </FormField>
 
-        <FormField label={lang === "fr" ? "Mot de passe" : "Password"}>
-          <Input
-            type="password"
+        <FormField
+          label={lang === "fr" ? "Mot de passe" : "Password"}
+          error={fieldErrors.password}
+        >
+          <PasswordInput
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(e) => {
+              setPassword(e.target.value);
+              if (fieldErrors.password) {
+                setFieldErrors((current) => ({ ...current, password: "" }));
+              }
+            }}
             placeholder="••••••••"
             required
             autoComplete="current-password"
+            error={!!fieldErrors.password}
+            toggleLabel={lang === "fr" ? "Afficher le mot de passe" : "Show password"}
+            hideLabel={lang === "fr" ? "Masquer le mot de passe" : "Hide password"}
           />
         </FormField>
 
@@ -257,22 +298,22 @@ function SignUpForm({
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const validate = () => {
+    const parsed = registerSchema.safeParse({
+      fullName: form.name,
+      email: form.email,
+      phone: form.phone,
+      password: form.password,
+      confirmPassword: form.confirmPassword,
+    });
+
     const errors: Record<string, string> = {};
-    if (!form.name.trim()) {
-      errors.name = lang === "fr" ? "Nom requis" : "Name required";
-    }
-    if (!form.email.includes("@")) {
-      errors.email = lang === "fr" ? "Email invalide" : "Invalid email";
-    }
-    if (form.password.length < 8) {
-      errors.password =
-        lang === "fr" ? "8 caractères minimum" : "Minimum 8 characters";
-    }
-    if (form.password !== form.confirmPassword) {
-      errors.confirmPassword =
-        lang === "fr"
-          ? "Les mots de passe ne correspondent pas"
-          : "Passwords do not match";
+    if (!parsed.success) {
+      for (const issue of parsed.error.issues) {
+        const key = issue.path[0];
+        if (typeof key !== "string" || errors[key]) continue;
+        const normalizedKey = key === "fullName" ? "name" : key;
+        errors[normalizedKey] = issue.message.split(" / ")[lang === "fr" ? 0 : 1] ?? issue.message;
+      }
     }
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
@@ -280,8 +321,15 @@ function SignUpForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validate()) return;
     setError("");
+    if (!validate()) {
+      setError(
+        lang === "fr"
+          ? "Corrigez les champs en rouge avant de continuer."
+          : "Please correct the highlighted fields before continuing."
+      );
+      return;
+    }
     setLoading(true);
 
     try {
@@ -298,12 +346,15 @@ function SignUpForm({
         );
         return;
       }
-      if (form.phone.trim()) {
-        try {
-          await users.updateProfile({ phone: form.phone.trim() });
-        } catch {
-          // Non-blocking
-        }
+      try {
+        await users.updateProfile({ phone: form.phone.trim() });
+      } catch {
+        setError(
+          lang === "fr"
+            ? "Compte cree, mais impossible d'enregistrer votre numero pour le moment. Reessayez."
+            : "Account created, but we could not save your phone number yet. Please try again."
+        );
+        return;
       }
       onSuccess();
     } catch {
@@ -331,8 +382,8 @@ function SignUpForm({
       </div>
 
       {error && (
-        <div className="mb-4 rounded-xl border border-red-200/60 bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
-          {error}
+        <div className="mb-4">
+          <FormErrorAlert message={error} />
         </div>
       )}
 
@@ -343,10 +394,16 @@ function SignUpForm({
         >
           <Input
             value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
+            onChange={(e) => {
+              setForm({ ...form, name: e.target.value });
+              if (fieldErrors.name) {
+                setFieldErrors((current) => ({ ...current, name: "" }));
+              }
+            }}
             placeholder="Aminata Diallo"
             error={!!fieldErrors.name}
             autoComplete="name"
+            required
           />
         </FormField>
 
@@ -357,22 +414,37 @@ function SignUpForm({
           <Input
             type="email"
             value={form.email}
-            onChange={(e) => setForm({ ...form, email: e.target.value })}
+            onChange={(e) => {
+              setForm({ ...form, email: e.target.value });
+              if (fieldErrors.email) {
+                setFieldErrors((current) => ({ ...current, email: "" }));
+              }
+            }}
             placeholder="aminata@email.com"
             error={!!fieldErrors.email}
             autoComplete="email"
+            required
           />
         </FormField>
 
         <FormField
-          label={lang === "fr" ? "Téléphone (optionnel)" : "Phone (optional)"}
+          label={lang === "fr" ? "Telephone" : "Phone number"}
+          hint={lang === "fr" ? "Exemple: +221 77 000 00 00" : "Example: +221 77 000 00 00"}
+          error={fieldErrors.phone}
         >
           <Input
             type="tel"
             value={form.phone}
-            onChange={(e) => setForm({ ...form, phone: e.target.value })}
+            onChange={(e) => {
+              setForm({ ...form, phone: e.target.value });
+              if (fieldErrors.phone) {
+                setFieldErrors((current) => ({ ...current, phone: "" }));
+              }
+            }}
             placeholder="+221 77 000 00 00"
             autoComplete="tel"
+            error={!!fieldErrors.phone}
+            required
           />
         </FormField>
 
@@ -380,13 +452,20 @@ function SignUpForm({
           label={lang === "fr" ? "Mot de passe" : "Password"}
           error={fieldErrors.password}
         >
-          <Input
-            type="password"
+          <PasswordInput
             value={form.password}
-            onChange={(e) => setForm({ ...form, password: e.target.value })}
+            onChange={(e) => {
+              setForm({ ...form, password: e.target.value });
+              if (fieldErrors.password) {
+                setFieldErrors((current) => ({ ...current, password: "" }));
+              }
+            }}
             placeholder="••••••••"
             error={!!fieldErrors.password}
             autoComplete="new-password"
+            required
+            toggleLabel={lang === "fr" ? "Afficher le mot de passe" : "Show password"}
+            hideLabel={lang === "fr" ? "Masquer le mot de passe" : "Hide password"}
           />
         </FormField>
 
@@ -394,15 +473,20 @@ function SignUpForm({
           label={lang === "fr" ? "Confirmer le mot de passe" : "Confirm password"}
           error={fieldErrors.confirmPassword}
         >
-          <Input
-            type="password"
+          <PasswordInput
             value={form.confirmPassword}
-            onChange={(e) =>
-              setForm({ ...form, confirmPassword: e.target.value })
-            }
+            onChange={(e) => {
+              setForm({ ...form, confirmPassword: e.target.value });
+              if (fieldErrors.confirmPassword) {
+                setFieldErrors((current) => ({ ...current, confirmPassword: "" }));
+              }
+            }}
             placeholder="••••••••"
             error={!!fieldErrors.confirmPassword}
             autoComplete="new-password"
+            required
+            toggleLabel={lang === "fr" ? "Afficher le mot de passe" : "Show password"}
+            hideLabel={lang === "fr" ? "Masquer le mot de passe" : "Hide password"}
           />
         </FormField>
 
