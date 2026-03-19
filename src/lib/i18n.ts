@@ -17,7 +17,7 @@ export const T = {
     hero: {
       badge: "La protection smartphone n°1 au Sénégal",
       title: "Protégez votre téléphone, nous payons la réparation.",
-      subtitle: "SafePhone est un abonnement mensuel qui protège votre smartphone contre la casse. En cas d'accident, signalez l'incident en ligne et faites-le réparer gratuitement dans notre réseau partenaire MobiTech.",
+      subtitle: "SafePhone est un abonnement mensuel qui protège votre smartphone contre la casse. Si vous êtes abonné, en cas d'accident, signalez l'incident en ligne et faites réparer votre téléphone sans frais dans notre réseau partenaire MobiTech.",
       cta: "Voir les abonnements",
       secondaryCta: "Comprendre le service",
       socialProof: "Approuvé par des centaines de Sénégalais au quotidien",
@@ -361,7 +361,7 @@ export const T = {
     hero: {
       badge: "#1 smartphone protection in Senegal",
       title: "Protect your phone, we pay for the repair.",
-      subtitle: "SafePhone is a monthly subscription that protects your smartphone against breakage. In case of accident, report the incident online and get it repaired for free at our MobiTech partner network.",
+      subtitle: "SafePhone is a monthly subscription that protects your smartphone against breakage. If you are subscribed, in case of an accident, report it online and get your phone repaired at no extra cost through our MobiTech partner network.",
       cta: "See plans",
       secondaryCta: "How it works",
       socialProof: "Trusted by hundreds of Senegalese daily",

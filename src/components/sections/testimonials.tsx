@@ -6,8 +6,8 @@ const TESTIMONIALS = [
   {
     name: "Aminata D.",
     location: "Dakar, Plateau",
-    quote: "Mon écran s'est cassé la semaine dernière. J'ai fait ma demande sur le site SafePhone, validée en 1h. J'ai déposé le téléphone chez MobiTech Plateau et je l'ai récupéré comme neuf le lendemain. Je n'ai sorti aucun FCFA supplémentaire.",
-    quoteEn: "My screen cracked last week. I submitted my request on SafePhone, validated in 1h. I dropped the phone at MobiTech Plateau and picked it up like new the next day. I didn't spend a single extra FCFA.",
+    quote: "J'ai souscrit à la formule Écran+ à 3 500 FCFA par mois. Quand mon écran s'est cassé, j'ai fait la demande sur le site SafePhone, puis j'ai déposé le téléphone chez MobiTech Plateau. Je l'ai récupéré le lendemain sans frais supplémentaires.",
+    quoteEn: "I subscribed to the Ecran+ plan at 3,500 FCFA per month. When my screen cracked, I submitted the request on SafePhone and dropped the phone at MobiTech Plateau. I picked it up the next day with no extra charge.",
     initials: "AD",
     avatarClass: "border-indigo-100 bg-indigo-50 text-indigo-600",
     rating: 5,
@@ -15,8 +15,8 @@ const TESTIMONIALS = [
   {
     name: "Moussa F.",
     location: "Thiès",
-    quote: "Payer 4000F par mois via Wave c'est invisible, mais le jour où mon téléphone est tombé, j'étais tellement soulagé de ne pas avoir à chercher 60 000F pour remplacer l'écran. C'est indispensable au Sénégal.",
-    quoteEn: "Paying 4000F per month via Wave is invisible, but the day my phone fell, I was so relieved not to have to find 60,000F to replace the screen. It's essential in Senegal.",
+    quote: "Payer 3 500 FCFA par mois via Wave, c'est presque invisible. Mais le jour où mon téléphone est tombé, j'étais soulagé de savoir que ma formule Écran+ couvrait déjà la réparation de l'écran. Franchement, ça change tout.",
+    quoteEn: "Paying 3,500 FCFA per month via Wave is almost invisible. But the day my phone fell, I was relieved to know my Ecran+ plan already covered the screen repair. Honestly, it makes a huge difference.",
     initials: "MF",
     avatarClass: "border-yellow-100 bg-yellow-50 text-yellow-600",
     rating: 4,
@@ -24,8 +24,8 @@ const TESTIMONIALS = [
   {
     name: "Ousmane S.",
     location: "Dakar, Almadies",
-    quote: "Un service client au top. Mon téléphone avait un problème après réparation, ils l'ont repris sans discuter avec la garantie MobiTech incluse. C'est rare d'avoir ce niveau de professionnalisme au Sénégal.",
-    quoteEn: "Top-notch customer service. My phone had an issue after repair and they took it back without discussion with the included MobiTech warranty. This level of professionalism is rare in Senegal.",
+    quote: "Le service client a été très sérieux du début à la fin. Après ma déclaration, j'ai été orienté vers le centre MobiTech et j'ai pu suivre l'avancement de la réparation. C'est rare d'avoir un accompagnement aussi propre au Sénégal.",
+    quoteEn: "The customer service was very professional from start to finish. After my claim, I was directed to the MobiTech center and could follow the repair progress. It is rare to get support this smooth in Senegal.",
     initials: "OS",
     avatarClass: "border-green-100 bg-green-50 text-green-600",
     rating: 5,

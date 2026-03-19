@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useLanguage } from "@/lib/language-context";
 
@@ -18,14 +19,6 @@ export function Hero() {
         <div className="flex flex-col items-center gap-12 md:flex-row lg:gap-24">
           {/* Content */}
           <div className="flex w-full flex-col items-start text-left md:w-1/2">
-            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-indigo-100 bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-600">
-              <span className="relative flex h-2 w-2">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-indigo-400 opacity-75" />
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-indigo-500" />
-              </span>
-              {t.hero.badge}
-            </div>
-
             <h1 className="mb-6 text-4xl font-medium tracking-tighter leading-tight text-indigo-950 md:text-5xl lg:text-6xl">
               {t.hero.title}
             </h1>
@@ -51,9 +44,24 @@ export function Hero() {
 
             <div className="mt-10 flex items-center gap-4 text-xs font-medium text-slate-400">
               <div className="flex -space-x-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-slate-50 bg-indigo-100 text-[10px] font-medium text-indigo-600">AD</div>
-                <div className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-slate-50 bg-yellow-100 text-[10px] font-medium text-yellow-600">MF</div>
-                <div className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-slate-50 bg-green-100 text-[10px] font-medium text-green-600">OS</div>
+                {[
+                  "/avatars/customer-a.svg",
+                  "/avatars/customer-b.svg",
+                  "/avatars/customer-c.svg",
+                ].map((src, index) => (
+                  <div
+                    key={src}
+                    className="h-8 w-8 overflow-hidden rounded-full border-2 border-slate-50 shadow-sm"
+                  >
+                    <Image
+                      src={src}
+                      alt={`SafePhone customer ${index + 1}`}
+                      width={32}
+                      height={32}
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+                ))}
               </div>
               <p>{t.hero.socialProof}</p>
             </div>

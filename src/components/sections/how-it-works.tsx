@@ -41,7 +41,10 @@ export function HowItWorks() {
   ];
 
   return (
-    <section className="relative overflow-hidden bg-white py-24 md:py-32">
+    <section
+      id="comment-ca-marche"
+      className="relative overflow-hidden bg-white py-24 md:py-32"
+    >
       {/* Background decor */}
       <div className="pointer-events-none absolute inset-0 flex justify-center overflow-hidden">
         <div className="absolute top-[-10%] h-150 w-250 rounded-full bg-slate-50/80 blur-[120px]" />
