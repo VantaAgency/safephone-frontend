@@ -13,6 +13,7 @@ import {
   PhoneIcon,
   ScreenIcon,
   ShieldCheckIcon,
+  WrenchIcon,
 } from "@/components/ui/icons";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { StatCard } from "@/components/cards/stat-card";
@@ -24,15 +25,31 @@ import {
   useResumePayment,
   useSubscriptions,
   useCreateClaim,
+  useMyRepairRequests,
   useUpdateDevice,
 } from "@/lib/api/hooks";
 import { useAuth } from "@/lib/auth/auth-provider";
 import { formatXOF } from "@/lib/data";
 import { useLanguage } from "@/lib/language-context";
+import {
+  REPAIR_PROGRESS_FLOW,
+  formatRepairDeviceLabel,
+  formatRepairPreferredSlot,
+  formatRepairScheduledSlot,
+  getRepairServiceLabel,
+  getRepairStatusLabel,
+  getRepairTypeLabel,
+} from "@/lib/repairs";
 import { cn } from "@/lib/utils";
-import type { ClaimType, Device, Payment, Subscription } from "@/lib/api/types";
+import type {
+  ClaimType,
+  Device,
+  Payment,
+  RepairRequestStatus,
+  Subscription,
+} from "@/lib/api/types";
 
-const DASHBOARD_TABS = ["overview", "claims", "devices", "payments"] as const;
+const DASHBOARD_TABS = ["overview", "claims", "repairs", "devices", "payments"] as const;
 type DashboardTab = (typeof DASHBOARD_TABS)[number];
 
 const CLAIM_TYPE_ICONS: Record<string, typeof ScreenIcon> = {
@@ -79,6 +96,61 @@ function formatDeviceDisplayName(device: Device): string {
   return `${brand} ${model}`;
 }
 
+function RepairProgress({
+  status,
+  lang,
+}: {
+  status: RepairRequestStatus;
+  lang: "fr" | "en";
+}) {
+  if (status === "rejected" || status === "cancelled") {
+    return (
+      <div className="rounded-xl border border-slate-200/80 bg-slate-50/70 px-4 py-3 text-sm text-slate-500">
+        {lang === "fr"
+          ? "Le suivi s'arrête ici pour cette demande."
+          : "Progress ends here for this request."}
+      </div>
+    );
+  }
+
+  const currentIndex = REPAIR_PROGRESS_FLOW.indexOf(status);
+
+  return (
+    <div className="flex items-center gap-2 overflow-x-auto">
+      {REPAIR_PROGRESS_FLOW.map((step, index) => (
+        <div key={step} className="flex min-w-0 flex-1 items-center gap-2">
+          <div
+            className={cn(
+              "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold",
+              index <= currentIndex
+                ? "bg-indigo-950 text-white"
+                : "bg-slate-100 text-slate-400",
+            )}
+          >
+            {index + 1}
+          </div>
+          <span
+            className={cn(
+              "hidden truncate text-xs font-medium sm:block",
+              index <= currentIndex ? "text-indigo-950" : "text-slate-400",
+            )}
+          >
+            {getRepairStatusLabel(step, lang)}
+          </span>
+          {index < REPAIR_PROGRESS_FLOW.length - 1 && (
+            <div
+              className={cn(
+                "h-px min-w-4 flex-1",
+                index < currentIndex ? "bg-indigo-950" : "bg-slate-200",
+              )}
+            />
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function DashboardPage() {
   const { lang, t } = useLanguage();
   const { user } = useAuth();
@@ -86,6 +158,7 @@ export default function DashboardPage() {
 
   const { data: devices, isLoading: devicesLoading } = useDevices();
   const { data: claims, isLoading: claimsLoading } = useClaims();
+  const { data: repairRequests, isLoading: repairsLoading } = useMyRepairRequests();
   const { data: payments, isLoading: paymentsLoading } = usePayments();
   const { data: subscriptions } = useSubscriptions();
 
@@ -107,6 +180,7 @@ export default function DashboardPage() {
   const tabLabels: Record<DashboardTab, string> = {
     overview: t.dashboard.tabOverview,
     claims: t.dashboard.tabClaims,
+    repairs: lang === "fr" ? "Mes réparations" : "My repairs",
     devices: t.dashboard.tabDevices,
     payments: t.dashboard.tabPayments,
   };
@@ -114,10 +188,13 @@ export default function DashboardPage() {
   const statusLabels: Record<string, string> = {
     awaiting_payment: lang === "fr" ? "Paiement en attente" : "Payment pending",
     pending: t.claims.pending,
+    accepted: lang === "fr" ? "Acceptée" : "Accepted",
     pending_activation:
       lang === "fr" ? "Activation en attente" : "Pending activation",
     review: t.claims.review,
     approved: t.claims.approved,
+    scheduled: lang === "fr" ? "Planifiée" : "Scheduled",
+    in_progress: lang === "fr" ? "En cours" : "In progress",
     settled: t.claims.settled,
     completed: lang === "fr" ? "Payé" : "Paid",
     failed: lang === "fr" ? "Paiement échoué" : "Payment failed",
@@ -864,6 +941,118 @@ export default function DashboardPage() {
                     })}
                   </div>
                 )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {tab === "repairs" && (
+          <div>
+            <div className="mb-6">
+              <h2 className="text-xl font-medium text-indigo-950">
+                {lang === "fr" ? "Mes réparations MobiTech" : "My MobiTech repairs"}
+              </h2>
+              <p className="mt-1 text-sm text-slate-500">
+                {lang === "fr"
+                  ? "Suivez vos demandes de réparation, leur statut et le devis fixé par l'admin."
+                  : "Track your repair requests, their status, and the quote set by admin."}
+              </p>
+            </div>
+
+            {repairsLoading ? (
+              <div className="space-y-3">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <CardSkeleton key={i} />
+                ))}
+              </div>
+            ) : !repairRequests || repairRequests.length === 0 ? (
+              <EmptyState
+                icon={<WrenchIcon size={28} />}
+                title={
+                  lang === "fr" ? "Aucune réparation" : "No repair requests"
+                }
+                description={
+                  lang === "fr"
+                    ? "Vos demandes MobiTech apparaîtront ici après soumission."
+                    : "Your MobiTech requests will appear here after submission."
+                }
+                action={{
+                  label: lang === "fr" ? "Prendre rendez-vous" : "Book a repair",
+                  onClick: () => {
+                    window.location.assign("/reparations");
+                  },
+                }}
+              />
+            ) : (
+              <div className="space-y-4">
+                {repairRequests.map((repair) => (
+                  <div
+                    key={repair.id}
+                    className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm"
+                  >
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                      <div>
+                        <div className="font-medium text-indigo-950">
+                          {formatRepairDeviceLabel(repair, lang)}
+                        </div>
+                        <div className="mt-1 text-sm text-slate-500">
+                          {getRepairTypeLabel(repair.repair_type, lang)}
+                        </div>
+                        <div className="mt-1 font-mono text-xs text-slate-400">
+                          {repair.reference}
+                        </div>
+                      </div>
+                      <StatusBadge
+                        status={repair.status}
+                        label={getRepairStatusLabel(repair.status, lang)}
+                      />
+                    </div>
+
+                    <div className="mt-5">
+                      <RepairProgress status={repair.status} lang={lang} />
+                    </div>
+
+                    <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                      <div className="rounded-xl border border-slate-200/80 bg-slate-50/70 px-4 py-3">
+                        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                          {lang === "fr" ? "Mode / centre" : "Mode / center"}
+                        </div>
+                        <div className="mt-1 text-sm font-medium text-indigo-950">
+                          {getRepairServiceLabel(repair, lang)}
+                        </div>
+                      </div>
+                      <div className="rounded-xl border border-slate-200/80 bg-slate-50/70 px-4 py-3">
+                        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                          {lang === "fr" ? "Créneau demandé" : "Requested slot"}
+                        </div>
+                        <div className="mt-1 text-sm font-medium text-indigo-950">
+                          {formatRepairPreferredSlot(repair)}
+                        </div>
+                      </div>
+                      <div className="rounded-xl border border-slate-200/80 bg-slate-50/70 px-4 py-3">
+                        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                          {lang === "fr" ? "Rendez-vous planifié" : "Scheduled appointment"}
+                        </div>
+                        <div className="mt-1 text-sm font-medium text-indigo-950">
+                          {formatRepairScheduledSlot(repair) ||
+                            (lang === "fr" ? "En attente" : "Pending")}
+                        </div>
+                      </div>
+                      <div className="rounded-xl border border-slate-200/80 bg-slate-50/70 px-4 py-3">
+                        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                          {lang === "fr" ? "Montant réparation" : "Repair amount"}
+                        </div>
+                        <div className="mt-1 text-sm font-medium text-indigo-950">
+                          {repair.repair_amount_xof
+                            ? formatXOF(repair.repair_amount_xof)
+                            : lang === "fr"
+                              ? "Devis en attente"
+                              : "Quote pending"}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>

@@ -4,8 +4,6 @@ import {
   createContext,
   useContext,
   useState,
-  useCallback,
-  useEffect,
   type ReactNode,
 } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
@@ -19,30 +17,29 @@ interface AuthModalContextValue {
 const AuthModalContext = createContext<AuthModalContextValue | null>(null);
 
 export function AuthModalProvider({ children }: { children: ReactNode }) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [view, setView] = useState<AuthView>("sign-in");
+  const [manualState, setManualState] = useState<{
+    isOpen: boolean;
+    view: AuthView;
+  }>({
+    isOpen: false,
+    view: "sign-in",
+  });
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
+  const authParam = searchParams.get("auth");
+  const urlView: AuthView | null =
+    authParam === "sign-in" || authParam === "sign-up" ? authParam : null;
+  const isOpen = manualState.isOpen || Boolean(urlView);
+  const view = urlView ?? manualState.view;
 
-  // Auto-open from URL param (?auth=sign-in or ?auth=sign-up)
-  useEffect(() => {
-    const authParam = searchParams.get("auth");
-    if (authParam === "sign-in" || authParam === "sign-up") {
-      setView(authParam);
-      setIsOpen(true);
-    }
-  }, [searchParams]);
+  const openAuthModal = (v: AuthView = "sign-in") => {
+    setManualState({ isOpen: true, view: v });
+  };
 
-  const openAuthModal = useCallback((v: AuthView = "sign-in") => {
-    setView(v);
-    setIsOpen(true);
-  }, []);
-
-  const closeAuthModal = useCallback(() => {
-    setIsOpen(false);
+  const closeAuthModal = () => {
+    setManualState((current) => ({ ...current, isOpen: false }));
     // Remove ?auth and ?redirect params from URL if present
-    const authParam = searchParams.get("auth");
     if (authParam) {
       const params = new URLSearchParams(searchParams.toString());
       params.delete("auth");
@@ -50,7 +47,7 @@ export function AuthModalProvider({ children }: { children: ReactNode }) {
       const qs = params.toString();
       router.replace(`${pathname}${qs ? `?${qs}` : ""}`, { scroll: false });
     }
-  }, [searchParams, router, pathname]);
+  };
 
   const redirectTo = searchParams.get("redirect") || undefined;
 

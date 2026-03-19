@@ -3,27 +3,41 @@
 import { useState } from "react";
 import { StatCard } from "@/components/cards/stat-card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/form-field";
+import { Input, Select } from "@/components/ui/form-field";
 import { CreditCardIcon, ShieldCheckIcon, UsersIcon, WrenchIcon } from "@/components/ui/icons";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { CardSkeleton } from "@/components/ui/skeleton";
 import {
+  useAcceptRepairRequest,
   useAdminClaims,
+  useAdminRepairRequests,
   useUpdateClaimStatus,
+  useUpdateRepairRequestAmount,
+  useUpdateRepairRequestStatus,
   useAdminStats,
   useAdminCustomers,
   useAdminPayments,
   useAdminPartners,
   useAdminPartnerApplications,
+  useRejectRepairRequest,
   useReviewPartnerApplication,
 } from "@/lib/api/hooks";
 import { formatXOF } from "@/lib/data";
 import { useAuth } from "@/lib/auth/auth-provider";
 import { useLanguage } from "@/lib/language-context";
+import {
+  ADMIN_REPAIR_TRANSITIONS,
+  formatRepairDeviceLabel,
+  formatRepairPreferredSlot,
+  formatRepairScheduledSlot,
+  getRepairServiceLabel,
+  getRepairStatusLabel,
+  getRepairTypeLabel,
+} from "@/lib/repairs";
 import { cn } from "@/lib/utils";
-import type { ClaimStatus } from "@/lib/api/types";
+import type { ClaimStatus, RepairRequest, RepairRequestStatus } from "@/lib/api/types";
 
-const ADMIN_TABS = ["overview", "claims", "customers", "payments", "applications", "partners"] as const;
+const ADMIN_TABS = ["overview", "claims", "repairs", "customers", "payments", "applications", "partners"] as const;
 type AdminTab = (typeof ADMIN_TABS)[number];
 
 const STATUS_TRANSITIONS: Record<string, ClaimStatus[]> = {
@@ -44,7 +58,15 @@ export default function AdminPage() {
 
   const isAdmin = user?.role === "admin";
   const { data: adminClaims, isLoading: claimsLoading } = useAdminClaims(undefined, { enabled: isAdmin });
+  const { data: adminRepairs = [], isLoading: repairsLoading } = useAdminRepairRequests(
+    { search },
+    { enabled: isAdmin },
+  );
   const updateClaimStatus = useUpdateClaimStatus();
+  const acceptRepair = useAcceptRepairRequest();
+  const rejectRepair = useRejectRepairRequest();
+  const updateRepairStatus = useUpdateRepairRequestStatus();
+  const updateRepairAmount = useUpdateRepairRequestAmount();
   const { data: stats, isLoading: statsLoading } = useAdminStats({ enabled: isAdmin });
   const { data: customers, isLoading: customersLoading } = useAdminCustomers(search, { enabled: isAdmin });
   const { data: adminPayments, isLoading: paymentsLoading } = useAdminPayments({ enabled: isAdmin });
@@ -53,6 +75,10 @@ export default function AdminPage() {
   const reviewApplication = useReviewPartnerApplication();
   const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [rejectionReason, setRejectionReason] = useState("");
+  const [repairStatusDrafts, setRepairStatusDrafts] = useState<Record<string, RepairRequestStatus>>({});
+  const [repairAmountDrafts, setRepairAmountDrafts] = useState<Record<string, string>>({});
+  const [repairDateDrafts, setRepairDateDrafts] = useState<Record<string, string>>({});
+  const [repairTimeDrafts, setRepairTimeDrafts] = useState<Record<string, string>>({});
 
   if (!isPending && !isAdmin) {
     return (
@@ -76,6 +102,7 @@ export default function AdminPage() {
   const tabLabels: Record<AdminTab, string> = {
     overview: lang === "fr" ? "Vue d'ensemble" : "Overview",
     claims: lang === "fr" ? "Sinistres" : "Claims",
+    repairs: lang === "fr" ? "Réparations" : "Repairs",
     customers: lang === "fr" ? "Clients" : "Customers",
     payments: lang === "fr" ? "Paiements" : "Payments",
     applications: lang === "fr" ? "Candidatures" : "Applications",
@@ -84,9 +111,12 @@ export default function AdminPage() {
 
   const statusLabels: Record<string, string> = {
     pending: lang === "fr" ? "En attente" : "Pending",
+    accepted: lang === "fr" ? "Acceptée" : "Accepted",
     review: lang === "fr" ? "En traitement" : "In progress",
     approved: lang === "fr" ? "Approuve" : "Approved",
     rejected: lang === "fr" ? "Rejete" : "Rejected",
+    scheduled: lang === "fr" ? "Planifiée" : "Scheduled",
+    in_progress: lang === "fr" ? "En cours" : "In progress",
     settled: lang === "fr" ? "Traite" : "Settled",
     completed: lang === "fr" ? "Paye" : "Paid",
     failed: lang === "fr" ? "Échoué" : "Failed",
@@ -137,6 +167,65 @@ export default function AdminPage() {
       });
     } catch (err) {
       console.error("Failed to update claim status:", err);
+    }
+  };
+
+  const getRepairDraftStatus = (repair: RepairRequest): RepairRequestStatus =>
+    repairStatusDrafts[repair.id] ?? repair.status;
+
+  const getRepairDraftAmount = (repair: RepairRequest): string =>
+    repairAmountDrafts[repair.id] ?? String(repair.repair_amount_xof ?? "");
+
+  const handleRepairAmountSave = async (repair: RepairRequest) => {
+    const amountValue = getRepairDraftAmount(repair).trim();
+    if (amountValue === "") return;
+
+    try {
+      await updateRepairAmount.mutateAsync({
+        id: repair.id,
+        data: { repair_amount_xof: Number(amountValue) },
+      });
+    } catch (err) {
+      console.error("Failed to update repair amount:", err);
+    }
+  };
+
+  const handleRepairStatusSave = async (repair: RepairRequest) => {
+    const nextStatus = getRepairDraftStatus(repair);
+    if (!nextStatus || nextStatus === repair.status) return;
+    if (nextStatus === "pending") return;
+
+    try {
+      if (nextStatus === "accepted") {
+        await acceptRepair.mutateAsync(repair.id);
+        return;
+      }
+      if (nextStatus === "rejected") {
+        await rejectRepair.mutateAsync(repair.id);
+        return;
+      }
+
+      const statusForUpdate: Exclude<
+        RepairRequestStatus,
+        "pending" | "accepted" | "rejected"
+      > = nextStatus;
+
+      await updateRepairStatus.mutateAsync({
+        id: repair.id,
+        data: {
+          status: statusForUpdate,
+          scheduled_date:
+            statusForUpdate === "scheduled"
+              ? repairDateDrafts[repair.id] || repair.scheduled_date
+              : undefined,
+          scheduled_time:
+            statusForUpdate === "scheduled"
+              ? repairTimeDrafts[repair.id] || repair.scheduled_time
+              : undefined,
+        },
+      });
+    } catch (err) {
+      console.error("Failed to update repair status:", err);
     }
   };
 
@@ -307,6 +396,261 @@ export default function AdminPage() {
                           ))}
                         </div>
                       )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {tab === "repairs" && (
+          <div>
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-lg font-medium text-indigo-950">
+                {lang === "fr" ? "Demandes MobiTech" : "MobiTech requests"}
+              </h2>
+              <Input
+                placeholder={
+                  lang === "fr"
+                    ? "Référence, client, téléphone..."
+                    : "Reference, customer, phone..."
+                }
+                className="w-72"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+
+            {repairsLoading ? (
+              <div className="space-y-3">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <CardSkeleton key={i} />
+                ))}
+              </div>
+            ) : adminRepairs.length === 0 ? (
+              <div className="rounded-2xl border border-slate-200/80 bg-white px-6 py-12 text-center text-sm text-slate-400 shadow-sm">
+                {lang === "fr"
+                  ? "Aucune demande de réparation trouvée."
+                  : "No repair requests found."}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {adminRepairs.map((repair) => {
+                  const nextStatuses = ADMIN_REPAIR_TRANSITIONS[repair.status] ?? [];
+                  const draftStatus = getRepairDraftStatus(repair);
+                  const scheduledSlot = formatRepairScheduledSlot(repair);
+
+                  return (
+                    <div
+                      key={repair.id}
+                      className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm"
+                    >
+                      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                        <div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <div className="font-medium text-indigo-950">
+                              {repair.reference}
+                            </div>
+                            <StatusBadge
+                              status={repair.status}
+                              label={getRepairStatusLabel(repair.status, lang)}
+                            />
+                          </div>
+                          <div className="mt-1 text-sm text-slate-500">
+                            {repair.customer_name} • {repair.customer_phone}
+                          </div>
+                          <div className="mt-1 text-sm text-slate-500">
+                            {formatRepairDeviceLabel(repair, lang)} •{" "}
+                            {getRepairTypeLabel(repair.repair_type, lang)}
+                          </div>
+                        </div>
+                        <div className="text-sm text-slate-500">
+                          {new Date(repair.created_at).toLocaleDateString(
+                            lang === "fr" ? "fr-FR" : "en-US",
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                        <div className="rounded-xl border border-slate-200/80 bg-slate-50/70 px-4 py-3">
+                          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                            {lang === "fr" ? "Mode / centre" : "Mode / center"}
+                          </div>
+                          <div className="mt-1 text-sm font-medium text-indigo-950">
+                            {getRepairServiceLabel(repair, lang)}
+                          </div>
+                        </div>
+                        <div className="rounded-xl border border-slate-200/80 bg-slate-50/70 px-4 py-3">
+                          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                            {lang === "fr" ? "Créneau demandé" : "Requested slot"}
+                          </div>
+                          <div className="mt-1 text-sm font-medium text-indigo-950">
+                            {formatRepairPreferredSlot(repair)}
+                          </div>
+                        </div>
+                        <div className="rounded-xl border border-slate-200/80 bg-slate-50/70 px-4 py-3">
+                          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                            {lang === "fr" ? "Créneau planifié" : "Scheduled slot"}
+                          </div>
+                          <div className="mt-1 text-sm font-medium text-indigo-950">
+                            {scheduledSlot || (lang === "fr" ? "Non planifié" : "Not scheduled")}
+                          </div>
+                        </div>
+                        <div className="rounded-xl border border-slate-200/80 bg-slate-50/70 px-4 py-3">
+                          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                            {lang === "fr" ? "Source" : "Source"}
+                          </div>
+                          <div className="mt-1 text-sm font-medium text-indigo-950">
+                            {repair.request_source === "safephone_user"
+                              ? lang === "fr"
+                                ? "Utilisateur SafePhone"
+                                : "SafePhone user"
+                              : lang === "fr"
+                                ? "Visiteur public"
+                                : "Public visitor"}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="mt-5 grid gap-4 xl:grid-cols-[1.2fr_1fr]">
+                        <div className="rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4">
+                          <div className="mb-3 text-sm font-medium text-indigo-950">
+                            {lang === "fr" ? "Gestion du statut" : "Status management"}
+                          </div>
+
+                          {repair.status === "pending" ? (
+                            <div className="flex flex-wrap gap-2">
+                              <Button
+                                variant="primary"
+                                size="sm"
+                                loading={acceptRepair.isPending}
+                                onClick={() => acceptRepair.mutateAsync(repair.id)}
+                              >
+                                {lang === "fr" ? "Accepter" : "Accept"}
+                              </Button>
+                              <Button
+                                variant="danger"
+                                size="sm"
+                                loading={rejectRepair.isPending}
+                                onClick={() => rejectRepair.mutateAsync(repair.id)}
+                              >
+                                {lang === "fr" ? "Refuser" : "Reject"}
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                loading={updateRepairStatus.isPending}
+                                onClick={() =>
+                                  updateRepairStatus.mutateAsync({
+                                    id: repair.id,
+                                    data: { status: "cancelled" },
+                                  })
+                                }
+                              >
+                                {lang === "fr" ? "Annuler" : "Cancel"}
+                              </Button>
+                            </div>
+                          ) : nextStatuses.length > 0 ? (
+                            <div className="space-y-3">
+                              <Select
+                                value={draftStatus}
+                                onChange={(e) =>
+                                  setRepairStatusDrafts((current) => ({
+                                    ...current,
+                                    [repair.id]: e.target.value as RepairRequestStatus,
+                                  }))
+                                }
+                              >
+                                <option value={repair.status}>
+                                  {getRepairStatusLabel(repair.status, lang)}
+                                </option>
+                                {nextStatuses.map((status) => (
+                                  <option key={status} value={status}>
+                                    {getRepairStatusLabel(status, lang)}
+                                  </option>
+                                ))}
+                              </Select>
+
+                              {draftStatus === "scheduled" && (
+                                <div className="grid gap-3 sm:grid-cols-2">
+                                  <Input
+                                    type="date"
+                                    value={repairDateDrafts[repair.id] ?? repair.scheduled_date ?? ""}
+                                    onChange={(e) =>
+                                      setRepairDateDrafts((current) => ({
+                                        ...current,
+                                        [repair.id]: e.target.value,
+                                      }))
+                                    }
+                                  />
+                                  <Input
+                                    type="time"
+                                    value={repairTimeDrafts[repair.id] ?? repair.scheduled_time ?? ""}
+                                    onChange={(e) =>
+                                      setRepairTimeDrafts((current) => ({
+                                        ...current,
+                                        [repair.id]: e.target.value,
+                                      }))
+                                    }
+                                  />
+                                </div>
+                              )}
+
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                loading={updateRepairStatus.isPending}
+                                onClick={() => handleRepairStatusSave(repair)}
+                                disabled={draftStatus === repair.status}
+                              >
+                                {lang === "fr" ? "Mettre à jour" : "Update"}
+                              </Button>
+                            </div>
+                          ) : (
+                            <p className="text-sm text-slate-500">
+                              {lang === "fr"
+                                ? "Cette demande est dans un état final."
+                                : "This request is in a final state."}
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4">
+                          <div className="mb-3 text-sm font-medium text-indigo-950">
+                            {lang === "fr" ? "Devis réparation" : "Repair quote"}
+                          </div>
+                          <div className="flex gap-2">
+                            <Input
+                              type="number"
+                              min={0}
+                              value={getRepairDraftAmount(repair)}
+                              onChange={(e) =>
+                                setRepairAmountDrafts((current) => ({
+                                  ...current,
+                                  [repair.id]: e.target.value,
+                                }))
+                              }
+                              placeholder="25000"
+                            />
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              loading={updateRepairAmount.isPending}
+                              onClick={() => handleRepairAmountSave(repair)}
+                            >
+                              {lang === "fr" ? "Enregistrer" : "Save"}
+                            </Button>
+                          </div>
+                          <p className="mt-3 text-xs text-slate-500">
+                            {repair.repair_amount_xof
+                              ? `${formatXOF(repair.repair_amount_xof)}`
+                              : lang === "fr"
+                                ? "Aucun montant défini pour le moment."
+                                : "No amount set yet."}
+                          </p>
+                        </div>
+                      </div>
                     </div>
                   );
                 })}

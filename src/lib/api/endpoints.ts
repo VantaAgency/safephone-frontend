@@ -16,9 +16,10 @@ import type {
   CreatePartnerClientRequest,
   CheckoutResult,
   CreatePaymentRequest,
-  CreateRepairBookingRequest,
+  CreateRepairRequest,
   CreateSubscriptionRequest,
   Device,
+  LookupRepairRequest,
   PaginationParams,
   PartnerApplication,
   PartnerClient,
@@ -28,9 +29,11 @@ import type {
   PartnerSale,
   Payment,
   Plan,
-  RepairBooking,
+  RepairRequest,
   ReviewPartnerApplicationRequest,
   Subscription,
+  UpdateRepairRequestAmount,
+  UpdateRepairRequestStatus,
   UpdateClaimStatusRequest,
   UpdateDeviceRequest,
   UpdateProfileRequest,
@@ -112,8 +115,29 @@ export const admin = {
 };
 
 export const repairs = {
-  createBooking: (data: CreateRepairBookingRequest) =>
-    api.post<RepairBooking>("/repairs", data),
+  create: (data: CreateRepairRequest) =>
+    api.post<RepairRequest>("/repairs", data),
+  lookup: (data: LookupRepairRequest) =>
+    api.post<RepairRequest>("/repairs/lookup", data),
+  mine: (params?: PaginationParams) =>
+    api.get<RepairRequest[]>(
+      "/repairs/mine",
+      params as Record<string, string | number>,
+    ),
+  adminList: (params?: PaginationParams & { status?: string; search?: string }) =>
+    api.get<RepairRequest[]>(
+      "/admin/repairs",
+      params as Record<string, string | number>,
+    ),
+  adminGet: (id: string) => api.get<RepairRequest>(`/admin/repairs/${id}`),
+  adminAccept: (id: string) =>
+    api.post<RepairRequest>(`/admin/repairs/${id}/accept`),
+  adminReject: (id: string) =>
+    api.post<RepairRequest>(`/admin/repairs/${id}/reject`),
+  adminUpdateStatus: (id: string, data: UpdateRepairRequestStatus) =>
+    api.put<RepairRequest>(`/admin/repairs/${id}/status`, data),
+  adminUpdateAmount: (id: string, data: UpdateRepairRequestAmount) =>
+    api.put<RepairRequest>(`/admin/repairs/${id}/amount`, data),
 };
 
 export const partner = {

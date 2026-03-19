@@ -13,6 +13,16 @@ export type PlanTier = "entry" | "mid" | "mid-high" | "premium" | "household";
 export type UserRole = "admin" | "member" | "partner" | "viewer";
 export type PartnerApplicationStatus = "pending" | "approved" | "rejected";
 export type PartnerClientStatus = "draft" | "invited" | "account_created" | "payment_pending" | "active" | "expired" | "cancelled" | "failed";
+export type RepairRequestStatus =
+  | "pending"
+  | "accepted"
+  | "rejected"
+  | "scheduled"
+  | "in_progress"
+  | "completed"
+  | "cancelled";
+export type RepairServiceMode = "center" | "home";
+export type RepairRequestSource = "public_visitor" | "safephone_user";
 
 // --- Domain models ---
 
@@ -269,28 +279,52 @@ export interface AdminPartner {
   joined_at: string;
 }
 
-export interface RepairBooking {
+export interface RepairRequest {
   id: string;
   reference: string;
-  device_type: string;
+  device_brand: string;
+  device_model: string;
   repair_type: string;
-  location_id: string;
-  booking_date: string;
-  booking_time: string;
+  service_mode: RepairServiceMode;
+  center_id?: string;
+  preferred_date: string;
+  preferred_time: string;
+  scheduled_date?: string;
+  scheduled_time?: string;
   customer_name: string;
   customer_phone: string;
-  status: string;
+  status: RepairRequestStatus;
+  repair_amount_xof?: number;
+  request_source: RepairRequestSource;
   created_at: string;
+  updated_at: string;
 }
 
-export interface CreateRepairBookingRequest {
-  device_type: string;
+export interface CreateRepairRequest {
+  device_brand: string;
+  device_model: string;
   repair_type: string;
-  location_id: string;
-  booking_date: string;
-  booking_time: string;
+  service_mode: RepairServiceMode;
+  center_id?: string;
+  preferred_date: string;
+  preferred_time: string;
   customer_name: string;
   customer_phone: string;
+}
+
+export interface LookupRepairRequest {
+  reference: string;
+  customer_phone: string;
+}
+
+export interface UpdateRepairRequestStatus {
+  status: Exclude<RepairRequestStatus, "pending">;
+  scheduled_date?: string;
+  scheduled_time?: string;
+}
+
+export interface UpdateRepairRequestAmount {
+  repair_amount_xof: number;
 }
 
 export interface CreatePartnerClientRequest {
@@ -417,4 +451,9 @@ export interface PaginationParams {
 
 export interface AdminClaimParams extends PaginationParams {
   status?: ClaimStatus;
+}
+
+export interface AdminRepairParams extends PaginationParams {
+  status?: RepairRequestStatus;
+  search?: string;
 }

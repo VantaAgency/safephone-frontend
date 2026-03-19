@@ -31,4 +31,14 @@ export {
   useUpdateClaimStatus,
 } from "./use-claims";
 export { usePayments, usePayment, useCreatePayment, useResumePayment } from "./use-payments";
-export { useCreateRepairBooking } from "./use-repairs";
+export {
+  useCreateRepairRequest,
+  useLookupRepairRequest,
+  useMyRepairRequests,
+  useAdminRepairRequests,
+  useAdminRepairRequest,
+  useAcceptRepairRequest,
+  useRejectRepairRequest,
+  useUpdateRepairRequestStatus,
+  useUpdateRepairRequestAmount,
+} from "./use-repairs";
