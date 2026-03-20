@@ -27,6 +27,8 @@ import {
   useDevices,
   useClaims,
   usePayments,
+  usePlans,
+  useRenewSubscriptionPayment,
   useResumePayment,
   useSubscriptions,
   useCreateClaim,
@@ -238,6 +240,7 @@ export default function DashboardPage() {
   const { data: claims, isLoading: claimsLoading } = useClaims();
   const { data: repairRequests, isLoading: repairsLoading } =
     useMyRepairRequests();
+  const { data: plans, isLoading: plansLoading } = usePlans();
   const { data: payments, isLoading: paymentsLoading } = usePayments();
   const {
     data: subscriptions,
@@ -247,6 +250,7 @@ export default function DashboardPage() {
 
   const createClaim = useCreateClaim();
   const updateDevice = useUpdateDevice();
+  const renewSubscriptionPayment = useRenewSubscriptionPayment();
   const resumePayment = useResumePayment();
 
   // Claims form state
@@ -259,6 +263,11 @@ export default function DashboardPage() {
   const [imeiFormDevice, setImeiFormDevice] = useState<string | null>(null);
   const [imeiValue, setImeiValue] = useState("");
   const [paymentActionError, setPaymentActionError] = useState("");
+  const [renewalFormSubscriptionId, setRenewalFormSubscriptionId] = useState<string | null>(null);
+  const [renewalPlanId, setRenewalPlanId] = useState("");
+  const [renewalBillingCycle, setRenewalBillingCycle] =
+    useState<Subscription["billing_cycle"]>("monthly");
+  const [renewalActionError, setRenewalActionError] = useState("");
 
   const tabLabels: Record<DashboardTab, string> = {
     overview: t.dashboard.tabOverview,
@@ -282,7 +291,7 @@ export default function DashboardPage() {
     completed: lang === "fr" ? "Payé" : "Paid",
     failed: lang === "fr" ? "Paiement échoué" : "Payment failed",
     cancelled: lang === "fr" ? "Paiement annulé" : "Payment cancelled",
-    expired: lang === "fr" ? "Paiement expiré" : "Payment expired",
+    expired: lang === "fr" ? "Expiré" : "Expired",
     refunded: lang === "fr" ? "Remboursé" : "Refunded",
     suspended: lang === "fr" ? "Suspendu" : "Suspended",
     active: t.dashboard.covered,
@@ -413,6 +422,51 @@ export default function DashboardPage() {
     }
   };
 
+  const openRenewalForm = (subscription: Subscription) => {
+    setRenewalFormSubscriptionId(subscription.id);
+    setRenewalPlanId(
+      plans?.some((plan) => plan.id === subscription.plan_id)
+        ? subscription.plan_id
+        : (plans?.[0]?.id ?? subscription.plan_id),
+    );
+    setRenewalBillingCycle(subscription.billing_cycle);
+    setRenewalActionError("");
+  };
+
+  const closeRenewalForm = () => {
+    setRenewalFormSubscriptionId(null);
+    setRenewalPlanId("");
+    setRenewalBillingCycle("monthly");
+    setRenewalActionError("");
+  };
+
+  const handleRenewSubscription = async (subscription: Subscription) => {
+    setRenewalActionError("");
+    try {
+      const result = await renewSubscriptionPayment.mutateAsync({
+        subscription_id: subscription.id,
+        plan_id: effectiveRenewalPlanId,
+        billing_cycle: renewalBillingCycle,
+      });
+      if (result.payment_url) {
+        window.location.assign(result.payment_url);
+        return;
+      }
+      setRenewalActionError(
+        lang === "fr"
+          ? "Aucune session de paiement n'a été créée pour ce renouvellement."
+          : "No checkout session was created for this renewal.",
+      );
+    } catch (err) {
+      console.error("Failed to renew subscription:", err);
+      setRenewalActionError(
+        lang === "fr"
+          ? "Impossible de démarrer le renouvellement pour le moment."
+          : "Could not start the renewal right now.",
+      );
+    }
+  };
+
   const latestSubscriptionByDeviceId = useMemo(() => {
     const subscriptionMap = new Map<string, Subscription>();
 
@@ -512,6 +566,15 @@ export default function DashboardPage() {
   const activeSubscriptions = subscriptionsReady
     ? (subscriptions ?? []).filter((sub) => sub.status === "active")
     : [];
+  const expiredSubscriptions = subscriptionsReady
+    ? (subscriptions ?? []).filter((sub) => sub.status === "expired")
+    : [];
+  const effectiveRenewalPlanId =
+    renewalFormSubscriptionId && plans && plans.length > 0
+      ? plans.some((plan) => plan.id === renewalPlanId)
+        ? renewalPlanId
+        : plans[0].id
+      : renewalPlanId;
 
   const eligibleDevices =
     coverageDataReady && devices
@@ -826,11 +889,24 @@ export default function DashboardPage() {
                 {plansSectionLoading ? (
                   <DashboardSidebarSectionSkeleton />
                 ) : activeSubscriptions.length === 0 ? (
-                  <p className="text-sm text-slate-500">
-                    {lang === "fr"
-                      ? "Aucun forfait actif."
-                      : "No active plans."}
-                  </p>
+                  <div className="space-y-2">
+                    <p className="text-sm text-slate-500">
+                      {lang === "fr"
+                        ? "Aucun forfait actif."
+                        : "No active plans."}
+                    </p>
+                    {expiredSubscriptions.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setTab("devices")}
+                        className="text-xs font-medium text-indigo-600 hover:underline"
+                      >
+                        {lang === "fr"
+                          ? "Renouvelez votre forfait depuis l’onglet appareils."
+                          : "Renew your plan from the devices tab."}
+                      </button>
+                    )}
+                  </div>
                 ) : (
                   <div className="space-y-3">
                     {activeSubscriptions.map((sub) => {
@@ -1270,8 +1346,8 @@ export default function DashboardPage() {
                 </h2>
                 <p className="mt-1 text-sm text-slate-500">
                   {lang === "fr"
-                    ? "Tous vos appareils enregistrés et leurs forfaits actifs."
-                    : "All your registered devices and their active plans."}
+                    ? "Tous vos appareils enregistrés et l’état réel de leur couverture."
+                    : "All your registered devices and their current coverage status."}
                 </p>
               </div>
               <Link href="/inscription">
@@ -1315,6 +1391,9 @@ export default function DashboardPage() {
                     ["pending", "failed", "cancelled", "expired"].includes(
                       coverage.payment.status,
                     );
+                  const renewalFormOpen =
+                    !!coverage.subscription &&
+                    renewalFormSubscriptionId === coverage.subscription.id;
 
                   return (
                     <div
@@ -1485,6 +1564,130 @@ export default function DashboardPage() {
                             >
                               {lang === "fr" ? "Reprendre" : "Resume"}
                             </Button>
+                          </div>
+                        )}
+
+                      {coverage.status === "expired" &&
+                        coverage.subscription && (
+                          <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4">
+                            {renewalFormOpen ? (
+                              <div className="space-y-4">
+                                <div>
+                                  <p className="text-sm font-medium text-red-800">
+                                    {lang === "fr"
+                                      ? "Renouveler ce forfait"
+                                      : "Renew this plan"}
+                                  </p>
+                                  <p className="mt-0.5 text-xs text-red-700">
+                                    {lang === "fr"
+                                      ? "Le renouvellement n’est possible qu’après la fin du forfait. Choisissez votre formule puis relancez le paiement pour ce même appareil."
+                                      : "Renewal is only available after the plan has ended. Choose your plan and restart checkout for this same device."}
+                                  </p>
+                                </div>
+
+                                {renewalActionError && (
+                                  <div className="rounded-xl border border-red-200/80 bg-white/80 px-3 py-2 text-xs font-medium text-red-700">
+                                    {renewalActionError}
+                                  </div>
+                                )}
+
+                                <div className="grid gap-3 md:grid-cols-2">
+                                  <div>
+                                    <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-red-700/80">
+                                      {lang === "fr" ? "Forfait" : "Plan"}
+                                    </label>
+                                    <Select
+                                      value={effectiveRenewalPlanId}
+                                      onChange={(e) => setRenewalPlanId(e.target.value)}
+                                      disabled={plansLoading || !plans || plans.length === 0}
+                                    >
+                                      {plans && plans.length > 0 ? (
+                                        plans.map((plan) => (
+                                          <option key={plan.id} value={plan.id}>
+                                            {lang === "fr" ? plan.name_fr : plan.name_en}
+                                          </option>
+                                        ))
+                                      ) : (
+                                        <option value="">
+                                          {lang === "fr" ? "Aucun forfait disponible" : "No plans available"}
+                                        </option>
+                                      )}
+                                    </Select>
+                                  </div>
+                                  <div>
+                                    <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-red-700/80">
+                                      {lang === "fr" ? "Fréquence" : "Billing cycle"}
+                                    </label>
+                                    <Select
+                                      value={renewalBillingCycle}
+                                      onChange={(e) =>
+                                        setRenewalBillingCycle(
+                                          e.target.value as Subscription["billing_cycle"],
+                                        )
+                                      }
+                                    >
+                                      <option value="monthly">
+                                        {lang === "fr" ? "Mensuel" : "Monthly"}
+                                      </option>
+                                      <option value="annual">
+                                        {lang === "fr" ? "Annuel" : "Annual"}
+                                      </option>
+                                    </Select>
+                                  </div>
+                                </div>
+
+                                <div className="flex gap-2">
+                                  <Button
+                                    variant="primary"
+                                    size="sm"
+                                    onClick={() =>
+                                      handleRenewSubscription(
+                                        coverage.subscription!,
+                                      )
+                                    }
+                                    disabled={!effectiveRenewalPlanId || plansLoading}
+                                    loading={renewSubscriptionPayment.isPending}
+                                  >
+                                    {lang === "fr"
+                                      ? "Renouveler maintenant"
+                                      : "Renew now"}
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={closeRenewalForm}
+                                  >
+                                    {lang === "fr" ? "Annuler" : "Cancel"}
+                                  </Button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="flex items-center justify-between gap-4">
+                                <div>
+                                  <p className="text-sm font-medium text-red-800">
+                                    {lang === "fr"
+                                      ? "Forfait expiré"
+                                      : "Plan expired"}
+                                  </p>
+                                  <p className="mt-0.5 text-xs text-red-700">
+                                    {lang === "fr"
+                                      ? "Vous pouvez renouveler cette protection maintenant. Le renouvellement n’est pas disponible avant la fin du forfait."
+                                      : "You can renew this protection now. Renewal is not available before the plan has ended."}
+                                  </p>
+                                </div>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() =>
+                                    openRenewalForm(coverage.subscription!)
+                                  }
+                                >
+                                  {lang === "fr"
+                                    ? "Renouveler"
+                                    : "Renew"}
+                                </Button>
+                              </div>
+                            )}
                           </div>
                         )}
 

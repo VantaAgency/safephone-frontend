@@ -2,7 +2,12 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { payments } from "../endpoints";
-import type { CheckoutResult, CreatePaymentRequest, Payment } from "../types";
+import type {
+  CheckoutResult,
+  CreatePaymentRequest,
+  Payment,
+  RenewSubscriptionPaymentRequest,
+} from "../types";
 
 interface PaymentQueryOptions {
   enabled?: boolean;
@@ -45,6 +50,25 @@ export function useCreatePayment() {
       queryClient.invalidateQueries({ queryKey: ["devices"] });
       queryClient.invalidateQueries({ queryKey: ["subscriptions"] });
       if (result.payment?.id) {
+        queryClient.invalidateQueries({
+          queryKey: ["payments", result.payment.id, "checkout"],
+        });
+      }
+    },
+  });
+}
+
+export function useRenewSubscriptionPayment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: RenewSubscriptionPaymentRequest) =>
+      payments.renewSubscription(data),
+    onSuccess: (result: CheckoutResult) => {
+      queryClient.invalidateQueries({ queryKey: ["payments"] });
+      queryClient.invalidateQueries({ queryKey: ["devices"] });
+      queryClient.invalidateQueries({ queryKey: ["subscriptions"] });
+      if (result.payment?.id) {
+        queryClient.invalidateQueries({ queryKey: ["payments", result.payment.id] });
         queryClient.invalidateQueries({
           queryKey: ["payments", result.payment.id, "checkout"],
         });

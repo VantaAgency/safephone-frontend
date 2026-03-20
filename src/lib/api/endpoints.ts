@@ -31,6 +31,7 @@ import type {
   Payment,
   Plan,
   RepairRequest,
+  RenewSubscriptionPaymentRequest,
   ReviewPartnerApplicationRequest,
   Subscription,
   UpdateRepairRequestAmount,
@@ -190,6 +191,8 @@ export const claims = {
 export const payments = {
   create: (data: CreatePaymentRequest) =>
     api.post<CheckoutResult>("/payments", data),
+  renewSubscription: (data: RenewSubscriptionPaymentRequest) =>
+    api.post<CheckoutResult>("/payments/renew-subscription", data),
   list: (params?: PaginationParams) =>
     api.get<Payment[]>("/payments", params as Record<string, string | number>),
   get: (id: string) => api.get<Payment>(`/payments/${id}`),

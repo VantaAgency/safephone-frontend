@@ -459,6 +459,13 @@ export interface CreatePaymentRequest {
   idempotency_key?: string;
 }
 
+export interface RenewSubscriptionPaymentRequest {
+  subscription_id: string;
+  plan_id: string;
+  billing_cycle: "monthly" | "annual";
+  idempotency_key?: string;
+}
+
 export interface CheckoutResult {
   payment: Payment;
   device: Device;

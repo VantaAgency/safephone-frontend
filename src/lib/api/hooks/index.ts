@@ -35,6 +35,7 @@ export {
   usePayment,
   usePaymentCheckout,
   useCreatePayment,
+  useRenewSubscriptionPayment,
   useResumePayment,
 } from "./use-payments";
 export {
