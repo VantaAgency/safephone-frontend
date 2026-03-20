@@ -22,9 +22,24 @@ export const registerSchema = z
   });
 
 export const createDeviceSchema = z.object({
+  device_type: z
+    .enum(["smartphone", "tablet", "tv", "computer", "home_electronics"])
+    .optional(),
   brand: z.string().min(1, "Marque requise / Brand required"),
   model: z.string().min(1, "Modèle requis / Model required"),
-  imei: z.string().regex(/^\d{15}$/, "IMEI: exactement 15 chiffres / Exactly 15 digits"),
+  metadata: z
+    .object({
+      serial_number: z.string().optional(),
+      screen_size: z.string().optional(),
+      computer_category: z.string().optional(),
+      product_subtype: z.string().optional(),
+    })
+    .optional(),
+  imei: z
+    .string()
+    .regex(/^\d{15}$/, "IMEI: exactement 15 chiffres / Exactly 15 digits")
+    .optional()
+    .or(z.literal("")),
 });
 
 export const createSubscriptionSchema = z.object({
@@ -41,9 +56,24 @@ export const createClaimSchema = z.object({
 });
 
 export const createPaymentSchema = z.object({
+  device_type: z
+    .enum(["smartphone", "tablet", "tv", "computer", "home_electronics"])
+    .optional(),
   brand: z.string().min(1, "Marque requise / Brand required"),
   model: z.string().min(1, "Modèle requis / Model required"),
-  imei: z.string().regex(/^\d{15}$/, "IMEI: exactement 15 chiffres / Exactly 15 digits").optional().or(z.literal("")),
+  metadata: z
+    .object({
+      serial_number: z.string().optional(),
+      screen_size: z.string().optional(),
+      computer_category: z.string().optional(),
+      product_subtype: z.string().optional(),
+    })
+    .optional(),
+  imei: z
+    .string()
+    .regex(/^\d{15}$/, "IMEI: exactement 15 chiffres / Exactly 15 digits")
+    .optional()
+    .or(z.literal("")),
   plan_id: z.string().uuid(),
   billing_cycle: z.enum(["monthly", "annual"]),
   idempotency_key: z.string().max(100).optional(),

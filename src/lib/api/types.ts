@@ -3,16 +3,41 @@
 // --- Enums ---
 
 export type DeviceStatus = "pending" | "active" | "expired" | "suspended";
+export type DeviceType =
+  | "smartphone"
+  | "tablet"
+  | "tv"
+  | "computer"
+  | "home_electronics";
 export type SubscriptionStatus = "pending" | "active" | "cancelled" | "expired";
 export type ClaimType = "screen" | "water" | "theft" | "breakdown";
-export type ClaimStatus = "pending" | "review" | "approved" | "rejected" | "settled";
+export type ClaimStatus =
+  | "pending"
+  | "review"
+  | "approved"
+  | "rejected"
+  | "settled";
 export type PaymentMethod = string;
 export type PaymentProvider = string;
-export type PaymentStatus = "pending" | "completed" | "failed" | "cancelled" | "expired" | "refunded";
+export type PaymentStatus =
+  | "pending"
+  | "completed"
+  | "failed"
+  | "cancelled"
+  | "expired"
+  | "refunded";
 export type PlanTier = "entry" | "mid" | "mid-high" | "premium" | "household";
 export type UserRole = "admin" | "member" | "partner" | "viewer";
 export type PartnerApplicationStatus = "pending" | "approved" | "rejected";
-export type PartnerClientStatus = "draft" | "invited" | "account_created" | "payment_pending" | "active" | "expired" | "cancelled" | "failed";
+export type PartnerClientStatus =
+  | "draft"
+  | "invited"
+  | "account_created"
+  | "payment_pending"
+  | "active"
+  | "expired"
+  | "cancelled"
+  | "failed";
 export type RepairRequestStatus =
   | "pending"
   | "accepted"
@@ -73,13 +98,22 @@ export interface Device {
   id: string;
   org_id: string;
   user_id: string;
+  device_type: DeviceType;
   brand: string;
   model: string;
+  metadata: DeviceMetadata;
   imei: string;
   status: DeviceStatus;
   created_at: string;
   updated_at: string;
   deleted_at?: string;
+}
+
+export interface DeviceMetadata {
+  serial_number?: string;
+  screen_size?: string;
+  computer_category?: string;
+  product_subtype?: string;
 }
 
 export interface Subscription {
@@ -381,14 +415,18 @@ export interface UpdatePartnerClientStatusRequest {
 }
 
 export interface CreateDeviceRequest {
+  device_type?: DeviceType;
   brand: string;
   model: string;
-  imei: string;
+  metadata?: DeviceMetadata;
+  imei?: string;
 }
 
 export interface UpdateDeviceRequest {
+  device_type?: DeviceType;
   brand: string;
   model: string;
+  metadata?: DeviceMetadata;
   imei?: string;
 }
 
@@ -411,9 +449,11 @@ export interface UpdateClaimStatusRequest {
 }
 
 export interface CreatePaymentRequest {
+  device_type?: DeviceType;
   brand: string;
   model: string;
-  imei: string;
+  metadata?: DeviceMetadata;
+  imei?: string;
   plan_id: string;
   billing_cycle: "monthly" | "annual";
   idempotency_key?: string;

@@ -8,8 +8,13 @@ import {
   CheckIcon,
   PhoneIcon,
   ShieldCheckIcon,
+  TabletIcon,
+  TvIcon,
+  LaptopIcon,
+  PlugIcon,
 } from "@/components/ui/icons";
 import { DEVICE_BRANDS, PAYMENT_METHODS } from "@/lib/data";
+import { DEVICE_TYPE_OPTIONS, getDeviceTypeLabel } from "@/lib/devices";
 import { useLanguage } from "@/lib/language-context";
 import {
   useClaimPartnerInvitation,
@@ -20,7 +25,8 @@ import { useAuth } from "@/lib/auth/auth-provider";
 import { ApiError } from "@/lib/api/client";
 import { PlanCardSkeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import type { PartnerInvitation, Plan } from "@/lib/api/types";
+import { isTotalPlan } from "@/lib/plans";
+import type { DeviceType, PartnerInvitation, Plan } from "@/lib/api/types";
 
 export default function InscriptionPage() {
   return (
@@ -40,6 +46,8 @@ function InscriptionContent() {
   const inviteToken = searchParams.get("invite")?.trim() || "";
   const planFromQuery = searchParams.get("plan") ?? "";
   const brandFromQuery = searchParams.get("brand") ?? "";
+  const deviceTypeFromQuery = (searchParams.get("device_type") ??
+    "") as DeviceType;
   const annualFromQuery = searchParams.get("annual") === "true";
   const shouldResumeToPayment = searchParams.get("resume") === "payment";
 
@@ -55,6 +63,9 @@ function InscriptionContent() {
   const [step, setStep] = useState(1);
   const [selectedPlanId, setSelectedPlanId] = useState(planFromQuery);
   const [selectedBrand, setSelectedBrand] = useState(brandFromQuery);
+  const [selectedDeviceType, setSelectedDeviceType] = useState<DeviceType>(
+    deviceTypeFromQuery || "smartphone",
+  );
   const [annual, setAnnual] = useState(annualFromQuery);
 
   const attemptedClaimRef = useRef<string | null>(null);
@@ -177,9 +188,16 @@ function InscriptionContent() {
       !claimError &&
       invitationClaimedForCurrentAccount);
 
+  const totalPlanSelected = isTotalPlan(selectedPlanObj);
   const stepLabels = [
     t.register.stepPlan,
-    lang === "fr" ? "Marque" : "Brand",
+    totalPlanSelected
+      ? lang === "fr"
+        ? "Appareil"
+        : "Device"
+      : lang === "fr"
+        ? "Marque"
+        : "Brand",
     lang === "fr" ? "Confirmation" : "Confirm",
   ];
 
@@ -190,13 +208,17 @@ function InscriptionContent() {
     lang === "fr" ? brand.labelFr : brand.labelEn;
 
   const handleContinueToPay = () => {
-    if (!resolvedSelectedPlanId || !selectedBrand) return;
+    if (!resolvedSelectedPlanId) return;
+    if (!totalPlanSelected && !selectedBrand) return;
 
     const params = new URLSearchParams({
       plan: resolvedSelectedPlanId,
-      brand: selectedBrand,
       annual: annual ? "true" : "false",
+      device_type: totalPlanSelected ? selectedDeviceType : "smartphone",
     });
+    if (!totalPlanSelected && selectedBrand) {
+      params.set("brand", selectedBrand);
+    }
     if (inviteToken) {
       params.set("invite", inviteToken);
     }
@@ -423,52 +445,112 @@ function InscriptionContent() {
             {step === 2 && (
               <div className="rounded-[2rem] border border-slate-200/80 bg-white p-6 shadow-sm md:p-8">
                 <h2 className="mb-2 text-lg font-medium text-indigo-950">
-                  {lang === "fr"
-                    ? "Quel est votre téléphone ?"
-                    : "What's your phone?"}
+                  {totalPlanSelected
+                    ? lang === "fr"
+                      ? "Quel appareil voulez-vous declarer ?"
+                      : "Which device do you want to declare?"
+                    : lang === "fr"
+                      ? "Quel est votre téléphone ?"
+                      : "What's your phone?"}
                 </h2>
                 <p className="mb-6 text-sm text-slate-500">
-                  {lang === "fr"
-                    ? "Sélectionnez votre marque. Le modèle et l'IMEI seront demandés après souscription."
-                    : "Select your brand. Model and IMEI will be requested after subscription."}
+                  {totalPlanSelected
+                    ? lang === "fr"
+                      ? "La Formule Totale accepte smartphone, tablette, TV, ordinateur et electronique domestique declaree. Les details adaptes seront demandes a l'etape suivante."
+                      : "The Total plan accepts smartphones, tablets, TVs, computers, and declared home electronics. The adapted details will be requested on the next step."
+                    : lang === "fr"
+                      ? "Sélectionnez votre marque. Le modèle et l'IMEI seront demandés après souscription."
+                      : "Select your brand. Model and IMEI will be requested after subscription."}
                 </p>
 
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                  {DEVICE_BRANDS.map((brand) => (
-                    <button
-                      key={brand.id}
-                      type="button"
-                      onClick={() => setSelectedBrand(brand.id)}
-                      className={cn(
-                        "flex flex-col items-center justify-center rounded-2xl border p-5 text-center transition-all",
-                        selectedBrand === brand.id
-                          ? "border-indigo-950 bg-indigo-950/5 ring-1 ring-indigo-950/20"
-                          : "border-slate-200/80 bg-white hover:border-slate-300 hover:shadow-lg",
-                      )}
-                    >
-                      <div
+                {totalPlanSelected ? (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {DEVICE_TYPE_OPTIONS.map((option) => {
+                      const Icon =
+                        option.id === "smartphone"
+                          ? PhoneIcon
+                          : option.id === "tablet"
+                            ? TabletIcon
+                            : option.id === "tv"
+                              ? TvIcon
+                              : option.id === "computer"
+                                ? LaptopIcon
+                                : PlugIcon;
+
+                      return (
+                        <button
+                          key={option.id}
+                          type="button"
+                          onClick={() => setSelectedDeviceType(option.id)}
+                          className={cn(
+                            "flex items-start gap-4 rounded-2xl border p-4 text-left transition-all",
+                            selectedDeviceType === option.id
+                              ? "border-indigo-950 bg-indigo-950/5 ring-1 ring-indigo-950/20"
+                              : "border-slate-200/80 bg-white hover:border-slate-300 hover:shadow-lg",
+                          )}
+                        >
+                          <div
+                            className={cn(
+                              "flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl",
+                              selectedDeviceType === option.id
+                                ? "bg-indigo-950/10 text-indigo-950"
+                                : "bg-slate-50 text-slate-400",
+                            )}
+                          >
+                            <Icon size={20} />
+                          </div>
+                          <div>
+                            <div className="font-medium text-indigo-950">
+                              {lang === "fr" ? option.labelFr : option.labelEn}
+                            </div>
+                            <p className="mt-1 text-xs leading-relaxed text-slate-500">
+                              {lang === "fr"
+                                ? option.descriptionFr
+                                : option.descriptionEn}
+                            </p>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                    {DEVICE_BRANDS.map((brand) => (
+                      <button
+                        key={brand.id}
+                        type="button"
+                        onClick={() => setSelectedBrand(brand.id)}
                         className={cn(
-                          "mb-2 flex h-10 w-10 items-center justify-center rounded-xl",
+                          "flex flex-col items-center justify-center rounded-2xl border p-5 text-center transition-all",
                           selectedBrand === brand.id
-                            ? "bg-indigo-950/10"
-                            : "bg-slate-50",
+                            ? "border-indigo-950 bg-indigo-950/5 ring-1 ring-indigo-950/20"
+                            : "border-slate-200/80 bg-white hover:border-slate-300 hover:shadow-lg",
                         )}
                       >
-                        <PhoneIcon
-                          size={20}
-                          className={
+                        <div
+                          className={cn(
+                            "mb-2 flex h-10 w-10 items-center justify-center rounded-xl",
                             selectedBrand === brand.id
-                              ? "text-indigo-950"
-                              : "text-slate-400"
-                          }
-                        />
-                      </div>
-                      <span className="text-sm font-medium text-indigo-950">
-                        {getBrandLabel(brand)}
-                      </span>
-                    </button>
-                  ))}
-                </div>
+                              ? "bg-indigo-950/10"
+                              : "bg-slate-50",
+                          )}
+                        >
+                          <PhoneIcon
+                            size={20}
+                            className={
+                              selectedBrand === brand.id
+                                ? "text-indigo-950"
+                                : "text-slate-400"
+                            }
+                          />
+                        </div>
+                        <span className="text-sm font-medium text-indigo-950">
+                          {getBrandLabel(brand)}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
 
                 <div className="mt-6 flex gap-3">
                   <Button
@@ -484,7 +566,9 @@ function InscriptionContent() {
                     size="lg"
                     className="flex-1"
                     onClick={() => setStep(3)}
-                    disabled={!selectedBrand}
+                    disabled={
+                      totalPlanSelected ? !selectedDeviceType : !selectedBrand
+                    }
                   >
                     {lang === "fr" ? "Continuer →" : "Continue →"}
                   </Button>
@@ -510,16 +594,29 @@ function InscriptionContent() {
                     </div>
                     <div className="flex items-center justify-between gap-4">
                       <span className="text-sm text-slate-500">
-                        {lang === "fr" ? "Marque" : "Brand"}
+                        {lang === "fr" ? "Type d'appareil" : "Device type"}
                       </span>
                       <span className="text-right font-medium text-indigo-950">
-                        {getBrandLabel(
-                          DEVICE_BRANDS.find(
-                            (brand) => brand.id === selectedBrand,
-                          ) ?? DEVICE_BRANDS[0],
+                        {getDeviceTypeLabel(
+                          totalPlanSelected ? selectedDeviceType : "smartphone",
+                          lang,
                         )}
                       </span>
                     </div>
+                    {!totalPlanSelected && (
+                      <div className="flex items-center justify-between gap-4">
+                        <span className="text-sm text-slate-500">
+                          {lang === "fr" ? "Marque" : "Brand"}
+                        </span>
+                        <span className="text-right font-medium text-indigo-950">
+                          {getBrandLabel(
+                            DEVICE_BRANDS.find(
+                              (brand) => brand.id === selectedBrand,
+                            ) ?? DEVICE_BRANDS[0],
+                          )}
+                        </span>
+                      </div>
+                    )}
                     {invitation?.partner_store_name && (
                       <div className="flex items-center justify-between gap-4">
                         <span className="text-sm text-slate-500">
@@ -599,7 +696,10 @@ function InscriptionContent() {
                     size="lg"
                     className="flex-1"
                     onClick={handleContinueToPay}
-                    disabled={!resolvedSelectedPlanId || !selectedBrand}
+                    disabled={
+                      !resolvedSelectedPlanId ||
+                      (!totalPlanSelected && !selectedBrand)
+                    }
                   >
                     {lang === "fr"
                       ? "Continuer vers le paiement"

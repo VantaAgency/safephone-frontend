@@ -11,9 +11,13 @@ import {
   ClockIcon,
   CreditCardIcon,
   DropletIcon,
+  LaptopIcon,
   PhoneIcon,
+  PlugIcon,
   ScreenIcon,
   ShieldCheckIcon,
+  TabletIcon,
+  TvIcon,
   WrenchIcon,
 } from "@/components/ui/icons";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -42,6 +46,13 @@ import {
   getRepairTypeLabel,
 } from "@/lib/repairs";
 import { cn } from "@/lib/utils";
+import {
+  deviceRequiresImei,
+  formatDeviceDisplayName,
+  getDeviceIdentifierSummary,
+  getDeviceMetadataSummary,
+  getDeviceTypeLabel,
+} from "@/lib/devices";
 import type {
   ClaimType,
   Device,
@@ -50,7 +61,13 @@ import type {
   Subscription,
 } from "@/lib/api/types";
 
-const DASHBOARD_TABS = ["overview", "claims", "repairs", "devices", "payments"] as const;
+const DASHBOARD_TABS = [
+  "overview",
+  "claims",
+  "repairs",
+  "devices",
+  "payments",
+] as const;
 type DashboardTab = (typeof DASHBOARD_TABS)[number];
 
 const CLAIM_TYPE_ICONS: Record<string, typeof ScreenIcon> = {
@@ -77,24 +94,19 @@ interface DeviceCoverageMeta {
   subscription?: Subscription;
 }
 
-function formatDeviceDisplayName(device: Device): string {
-  const brand = device.brand.trim();
-  const model = device.model.trim();
-
-  if (!brand) return model;
-  if (!model) return brand;
-
-  const normalizedBrand = brand.toLowerCase();
-  const normalizedModel = model.toLowerCase();
-
-  if (
-    normalizedModel === normalizedBrand ||
-    normalizedModel.startsWith(`${normalizedBrand} `)
-  ) {
-    return model;
+function getDeviceIcon(deviceType: Device["device_type"]) {
+  switch (deviceType) {
+    case "tablet":
+      return TabletIcon;
+    case "tv":
+      return TvIcon;
+    case "computer":
+      return LaptopIcon;
+    case "home_electronics":
+      return PlugIcon;
+    default:
+      return PhoneIcon;
   }
-
-  return `${brand} ${model}`;
 }
 
 function RepairProgress({
@@ -224,7 +236,8 @@ export default function DashboardPage() {
     refetch: refetchDevices,
   } = useDevices();
   const { data: claims, isLoading: claimsLoading } = useClaims();
-  const { data: repairRequests, isLoading: repairsLoading } = useMyRepairRequests();
+  const { data: repairRequests, isLoading: repairsLoading } =
+    useMyRepairRequests();
   const { data: payments, isLoading: paymentsLoading } = usePayments();
   const {
     data: subscriptions,
@@ -362,7 +375,13 @@ export default function DashboardPage() {
     try {
       await updateDevice.mutateAsync({
         id: deviceId,
-        data: { brand: device.brand, model: device.model, imei: imeiValue },
+        data: {
+          device_type: device.device_type,
+          brand: device.brand,
+          model: device.model,
+          metadata: device.metadata,
+          imei: imeiValue,
+        },
       });
       setImeiFormDevice(null);
       setImeiValue("");
@@ -432,13 +451,16 @@ export default function DashboardPage() {
       if (device.status === "active") {
         return { status: "active", payment, subscription };
       }
-      return { status: "pending_activation", payment, subscription };
+      return deviceRequiresImei(device.device_type)
+        ? { status: "pending_activation", payment, subscription }
+        : { status: "active", payment, subscription };
     }
 
     if (payment) {
       switch (payment.status) {
         case "completed":
-          return device.status === "active"
+          return device.status === "active" ||
+            !deviceRequiresImei(device.device_type)
             ? { status: "active", payment, subscription }
             : { status: "pending_activation", payment, subscription };
         case "pending":
@@ -475,6 +497,7 @@ export default function DashboardPage() {
     coverageDataReady && devices
       ? devices.filter(
           (device) =>
+            deviceRequiresImei(device.device_type) &&
             deviceCoverageById.get(device.id)?.status === "pending_activation",
         )
       : [];
@@ -522,7 +545,9 @@ export default function DashboardPage() {
         )}
 
         {/* IMEI completion alert */}
-        {tab !== "devices" && coverageDataLoading && <DashboardBannerSkeleton />}
+        {tab !== "devices" && coverageDataLoading && (
+          <DashboardBannerSkeleton />
+        )}
         {tab !== "devices" &&
           coverageDataReady &&
           devicesPendingActivation.length > 0 && (
@@ -540,8 +565,8 @@ export default function DashboardPage() {
                   </p>
                   <p className="mt-0.5 text-xs text-amber-700">
                     {lang === "fr"
-                      ? `${devicesPendingActivation.map((d) => formatDeviceDisplayName(d)).join(", ")} — ajoutez le numéro IMEI pour finaliser l'activation après confirmation du paiement.`
-                      : `${devicesPendingActivation.map((d) => formatDeviceDisplayName(d)).join(", ")} — add the IMEI to finish activation after payment confirmation.`}
+                      ? `${devicesPendingActivation.map((d) => formatDeviceDisplayName(d, lang)).join(", ")} — ajoutez le numéro IMEI pour finaliser l'activation après confirmation du paiement.`
+                      : `${devicesPendingActivation.map((d) => formatDeviceDisplayName(d, lang)).join(", ")} — add the IMEI to finish activation after payment confirmation.`}
                   </p>
                   <p className="mt-1 text-xs text-amber-700/90">
                     {imeiHelpText}
@@ -656,6 +681,13 @@ export default function DashboardPage() {
                     {devices.slice(0, 3).map((d) => {
                       const coverage = deviceCoverageById.get(d.id);
                       if (!coverage) return null;
+                      const DeviceIcon = getDeviceIcon(d.device_type);
+                      const identifier = getDeviceIdentifierSummary(d, lang);
+                      const detail = getDeviceMetadataSummary(
+                        d.metadata,
+                        d.device_type,
+                        lang,
+                      );
 
                       return (
                         <div
@@ -664,21 +696,19 @@ export default function DashboardPage() {
                         >
                           <div className="flex items-center gap-4">
                             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-950/5">
-                              <PhoneIcon
+                              <DeviceIcon
                                 size={22}
                                 className="text-indigo-950"
                               />
                             </div>
                             <div>
                               <div className="font-medium text-indigo-950">
-                                {formatDeviceDisplayName(d)}
+                                {formatDeviceDisplayName(d, lang)}
                               </div>
-                              <div className="mt-0.5 font-mono text-xs text-slate-400">
-                                {d.imei && d.imei !== "000000000000000"
-                                  ? `IMEI: ${d.imei}`
-                                  : lang === "fr"
-                                    ? "IMEI manquant"
-                                    : "IMEI missing"}
+                              <div className="mt-0.5 text-xs text-slate-400">
+                                {getDeviceTypeLabel(d.device_type, lang)}
+                                {detail ? ` • ${detail}` : ""}
+                                {identifier ? ` • ${identifier}` : ""}
                               </div>
                             </div>
                           </div>
@@ -968,9 +998,10 @@ export default function DashboardPage() {
                         </option>
                         {eligibleDevices.map((d) => (
                           <option key={d.id} value={d.id}>
-                            {d.brand} {d.model}
-                            {d.imei && d.imei !== "000000000000000"
-                              ? ` — IMEI: ${d.imei}`
+                            {formatDeviceDisplayName(d, lang)} —{" "}
+                            {getDeviceTypeLabel(d.device_type, lang)}
+                            {getDeviceIdentifierSummary(d, lang)
+                              ? ` — ${getDeviceIdentifierSummary(d, lang)}`
                               : ""}
                           </option>
                         ))}
@@ -1107,7 +1138,9 @@ export default function DashboardPage() {
           <div>
             <div className="mb-6">
               <h2 className="text-xl font-medium text-indigo-950">
-                {lang === "fr" ? "Mes réparations MobiTech" : "My MobiTech repairs"}
+                {lang === "fr"
+                  ? "Mes réparations MobiTech"
+                  : "My MobiTech repairs"}
               </h2>
               <p className="mt-1 text-sm text-slate-500">
                 {lang === "fr"
@@ -1134,7 +1167,8 @@ export default function DashboardPage() {
                     : "Your MobiTech requests will appear here after submission."
                 }
                 action={{
-                  label: lang === "fr" ? "Prendre rendez-vous" : "Book a repair",
+                  label:
+                    lang === "fr" ? "Prendre rendez-vous" : "Book a repair",
                   onClick: () => {
                     window.location.assign("/reparations");
                   },
@@ -1188,7 +1222,9 @@ export default function DashboardPage() {
                       </div>
                       <div className="rounded-xl border border-slate-200/80 bg-slate-50/70 px-4 py-3">
                         <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
-                          {lang === "fr" ? "Rendez-vous planifié" : "Scheduled appointment"}
+                          {lang === "fr"
+                            ? "Rendez-vous planifié"
+                            : "Scheduled appointment"}
                         </div>
                         <div className="mt-1 text-sm font-medium text-indigo-950">
                           {formatRepairScheduledSlot(repair) ||
@@ -1197,7 +1233,9 @@ export default function DashboardPage() {
                       </div>
                       <div className="rounded-xl border border-slate-200/80 bg-slate-50/70 px-4 py-3">
                         <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
-                          {lang === "fr" ? "Montant réparation" : "Repair amount"}
+                          {lang === "fr"
+                            ? "Montant réparation"
+                            : "Repair amount"}
                         </div>
                         <div className="mt-1 text-sm font-medium text-indigo-950">
                           {repair.repair_amount_xof
@@ -1257,6 +1295,13 @@ export default function DashboardPage() {
                 {devices.map((d) => {
                   const coverage = deviceCoverageById.get(d.id);
                   if (!coverage) return null;
+                  const DeviceIcon = getDeviceIcon(d.device_type);
+                  const identifier = getDeviceIdentifierSummary(d, lang);
+                  const detail = getDeviceMetadataSummary(
+                    d.metadata,
+                    d.device_type,
+                    lang,
+                  );
 
                   const canResume =
                     !!coverage.payment &&
@@ -1272,19 +1317,21 @@ export default function DashboardPage() {
                       <div className="flex items-start justify-between">
                         <div className="flex items-center gap-4">
                           <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-950/5">
-                            <PhoneIcon size={26} className="text-indigo-950" />
+                            <DeviceIcon size={26} className="text-indigo-950" />
                           </div>
                           <div>
                             <div className="text-lg font-medium text-indigo-950">
-                              {formatDeviceDisplayName(d)}
+                              {formatDeviceDisplayName(d, lang)}
                             </div>
-                            <div className="mt-0.5 font-mono text-xs text-slate-400">
-                              {d.imei && d.imei !== "000000000000000"
-                                ? `${t.dashboard.deviceImei}: ${d.imei}`
-                                : lang === "fr"
-                                  ? "IMEI non renseigné"
-                                  : "IMEI not provided"}
+                            <div className="mt-0.5 text-xs text-slate-400">
+                              {getDeviceTypeLabel(d.device_type, lang)}
+                              {detail ? ` • ${detail}` : ""}
                             </div>
+                            {identifier && (
+                              <div className="mt-0.5 font-mono text-xs text-slate-400">
+                                {identifier}
+                              </div>
+                            )}
                           </div>
                         </div>
                         <StatusBadge
