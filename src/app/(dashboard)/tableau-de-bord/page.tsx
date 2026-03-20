@@ -447,13 +447,20 @@ export default function DashboardPage() {
       ? latestPaymentBySubscriptionId.get(subscription.id)
       : undefined;
 
-    if (subscription?.status === "active") {
-      if (device.status === "active") {
-        return { status: "active", payment, subscription };
+    if (subscription) {
+      switch (subscription.status) {
+        case "active":
+          if (device.status === "active") {
+            return { status: "active", payment, subscription };
+          }
+          return deviceRequiresImei(device.device_type)
+            ? { status: "pending_activation", payment, subscription }
+            : { status: "active", payment, subscription };
+        case "expired":
+          return { status: "expired", payment, subscription };
+        case "cancelled":
+          return { status: "cancelled", payment, subscription };
       }
-      return deviceRequiresImei(device.device_type)
-        ? { status: "pending_activation", payment, subscription }
-        : { status: "active", payment, subscription };
     }
 
     if (payment) {
