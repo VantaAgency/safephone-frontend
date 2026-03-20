@@ -162,6 +162,7 @@ export interface CreatePartnerApplicationRequest {
   full_name: string;
   phone: string;
   city: string;
+  business_location: string;
 }
 
 export interface PartnerApplication {
@@ -172,7 +173,9 @@ export interface PartnerApplication {
   full_name: string;
   phone: string;
   city: string;
+  business_location: string;
   status: PartnerApplicationStatus;
+  commission_percentage?: number;
   reviewed_by?: string;
   rejection_reason?: string;
   created_at: string;
@@ -188,7 +191,9 @@ export interface AdminPartnerApplication {
   phone: string;
   email: string;
   city: string;
+  business_location: string;
   status: PartnerApplicationStatus;
+  commission_percentage?: number;
   rejection_reason?: string;
   created_at: string;
   reviewed_at?: string;
@@ -197,6 +202,7 @@ export interface AdminPartnerApplication {
 export interface ReviewPartnerApplicationRequest {
   decision: "approved" | "rejected";
   rejection_reason?: string;
+  commission_percentage?: number;
 }
 
 export interface AdminPartnerApplicationParams extends PaginationParams {
@@ -207,12 +213,15 @@ export interface PartnerProfile {
   id: string;
   store_name: string;
   city: string;
-  commission_rate: number;
+  business_location: string;
+  commission_percentage: number;
   status: string;
   total_clients: number;
   active_clients: number;
   plans_purchased: number;
-  month_commission_xof: number;
+  total_commission_earned_xof: number;
+  total_commission_owed_xof: number;
+  total_commission_paid_xof: number;
 }
 
 export interface PartnerClient {
@@ -227,6 +236,11 @@ export interface PartnerClient {
   invitation_url?: string;
   invitation_expires_at?: string;
   invitation_claimed_at?: string;
+  has_generated_commission: boolean;
+  commission_amount_xof?: number;
+  commission_status?: string;
+  commission_percentage?: number;
+  commission_created_at?: string;
   invited_at: string;
   created_at: string;
   updated_at: string;
@@ -251,12 +265,19 @@ export interface PartnerInvitation {
 
 export interface PartnerSale {
   id: string;
+  partner_client_id?: string;
+  client_user_id?: string;
+  payment_id?: string;
+  plan_id?: string;
   customer_name: string;
   plan_name_fr?: string;
   plan_name_en?: string;
-  amount_xof: number;
-  commission_xof: number;
-  date: string;
+  base_amount_xof: number;
+  commission_percentage: number;
+  commission_amount_xof: number;
+  status: string;
+  paid_at?: string;
+  created_at: string;
 }
 
 export interface PartnerPayout {
@@ -272,11 +293,32 @@ export interface AdminPartner {
   store_name: string;
   owner_name: string;
   city: string;
+  business_location: string;
+  commission_percentage: number;
   clients_count: number;
   active_clients: number;
-  commission_this_month: number;
+  total_commission_earned_xof: number;
+  total_commission_owed_xof: number;
+  total_commission_paid_xof: number;
   status: string;
   joined_at: string;
+}
+
+export interface AdminPartnerCommission {
+  id: string;
+  partner_client_id?: string;
+  client_user_id?: string;
+  payment_id?: string;
+  plan_id?: string;
+  customer_name: string;
+  plan_name_fr?: string;
+  plan_name_en?: string;
+  base_amount_xof: number;
+  commission_percentage: number;
+  commission_amount_xof: number;
+  status: string;
+  paid_at?: string;
+  created_at: string;
 }
 
 export interface RepairRequest {

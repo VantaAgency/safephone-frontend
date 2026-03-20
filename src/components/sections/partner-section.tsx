@@ -124,11 +124,11 @@ export function PartnerSection() {
                       <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-indigo-400" aria-hidden="true">
                         <path d="M3 3v18h18" /><path d="M18 17V9" /><path d="M13 17V5" /><path d="M8 17v-3" />
                       </svg>
-                      Commissions (Ce mois)
+                      Commissions d&apos;acquisition
                     </p>
                     <div className="flex items-baseline gap-1">
                       <span className="text-3xl font-normal tracking-tighter text-white">145 000</span>
-                      <span className="text-sm font-medium text-indigo-400">FCFA</span>
+                      <span className="text-sm font-medium text-indigo-400">FCFA total</span>
                     </div>
                   </div>
                   <div className="flex items-center gap-1 rounded-lg border border-green-400/10 bg-green-400/10 px-2 py-1 text-xs font-medium text-green-400">
@@ -154,25 +154,25 @@ export function PartnerSection() {
               {/* Secondary metrics */}
               <div className="mb-5 grid grid-cols-2 gap-4">
                 <div className="rounded-xl border border-indigo-800/30 bg-indigo-950/40 p-3.5">
-                  <p className="mb-1 text-[10px] font-medium uppercase tracking-wider text-indigo-300">Abonnements Actifs</p>
+                  <p className="mb-1 text-[10px] font-medium uppercase tracking-wider text-indigo-300">Clients inscrits</p>
                   <p className="text-xl font-medium tracking-tight text-white">42</p>
                 </div>
                 <div className="rounded-xl border border-indigo-800/30 bg-indigo-950/40 p-3.5">
-                  <p className="mb-1 text-[10px] font-medium uppercase tracking-wider text-indigo-300">Taux de Conversion</p>
-                  <p className="text-xl font-medium tracking-tight text-white">18.5%</p>
+                  <p className="mb-1 text-[10px] font-medium uppercase tracking-wider text-indigo-300">Commission attribuée</p>
+                  <p className="text-xl font-medium tracking-tight text-white">12%</p>
                 </div>
               </div>
 
               {/* Recent activity */}
               <div>
                 <div className="mb-3 flex items-center justify-between">
-                  <p className="text-xs font-medium text-indigo-200">Dernières souscriptions</p>
+                  <p className="text-xs font-medium text-indigo-200">Dernières commissions uniques</p>
                   <span className="text-[10px] font-medium text-indigo-400">Tout voir</span>
                 </div>
                 <div className="space-y-2.5">
                   {[
                     { phone: "77 *** ** 45", plan: "Forfait Écran+", time: "14:30", amount: "+2 000 F" },
-                    { phone: "76 *** ** 12", plan: "Forfait Essentiel", time: "Hier", amount: "+1 000 F" },
+                    { phone: "76 *** ** 12", plan: "Forfait Essentiel", time: "Hier", amount: "+1 500 F" },
                   ].map((tx) => (
                     <div key={tx.phone} className="flex cursor-pointer items-center justify-between rounded-xl border border-white/5 bg-white/3 p-3 transition-colors hover:bg-white/6">
                       <div className="flex items-center gap-3">
@@ -184,7 +184,7 @@ export function PartnerSection() {
                         </div>
                         <div>
                           <p className="text-sm font-medium tracking-tight text-white">Client: {tx.phone}</p>
-                          <p className="mt-0.5 text-[10px] text-indigo-300">{tx.plan} • {tx.time}</p>
+                          <p className="mt-0.5 text-[10px] text-indigo-300">1er paiement • {tx.plan} • {tx.time}</p>
                         </div>
                       </div>
                       <div className="text-right">

@@ -20,6 +20,7 @@ import {
   useAdminCustomers,
   useAdminPayments,
   useAdminPartners,
+  useAdminPartnerCommissions,
   useAdminPartnerApplications,
   useRejectRepairRequest,
   useReviewPartnerApplication,
@@ -78,10 +79,17 @@ export default function AdminPage() {
   const reviewApplication = useReviewPartnerApplication();
   const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [rejectionReason, setRejectionReason] = useState("");
+  const [commissionDrafts, setCommissionDrafts] = useState<Record<string, string>>({});
+  const [selectedPartnerId, setSelectedPartnerId] = useState<string | null>(null);
   const [repairStatusDrafts, setRepairStatusDrafts] = useState<Record<string, RepairRequestStatus>>({});
   const [repairAmountDrafts, setRepairAmountDrafts] = useState<Record<string, string>>({});
   const [repairDateDrafts, setRepairDateDrafts] = useState<Record<string, string>>({});
   const [repairTimeDrafts, setRepairTimeDrafts] = useState<Record<string, string>>({});
+  const selectedPartner = adminPartners.find((partner) => partner.id === selectedPartnerId) ?? null;
+  const { data: selectedPartnerCommissions = [], isLoading: partnerCommissionsLoading } = useAdminPartnerCommissions(
+    selectedPartnerId ?? undefined,
+    { enabled: isAdmin && !!selectedPartnerId },
+  );
 
   useEffect(() => {
     if (!isPending && !isAdmin) {
@@ -144,6 +152,23 @@ export default function AdminPage() {
   const getPaymentMethodLabel = (method?: string) => {
     if (!method) return null;
     return paymentMethodLabels[method] ?? method;
+  };
+
+  const parseCommissionPercentage = (value: string) => {
+    const normalized = value.replace(",", ".").trim();
+    if (!normalized) return null;
+
+    const parsed = Number(normalized);
+    if (!Number.isFinite(parsed) || parsed <= 0 || parsed > 100) {
+      return null;
+    }
+
+    const rounded = Math.round(parsed * 100) / 100;
+    if (Math.abs(parsed - rounded) > 1e-9) {
+      return null;
+    }
+
+    return rounded;
   };
 
   const CLAIM_TYPE_LABELS: Record<string, string> = {
@@ -819,6 +844,8 @@ export default function AdminPage() {
                           "Phone",
                           "Email",
                           lang === "fr" ? "Ville" : "City",
+                          lang === "fr" ? "Zone" : "Business area",
+                          lang === "fr" ? "Commission %" : "Commission %",
                           lang === "fr" ? "Statut" : "Status",
                           "Date",
                           "Actions",
@@ -835,6 +862,37 @@ export default function AdminPage() {
                           <td className="px-5 py-3.5 text-slate-500">{app.phone}</td>
                           <td className="px-5 py-3.5 text-xs text-slate-400">{app.email}</td>
                           <td className="px-5 py-3.5 text-slate-500">{app.city}</td>
+                          <td className="px-5 py-3.5 text-slate-500">{app.business_location}</td>
+                          <td className="px-5 py-3.5">
+                            {app.status === "pending" ? (
+                              <div className="space-y-2">
+                                <Input
+                                  type="number"
+                                  min="0.01"
+                                  max="100"
+                                  step="0.01"
+                                  value={commissionDrafts[app.id] ?? ""}
+                                  onChange={(e) =>
+                                    setCommissionDrafts((current) => ({
+                                      ...current,
+                                      [app.id]: e.target.value,
+                                    }))
+                                  }
+                                  placeholder="10"
+                                  className="w-28 text-xs"
+                                />
+                                <p className="text-[11px] text-slate-400">
+                                  {lang === "fr" ? "0,01 à 100" : "0.01 to 100"}
+                                </p>
+                              </div>
+                            ) : app.commission_percentage ? (
+                              <span className="font-medium text-indigo-950">
+                                {app.commission_percentage}%
+                              </span>
+                            ) : (
+                              <span className="text-slate-400">—</span>
+                            )}
+                          </td>
                           <td className="px-5 py-3.5">
                             <StatusBadge
                               status={app.status === "approved" ? "active" : app.status === "rejected" ? "expired" : "pending"}
@@ -887,12 +945,21 @@ export default function AdminPage() {
                                       variant="primary"
                                       size="sm"
                                       loading={reviewApplication.isPending}
-                                      onClick={() =>
-                                        reviewApplication.mutateAsync({
+                                      disabled={parseCommissionPercentage(commissionDrafts[app.id] ?? "") === null}
+                                      onClick={async () => {
+                                        await reviewApplication.mutateAsync({
                                           id: app.id,
-                                          data: { decision: "approved" },
-                                        })
-                                      }
+                                          data: {
+                                            decision: "approved",
+                                            commission_percentage: parseCommissionPercentage(commissionDrafts[app.id] ?? "") ?? undefined,
+                                          },
+                                        });
+                                        setCommissionDrafts((current) => {
+                                          const next = { ...current };
+                                          delete next[app.id];
+                                          return next;
+                                        });
+                                      }}
                                     >
                                       {lang === "fr" ? "Approuver" : "Approve"}
                                     </Button>
@@ -919,7 +986,7 @@ export default function AdminPage() {
                       ))}
                       {partnerApps.length === 0 && (
                         <tr>
-                          <td colSpan={8} className="px-5 py-8 text-center text-sm text-slate-400">
+                          <td colSpan={10} className="px-5 py-8 text-center text-sm text-slate-400">
                             {lang === "fr" ? "Aucune candidature" : "No applications"}
                           </td>
                         </tr>
@@ -952,17 +1019,13 @@ export default function AdminPage() {
                   icon={<ShieldCheckIcon size={20} className="text-violet-600" />}
                 />
                 <StatCard
-                  label={lang === "fr" ? "Taux de conversion" : "Conversion rate"}
-                  value={`${Math.round(
-                    (adminPartners.reduce((s, p) => s + p.active_clients, 0) /
-                      Math.max(adminPartners.reduce((s, p) => s + p.clients_count, 0), 1)) *
-                      100
-                  )}%`}
+                  label={lang === "fr" ? "Commissions gagnées" : "Commissions earned"}
+                  value={formatXOF(adminPartners.reduce((s, p) => s + p.total_commission_earned_xof, 0))}
                   icon={<WrenchIcon size={20} className="text-yellow-500" />}
                 />
                 <StatCard
-                  label={lang === "fr" ? "Revenus via partenaires" : "Partner revenue"}
-                  value={formatXOF(adminPartners.reduce((s, p) => s + p.commission_this_month, 0))}
+                  label={lang === "fr" ? "Commissions dues" : "Commissions owed"}
+                  value={formatXOF(adminPartners.reduce((s, p) => s + p.total_commission_owed_xof, 0))}
                   icon={<CreditCardIcon size={20} className="text-emerald-500" />}
                 />
               </div>
@@ -986,12 +1049,14 @@ export default function AdminPage() {
                     <tr className="border-b border-slate-100 bg-slate-50/50">
                       {[
                         lang === "fr" ? "Boutique / Proprietaire" : "Store / Owner",
-                        lang === "fr" ? "Ville" : "City",
+                        lang === "fr" ? "Ville / Zone" : "City / Area",
+                        lang === "fr" ? "Commission %" : "Commission %",
                         lang === "fr" ? "Clients" : "Clients",
                         lang === "fr" ? "Actifs" : "Active",
-                        "Conversion%",
-                        lang === "fr" ? "Commission mois" : "Month commission",
+                        lang === "fr" ? "Gagné" : "Earned",
+                        lang === "fr" ? "Dû" : "Owed",
                         lang === "fr" ? "Statut" : "Status",
+                        lang === "fr" ? "Détails" : "Details",
                       ].map((h) => (
                         <th key={h} className="whitespace-nowrap px-5 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-400">{h}</th>
                       ))}
@@ -999,29 +1064,49 @@ export default function AdminPage() {
                   </thead>
                   <tbody>
                     {adminPartners.map((partner) => {
-                      const conversionPct = partner.clients_count > 0 ? Math.round((partner.active_clients / partner.clients_count) * 100) : 0;
                       return (
                         <tr key={partner.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/30">
                           <td className="px-5 py-3.5">
                             <div className="font-medium text-indigo-950">{partner.store_name}</div>
                             <div className="text-xs text-slate-400">{partner.owner_name}</div>
                           </td>
-                          <td className="px-5 py-3.5 text-slate-500">{partner.city}</td>
+                          <td className="px-5 py-3.5">
+                            <div className="text-slate-500">{partner.city}</div>
+                            <div className="text-xs text-slate-400">{partner.business_location}</div>
+                          </td>
+                          <td className="px-5 py-3.5 font-medium text-indigo-950">{partner.commission_percentage}%</td>
                           <td className="px-5 py-3.5 text-center font-medium text-indigo-950">{partner.clients_count}</td>
                           <td className="px-5 py-3.5 text-center font-medium text-emerald-600">{partner.active_clients}</td>
-                          <td className="px-5 py-3.5 text-center">
-                            <span className={cn("text-sm font-medium", conversionPct >= 80 ? "text-emerald-600" : conversionPct >= 50 ? "text-yellow-500" : "text-red-500")}>
-                              {conversionPct}%
-                            </span>
-                          </td>
                           <td className="px-5 py-3.5 font-medium text-indigo-950">
-                            {partner.commission_this_month > 0 ? formatXOF(partner.commission_this_month) : "—"}
+                            {partner.total_commission_earned_xof > 0 ? formatXOF(partner.total_commission_earned_xof) : "—"}
+                          </td>
+                          <td className="px-5 py-3.5 font-medium text-slate-600">
+                            {partner.total_commission_owed_xof > 0 ? formatXOF(partner.total_commission_owed_xof) : "—"}
                           </td>
                           <td className="px-5 py-3.5">
                             <StatusBadge
                               status={partner.status === "active" ? "active" : "expired"}
                               label={partner.status === "active" ? (lang === "fr" ? "Actif" : "Active") : (lang === "fr" ? "Inactif" : "Inactive")}
                             />
+                          </td>
+                          <td className="px-5 py-3.5">
+                            <Button
+                              variant={selectedPartnerId === partner.id ? "secondary" : "outline"}
+                              size="sm"
+                              onClick={() =>
+                                setSelectedPartnerId((current) =>
+                                  current === partner.id ? null : partner.id,
+                                )
+                              }
+                            >
+                              {selectedPartnerId === partner.id
+                                ? lang === "fr"
+                                  ? "Masquer"
+                                  : "Hide"
+                                : lang === "fr"
+                                  ? "Voir"
+                                  : "View"}
+                            </Button>
                           </td>
                         </tr>
                       );
@@ -1031,6 +1116,126 @@ export default function AdminPage() {
               </div>
               )}
             </div>
+
+            {selectedPartner && (
+              <div className="mt-6 rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">
+                <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                  <div>
+                    <h3 className="text-lg font-medium text-indigo-950">
+                      {selectedPartner.store_name}
+                    </h3>
+                    <p className="mt-1 text-sm text-slate-500">
+                      {selectedPartner.owner_name} · {selectedPartner.city} · {selectedPartner.business_location}
+                    </p>
+                    <p className="mt-2 text-xs uppercase tracking-[0.18em] text-slate-400">
+                      {lang === "fr"
+                        ? "Commissions d'acquisition uniques"
+                        : "One-time acquisition commissions"}
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                      <p className="text-xs uppercase tracking-[0.18em] text-slate-400">
+                        {lang === "fr" ? "Commission %" : "Commission %"}
+                      </p>
+                      <p className="mt-2 text-lg font-medium text-indigo-950">
+                        {selectedPartner.commission_percentage}%
+                      </p>
+                    </div>
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                      <p className="text-xs uppercase tracking-[0.18em] text-slate-400">
+                        {lang === "fr" ? "Gagné" : "Earned"}
+                      </p>
+                      <p className="mt-2 text-lg font-medium text-indigo-950">
+                        {formatXOF(selectedPartner.total_commission_earned_xof)}
+                      </p>
+                    </div>
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                      <p className="text-xs uppercase tracking-[0.18em] text-slate-400">
+                        {lang === "fr" ? "Payé" : "Paid"}
+                      </p>
+                      <p className="mt-2 text-lg font-medium text-indigo-950">
+                        {formatXOF(selectedPartner.total_commission_paid_xof)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-6 overflow-hidden rounded-2xl border border-slate-200/80">
+                  {partnerCommissionsLoading ? (
+                    <div className="p-6 space-y-3">
+                      {[...Array(3)].map((_, i) => (
+                        <div key={i} className="h-10 w-full animate-pulse rounded-xl bg-slate-100" />
+                      ))}
+                    </div>
+                  ) : selectedPartnerCommissions.length === 0 ? (
+                    <div className="py-12 text-center text-sm text-slate-500">
+                      {lang === "fr"
+                        ? "Aucune commission générée pour ce partenaire."
+                        : "No commissions have been generated for this partner yet."}
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-slate-100 bg-slate-50/50">
+                            {[
+                              lang === "fr" ? "Client" : "Client",
+                              lang === "fr" ? "Formule" : "Plan",
+                              lang === "fr" ? "Base" : "Base",
+                              lang === "fr" ? "Commission" : "Commission",
+                              lang === "fr" ? "Statut" : "Status",
+                              lang === "fr" ? "Date" : "Date",
+                            ].map((heading) => (
+                              <th
+                                key={heading}
+                                className="whitespace-nowrap px-5 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-400"
+                              >
+                                {heading}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {selectedPartnerCommissions.map((commission) => (
+                            <tr key={commission.id} className="border-b border-slate-50 last:border-0">
+                              <td className="px-5 py-3.5 font-medium text-indigo-950">
+                                {commission.customer_name}
+                              </td>
+                              <td className="px-5 py-3.5 text-slate-500">
+                                {lang === "fr" ? commission.plan_name_fr ?? "—" : commission.plan_name_en ?? "—"}
+                              </td>
+                              <td className="px-5 py-3.5 text-slate-500">
+                                {formatXOF(commission.base_amount_xof)}
+                              </td>
+                              <td className="px-5 py-3.5">
+                                <div className="font-medium text-indigo-950">
+                                  {formatXOF(commission.commission_amount_xof)}
+                                </div>
+                                <div className="text-xs text-slate-400">
+                                  {commission.commission_percentage}%
+                                </div>
+                              </td>
+                              <td className="px-5 py-3.5">
+                                <StatusBadge
+                                  status={commission.status === "paid" ? "active" : "pending"}
+                                  label={commission.status === "paid"
+                                    ? (lang === "fr" ? "Payée" : "Paid")
+                                    : (lang === "fr" ? "En attente" : "Pending")}
+                                />
+                              </td>
+                              <td className="px-5 py-3.5 text-slate-500">
+                                {new Date(commission.created_at).toLocaleDateString(lang === "fr" ? "fr-FR" : "en-US")}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

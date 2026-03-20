@@ -63,4 +63,7 @@ export const partnerApplicationSchema = z.object({
     .string()
     .regex(/^(\+221\s?)?[0-9\s]{9,15}$/, "Format: +221 77 000 00 00"),
   city: z.string().min(1, "Ville requise / City required"),
+  businessLocation: z
+    .string()
+    .min(1, "Localisation commerciale requise / Business location required"),
 });

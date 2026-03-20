@@ -3,6 +3,7 @@ import type {
   AdminClaimParams,
   AdminCustomer,
   AdminPartner,
+  AdminPartnerCommission,
   AdminPartnerApplication,
   AdminPartnerApplicationParams,
   AdminPayment,
@@ -97,6 +98,11 @@ export const admin = {
   partners: (params?: PaginationParams) =>
     api.get<AdminPartner[]>(
       "/admin/partners",
+      params as Record<string, string | number>,
+    ),
+  partnerCommissions: (id: string, params?: PaginationParams) =>
+    api.get<AdminPartnerCommission[]>(
+      `/admin/partners/${id}/commissions`,
       params as Record<string, string | number>,
     ),
   partnerApplications: (params?: AdminPartnerApplicationParams) =>

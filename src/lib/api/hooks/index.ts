@@ -1,6 +1,6 @@
 export { useUpdateProfile } from "./use-users";
 export { useSubmitContact, useSubmitPartnerApplication, useMyPartnerApplication } from "./use-contact";
-export { useAdminStats, useAdminCustomers, useAdminPayments, useAdminPartners, useAdminPartnerApplications, useReviewPartnerApplication } from "./use-admin";
+export { useAdminStats, useAdminCustomers, useAdminPayments, useAdminPartners, useAdminPartnerCommissions, useAdminPartnerApplications, useReviewPartnerApplication } from "./use-admin";
 export {
   usePartnerProfile,
   usePartnerClients,

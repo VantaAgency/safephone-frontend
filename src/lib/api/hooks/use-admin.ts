@@ -5,6 +5,7 @@ import { admin } from "../endpoints";
 import type {
   AdminCustomer,
   AdminPartner,
+  AdminPartnerCommission,
   AdminPartnerApplication,
   AdminPayment,
   AdminStats,
@@ -48,6 +49,14 @@ export function useAdminPartners({ enabled = true }: AdminQueryOptions = {}) {
   });
 }
 
+export function useAdminPartnerCommissions(partnerId?: string, { enabled = true }: AdminQueryOptions = {}) {
+  return useQuery<AdminPartnerCommission[]>({
+    queryKey: ["admin-partner-commissions", partnerId],
+    queryFn: () => admin.partnerCommissions(partnerId!),
+    enabled: enabled && !!partnerId,
+  });
+}
+
 export function useAdminPartnerApplications(status?: PartnerApplicationStatus, { enabled = true }: AdminQueryOptions = {}) {
   return useQuery<AdminPartnerApplication[]>({
     queryKey: ["admin-partner-applications", status],
@@ -65,6 +74,7 @@ export function useReviewPartnerApplication() {
       queryClient.invalidateQueries({ queryKey: ["admin-partner-applications"] });
       queryClient.invalidateQueries({ queryKey: ["admin-partners"] });
       queryClient.invalidateQueries({ queryKey: ["admin-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-partner-commissions"] });
     },
   });
 }

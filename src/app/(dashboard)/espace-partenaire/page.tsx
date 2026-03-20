@@ -178,11 +178,18 @@ export default function PartnerDashboardPage() {
             </h1>
             <p className="mt-1 text-slate-500">
               {profileLoading ? (
-                <span className="inline-block h-4 w-32 animate-pulse rounded bg-slate-200" />
+                <span className="inline-block h-4 w-48 animate-pulse rounded bg-slate-200" />
               ) : (
-                (profile?.city ?? "—")
+                `${profile?.city ?? "—"}${profile?.business_location ? ` · ${profile.business_location}` : ""}`
               )}
             </p>
+            {!profileLoading && profile && (
+              <p className="mt-2 text-sm text-slate-500">
+                {lang === "fr"
+                  ? `Commission d'acquisition attribuée : ${profile.commission_percentage}%`
+                  : `Assigned acquisition commission: ${profile.commission_percentage}%`}
+              </p>
+            )}
           </div>
           <Button
             variant="secondary"
@@ -197,29 +204,48 @@ export default function PartnerDashboardPage() {
         {/* Stats strip */}
         <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-4">
           <StatCard
-            label={lang === "fr" ? "Clients impliques" : "Clients involved"}
+            label={lang === "fr" ? "Clients inscrits" : "Enrolled clients"}
             value={profileLoading ? "—" : String(profile?.total_clients ?? 0)}
             icon={<UsersIcon size={20} className="text-indigo-600" />}
           />
           <StatCard
-            label={lang === "fr" ? "Plans achetes" : "Plans purchased"}
-            value={profileLoading ? "—" : String(profile?.plans_purchased ?? 0)}
+            label={lang === "fr" ? "Clients actifs" : "Active clients"}
+            value={profileLoading ? "—" : String(profile?.active_clients ?? 0)}
             icon={<ShieldCheckIcon size={20} className="text-violet-600" />}
           />
           <StatCard
-            label={lang === "fr" ? "Clients actifs" : "Active clients"}
-            value={profileLoading ? "—" : String(profile?.active_clients ?? 0)}
+            label={lang === "fr" ? "Commission attribuée" : "Assigned commission"}
+            value={profileLoading ? "—" : `${profile?.commission_percentage ?? 0}%`}
             icon={<PhoneIcon size={20} className="text-emerald-500" />}
           />
           <StatCard
-            label={lang === "fr" ? "Commission du mois" : "Month commission"}
+            label={lang === "fr" ? "Commissions gagnées" : "Commissions earned"}
             value={
               profileLoading
                 ? "—"
-                : formatXOF(profile?.month_commission_xof ?? 0)
+                : formatXOF(profile?.total_commission_earned_xof ?? 0)
             }
             icon={<CreditCardIcon size={20} className="text-yellow-500" />}
           />
+        </div>
+
+        <div className="mb-8 grid gap-4 md:grid-cols-2">
+          <div className="rounded-2xl border border-slate-200/80 bg-white px-5 py-4 shadow-sm">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+              {lang === "fr" ? "Commissions dues" : "Commissions owed"}
+            </p>
+            <p className="mt-2 text-xl font-medium text-indigo-950">
+              {profileLoading ? "—" : formatXOF(profile?.total_commission_owed_xof ?? 0)}
+            </p>
+          </div>
+          <div className="rounded-2xl border border-slate-200/80 bg-white px-5 py-4 shadow-sm">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+              {lang === "fr" ? "Commissions payées" : "Commissions paid"}
+            </p>
+            <p className="mt-2 text-xl font-medium text-indigo-950">
+              {profileLoading ? "—" : formatXOF(profile?.total_commission_paid_xof ?? 0)}
+            </p>
+          </div>
         </div>
 
         {/* Tabs */}
@@ -286,6 +312,7 @@ export default function PartnerDashboardPage() {
                           lang === "fr" ? "Invite le" : "Invited on",
                           lang === "fr" ? "Formule" : "Plan",
                           lang === "fr" ? "Statut" : "Status",
+                          lang === "fr" ? "Commission" : "Commission",
                           lang === "fr" ? "Invitation" : "Invitation",
                         ].map((h) => (
                           <th
@@ -376,6 +403,27 @@ export default function PartnerDashboardPage() {
                               />
                             </td>
                             <td className="px-5 py-3.5">
+                              {client.has_generated_commission ? (
+                                <div>
+                                  <div className="font-medium text-emerald-600">
+                                    {formatXOF(client.commission_amount_xof ?? 0)}
+                                  </div>
+                                  <div className="text-xs text-slate-400">
+                                    {client.commission_percentage ?? profile?.commission_percentage ?? 0}% ·{" "}
+                                    {client.commission_status === "paid"
+                                      ? (lang === "fr" ? "payée" : "paid")
+                                      : (lang === "fr" ? "en attente" : "pending")}
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="text-xs text-slate-400">
+                                  {lang === "fr"
+                                    ? "Aucune commission tant que le 1er paiement réussi n'est pas confirmé."
+                                    : "No commission until the first successful payment is confirmed."}
+                                </div>
+                              )}
+                            </td>
+                            <td className="px-5 py-3.5">
                               <div className="flex flex-col gap-2">
                                 <div className="max-w-[260px] truncate text-xs text-slate-400">
                                   {client.invitation_url ?? "—"}
@@ -443,8 +491,18 @@ export default function PartnerDashboardPage() {
         {tab === "performance" && (
           <div className="grid gap-8 lg:grid-cols-3">
             <div className="lg:col-span-2">
+              <div className="mb-4 rounded-2xl border border-slate-200/80 bg-white px-5 py-4 shadow-sm">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+                  {lang === "fr" ? "Règle de commission" : "Commission rule"}
+                </p>
+                <p className="mt-2 text-sm text-slate-500">
+                  {lang === "fr"
+                    ? "Ces commissions sont des commissions d'acquisition uniques. Un client génère une seule commission, uniquement après son premier paiement réussi."
+                    : "These are one-time acquisition commissions. A client generates one commission only, after their first successful payment."}
+                </p>
+              </div>
               <h2 className="mb-4 text-lg font-medium text-indigo-950">
-                {lang === "fr" ? "Ventes recentes" : "Recent sales"}
+                {lang === "fr" ? "Commissions d'acquisition" : "Acquisition commissions"}
               </h2>
               <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm">
                 {salesLoading ? (
@@ -459,8 +517,8 @@ export default function PartnerDashboardPage() {
                 ) : sales.length === 0 ? (
                   <div className="py-12 text-center text-sm text-slate-500">
                     {lang === "fr"
-                      ? "Aucune vente pour l'instant"
-                      : "No sales yet"}
+                      ? "Aucune commission générée pour l'instant"
+                      : "No commissions generated yet"}
                   </div>
                 ) : (
                   <div className="overflow-x-auto">
@@ -470,7 +528,9 @@ export default function PartnerDashboardPage() {
                           {[
                             lang === "fr" ? "Client" : "Customer",
                             lang === "fr" ? "Forfait" : "Plan",
+                            lang === "fr" ? "Base" : "Base",
                             "Commission",
+                            lang === "fr" ? "Statut" : "Status",
                             "Date",
                           ].map((h) => (
                             <th
@@ -498,11 +558,25 @@ export default function PartnerDashboardPage() {
                                   : (sale.plan_name_en ?? "—")}
                               </span>
                             </td>
+                            <td className="px-5 py-3.5 text-slate-500">
+                              {formatXOF(sale.base_amount_xof)}
+                            </td>
                             <td className="px-5 py-3.5 font-medium text-emerald-600">
-                              {formatXOF(sale.commission_xof)}
+                              <div>{formatXOF(sale.commission_amount_xof)}</div>
+                              <div className="text-xs text-slate-400">
+                                {sale.commission_percentage}%
+                              </div>
+                            </td>
+                            <td className="px-5 py-3.5">
+                              <StatusBadge
+                                status={sale.status === "paid" ? "active" : "pending"}
+                                label={sale.status === "paid"
+                                  ? (lang === "fr" ? "Payée" : "Paid")
+                                  : (lang === "fr" ? "En attente" : "Pending")}
+                              />
                             </td>
                             <td className="px-5 py-3.5 text-slate-500">
-                              {new Date(sale.date).toLocaleDateString(
+                              {new Date(sale.paid_at ?? sale.created_at).toLocaleDateString(
                                 lang === "fr" ? "fr-FR" : "en-US",
                                 {
                                   day: "2-digit",

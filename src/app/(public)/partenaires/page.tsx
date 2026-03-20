@@ -19,7 +19,7 @@ export default function PartenairesPage() {
 
   const { data: myApplication, isLoading: appLoading } = useMyPartnerApplication(isAuthenticated);
 
-  const [form, setForm] = useState({ store: "", name: "", phone: "", city: "" });
+  const [form, setForm] = useState({ store: "", name: "", phone: "", city: "", businessLocation: "" });
   const [success, setSuccess] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState("");
@@ -31,6 +31,7 @@ export default function PartenairesPage() {
       fullName: form.name,
       phone: form.phone,
       city: form.city,
+      businessLocation: form.businessLocation,
     });
     if (!result.success) {
       const errors: Record<string, string> = {};
@@ -50,9 +51,10 @@ export default function PartenairesPage() {
         full_name: form.name,
         phone: form.phone,
         city: form.city,
+        business_location: form.businessLocation,
       });
       setSuccess(true);
-      setForm({ store: "", name: "", phone: "", city: "" });
+      setForm({ store: "", name: "", phone: "", city: "", businessLocation: "" });
     } catch (err) {
       if (err instanceof ApiError) {
         setFormError(err.message);
@@ -147,8 +149,8 @@ export default function PartenairesPage() {
             </h3>
             <p className="mt-2 text-sm text-slate-500">
               {lang === "fr"
-                ? "Votre candidature a été approuvée. Accédez à votre espace partenaire pour gérer vos clients et commissions."
-                : "Your application has been approved. Access your partner dashboard to manage your clients and commissions."}
+                ? "Votre candidature a été approuvée. Accédez à votre espace partenaire pour gérer vos clients et vos commissions d'acquisition uniques."
+                : "Your application has been approved. Access your partner dashboard to manage your clients and your one-time acquisition commissions."}
             </p>
             <div className="mt-6">
               <Link href="/espace-partenaire">
@@ -206,8 +208,8 @@ export default function PartenairesPage() {
         </div>
         <p className="text-sm text-slate-500">
           {lang === "fr"
-            ? "Renseignez votre boutique pour rejoindre le réseau revendeur SafePhone."
-            : "Tell us about your shop to join the SafePhone reseller network."}
+            ? "Renseignez votre boutique pour rejoindre le réseau revendeur SafePhone et recevoir une commission unique sur le premier paiement réussi de chaque nouveau client."
+            : "Tell us about your shop to join the SafePhone reseller network and earn a one-time commission on each new client's first successful payment."}
         </p>
       </div>
       <div className="space-y-5">
@@ -247,6 +249,14 @@ export default function PartenairesPage() {
             ))}
           </Select>
         </FormField>
+        <FormField label={t.partners.businessLocation} error={fieldErrors.businessLocation}>
+          <Input
+            value={form.businessLocation}
+            onChange={(e) => setForm({ ...form, businessLocation: e.target.value })}
+            placeholder={lang === "fr" ? "Marché Ouest Foire, Liberté 6..." : "Marché Ouest Foire, Liberté 6..."}
+            error={!!fieldErrors.businessLocation}
+          />
+        </FormField>
         {(formError || submitPartnerApplication.isError) && (
           <div className="rounded-xl border border-red-200/60 bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
             {formError || (lang === "fr" ? "Une erreur est survenue. Réessayez." : "An error occurred. Please try again.")}
@@ -258,7 +268,7 @@ export default function PartenairesPage() {
           fullWidth
           onClick={handleSubmit}
           loading={submitPartnerApplication.isPending}
-          disabled={!form.store || !(form.name || user?.name) || !(form.phone || user?.phone) || !form.city}
+          disabled={!form.store || !(form.name || user?.name) || !(form.phone || user?.phone) || !form.city || !form.businessLocation}
         >
           {t.partners.submit}
         </Button>
