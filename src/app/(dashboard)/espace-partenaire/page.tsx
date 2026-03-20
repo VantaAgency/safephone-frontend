@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { RouteGuardLoader } from "@/components/auth/route-guard-loader";
 import { StatCard } from "@/components/cards/stat-card";
 import { Button } from "@/components/ui/button";
 import { FormField, Input, Select } from "@/components/ui/form-field";
@@ -40,10 +42,20 @@ const STATUS_ORDER: ClientStatus[] = [
 export default function PartnerDashboardPage() {
   const { lang } = useLanguage();
   const { user, isPending } = useAuth();
-  const { data: profile, isLoading: profileLoading } = usePartnerProfile();
-  const { data: clients = [], isLoading: clientsLoading } = usePartnerClients();
-  const { data: sales = [], isLoading: salesLoading } = usePartnerSales();
-  const { data: payouts = [], isLoading: payoutsLoading } = usePartnerPayouts();
+  const router = useRouter();
+  const isPartner = user?.role === "partner";
+  const { data: profile, isLoading: profileLoading } = usePartnerProfile({
+    enabled: isPartner,
+  });
+  const { data: clients = [], isLoading: clientsLoading } = usePartnerClients({
+    enabled: isPartner,
+  });
+  const { data: sales = [], isLoading: salesLoading } = usePartnerSales({
+    enabled: isPartner,
+  });
+  const { data: payouts = [], isLoading: payoutsLoading } = usePartnerPayouts({
+    enabled: isPartner,
+  });
   const { data: plans } = usePlans();
   const createClient = useCreatePartnerClient();
   const refreshInvitation = useRefreshPartnerInvitation();
@@ -57,27 +69,16 @@ export default function PartnerDashboardPage() {
   );
   const [copiedClientId, setCopiedClientId] = useState<string | null>(null);
 
-  if (!isPending && user?.role !== "partner" && user?.role !== "admin") {
-    return (
-      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 text-center">
-        <ShieldCheckIcon size={48} className="text-slate-300" />
-        <h1 className="text-xl font-semibold text-slate-800">
-          {lang === "fr" ? "Accès refusé" : "Access denied"}
-        </h1>
-        <p className="text-sm text-slate-500">
-          {lang === "fr"
-            ? "Cette page est réservée aux partenaires MobiTech."
-            : "This page is for MobiTech partners only."}
-        </p>
-        <a
-          href="/tableau-de-bord"
-          className="text-sm font-medium text-blue-600 hover:underline"
-        >
-          {lang === "fr" ? "Retour au tableau de bord" : "Back to dashboard"}
-        </a>
-      </div>
-    );
+  useEffect(() => {
+    if (!isPending && !isPartner) {
+      router.replace("/acces-refuse?required=partner&from=%2Fespace-partenaire");
+    }
+  }, [isPartner, isPending, router]);
+
+  if (isPending || !isPartner) {
+    return <RouteGuardLoader />;
   }
+
   const statusLabel: Record<ClientStatus, string> = {
     invited: lang === "fr" ? "Invité" : "Invited",
     account_created: lang === "fr" ? "Compte créé" : "Account created",

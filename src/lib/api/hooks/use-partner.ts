@@ -4,17 +4,23 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { partner } from "../endpoints";
 import type { CreatePartnerClientRequest } from "../types";
 
-export function usePartnerProfile() {
+interface PartnerQueryOptions {
+  enabled?: boolean;
+}
+
+export function usePartnerProfile({ enabled = true }: PartnerQueryOptions = {}) {
   return useQuery({
     queryKey: ["partner", "profile"],
     queryFn: () => partner.getProfile(),
+    enabled,
   });
 }
 
-export function usePartnerClients() {
+export function usePartnerClients({ enabled = true }: PartnerQueryOptions = {}) {
   return useQuery({
     queryKey: ["partner", "clients"],
     queryFn: () => partner.listClients(),
+    enabled,
   });
 }
 
@@ -61,16 +67,18 @@ export function useClaimPartnerInvitation() {
   });
 }
 
-export function usePartnerSales() {
+export function usePartnerSales({ enabled = true }: PartnerQueryOptions = {}) {
   return useQuery({
     queryKey: ["partner", "sales"],
     queryFn: () => partner.listSales(),
+    enabled,
   });
 }
 
-export function usePartnerPayouts() {
+export function usePartnerPayouts({ enabled = true }: PartnerQueryOptions = {}) {
   return useQuery({
     queryKey: ["partner", "payouts"],
     queryFn: () => partner.listPayouts(),
+    enabled,
   });
 }

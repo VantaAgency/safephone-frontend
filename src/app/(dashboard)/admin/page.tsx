@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { RouteGuardLoader } from "@/components/auth/route-guard-loader";
 import { StatCard } from "@/components/cards/stat-card";
 import { Button } from "@/components/ui/button";
 import { Input, Select } from "@/components/ui/form-field";
@@ -53,6 +55,7 @@ const PAYMENT_PROVIDER_DISPLAY: Record<string, { label: string; color: string }>
 export default function AdminPage() {
   const { lang } = useLanguage();
   const { user, isPending } = useAuth();
+  const router = useRouter();
   const [tab, setTab] = useState<AdminTab>("overview");
   const [search, setSearch] = useState("");
 
@@ -80,23 +83,14 @@ export default function AdminPage() {
   const [repairDateDrafts, setRepairDateDrafts] = useState<Record<string, string>>({});
   const [repairTimeDrafts, setRepairTimeDrafts] = useState<Record<string, string>>({});
 
-  if (!isPending && !isAdmin) {
-    return (
-      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 text-center">
-        <ShieldCheckIcon size={48} className="text-slate-300" />
-        <h1 className="text-xl font-semibold text-slate-800">
-          {lang === "fr" ? "Accès refusé" : "Access denied"}
-        </h1>
-        <p className="text-sm text-slate-500">
-          {lang === "fr"
-            ? "Vous n'avez pas les droits pour accéder à cette page."
-            : "You don't have permission to access this page."}
-        </p>
-        <a href="/tableau-de-bord" className="text-sm font-medium text-blue-600 hover:underline">
-          {lang === "fr" ? "Retour au tableau de bord" : "Back to dashboard"}
-        </a>
-      </div>
-    );
+  useEffect(() => {
+    if (!isPending && !isAdmin) {
+      router.replace("/acces-refuse?required=admin&from=%2Fadmin");
+    }
+  }, [isAdmin, isPending, router]);
+
+  if (isPending || !isAdmin) {
+    return <RouteGuardLoader />;
   }
 
   const tabLabels: Record<AdminTab, string> = {

@@ -66,7 +66,7 @@ export function Navbar({ lang, setLang, t }: NavbarProps) {
     },
   ];
 
-  if (user?.role === "partner" || user?.role === "admin") {
+  if (user?.role === "partner") {
     accountDestinations.push({
       href: "/espace-partenaire",
       icon: UsersIcon,
