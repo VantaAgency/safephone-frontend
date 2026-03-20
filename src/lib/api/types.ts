@@ -500,15 +500,32 @@ export interface AdminStats {
   total_devices: number;
 }
 
+export interface AdminCustomerSubscription {
+  id: string;
+  plan_id: string;
+  plan_name_fr?: string;
+  plan_name_en?: string;
+  status: SubscriptionStatus;
+  billing_cycle: "monthly" | "annual";
+  device_id: string;
+  device_brand?: string;
+  device_model?: string;
+  device_type?: DeviceType;
+  current_period_start?: string;
+  current_period_end?: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface AdminCustomer {
   id: string;
   full_name: string;
   phone?: string;
   email: string;
-  plan_name_fr?: string;
-  plan_name_en?: string;
   device_count: number;
-  subscription_status?: string;
+  active_subscription_count: number;
+  total_subscription_count: number;
+  subscriptions: AdminCustomerSubscription[];
 }
 
 export interface AdminPayment {

@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { RouteGuardLoader } from "@/components/auth/route-guard-loader";
 import { StatCard } from "@/components/cards/stat-card";
 import { Button } from "@/components/ui/button";
 import { Input, Select } from "@/components/ui/form-field";
-import { CreditCardIcon, ShieldCheckIcon, UsersIcon, WrenchIcon } from "@/components/ui/icons";
+import { ChevronDownIcon, ChevronRightIcon, CreditCardIcon, ShieldCheckIcon, UsersIcon, WrenchIcon } from "@/components/ui/icons";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { CardSkeleton } from "@/components/ui/skeleton";
 import {
@@ -38,7 +38,7 @@ import {
   getRepairTypeLabel,
 } from "@/lib/repairs";
 import { cn } from "@/lib/utils";
-import type { ClaimStatus, RepairRequest, RepairRequestStatus } from "@/lib/api/types";
+import type { AdminCustomer, AdminCustomerSubscription, ClaimStatus, RepairRequest, RepairRequestStatus } from "@/lib/api/types";
 
 const ADMIN_TABS = ["overview", "claims", "repairs", "customers", "payments", "applications", "partners"] as const;
 type AdminTab = (typeof ADMIN_TABS)[number];
@@ -81,6 +81,7 @@ export default function AdminPage() {
   const [rejectionReason, setRejectionReason] = useState("");
   const [commissionDrafts, setCommissionDrafts] = useState<Record<string, string>>({});
   const [selectedPartnerId, setSelectedPartnerId] = useState<string | null>(null);
+  const [expandedCustomerId, setExpandedCustomerId] = useState<string | null>(null);
   const [repairStatusDrafts, setRepairStatusDrafts] = useState<Record<string, RepairRequestStatus>>({});
   const [repairAmountDrafts, setRepairAmountDrafts] = useState<Record<string, string>>({});
   const [repairDateDrafts, setRepairDateDrafts] = useState<Record<string, string>>({});
@@ -152,6 +153,147 @@ export default function AdminPage() {
   const getPaymentMethodLabel = (method?: string) => {
     if (!method) return null;
     return paymentMethodLabels[method] ?? method;
+  };
+
+  const formatShortDate = (value?: string) => {
+    if (!value) return "—";
+    return new Date(value).toLocaleDateString(lang === "fr" ? "fr-FR" : "en-US", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+  };
+
+  const getLocalizedPlanName = (subscription: Pick<AdminCustomerSubscription, "plan_name_fr" | "plan_name_en">) =>
+    lang === "fr" ? subscription.plan_name_fr : subscription.plan_name_en;
+
+  const getDeviceTypeLabel = (deviceType?: string) => {
+    switch (deviceType) {
+      case "smartphone":
+        return lang === "fr" ? "Smartphone" : "Smartphone";
+      case "tablet":
+        return lang === "fr" ? "Tablette" : "Tablet";
+      case "tv":
+        return "TV";
+      case "computer":
+        return lang === "fr" ? "Ordinateur" : "Computer";
+      case "home_electronics":
+        return lang === "fr" ? "Électronique maison" : "Home electronics";
+      default:
+        return null;
+    }
+  };
+
+  const getDeviceLabel = (subscription: Pick<AdminCustomerSubscription, "device_brand" | "device_model" | "device_type">) => {
+    const label = [subscription.device_brand, subscription.device_model].filter(Boolean).join(" ").trim();
+    return label || getDeviceTypeLabel(subscription.device_type) || "—";
+  };
+
+  const formatPlanCount = (count: number, active = false) => {
+    if (lang === "fr") {
+      if (active) {
+        if (count === 0) return "Aucun forfait actif";
+        return `${count} forfait${count > 1 ? "s" : ""} actif${count > 1 ? "s" : ""}`;
+      }
+      return `${count} forfait${count > 1 ? "s" : ""}`;
+    }
+
+    if (active) {
+      if (count === 0) return "No active plans";
+      return `${count} active plan${count > 1 ? "s" : ""}`;
+    }
+    return `${count} plan${count > 1 ? "s" : ""}`;
+  };
+
+  const formatCompactLabelList = (labels: Array<string | undefined>) => {
+    const uniqueLabels = Array.from(
+      new Set(
+        labels
+          .filter((label): label is string => typeof label === "string")
+          .map((label) => label.trim())
+          .filter(Boolean),
+      ),
+    );
+
+    if (uniqueLabels.length === 0) return null;
+    if (uniqueLabels.length <= 2) return uniqueLabels.join(" · ");
+    return `${uniqueLabels.slice(0, 2).join(" · ")} +${uniqueLabels.length - 2}`;
+  };
+
+  const getCustomerPlanSummary = (customer: AdminCustomer) => {
+    if (customer.total_subscription_count === 0) {
+      return {
+        primary: "—",
+        secondary: lang === "fr" ? "Aucun forfait enregistré" : "No plans yet",
+      };
+    }
+
+    const activeSubscriptions = customer.subscriptions.filter((subscription) => subscription.status === "active");
+    const activeLabels = formatCompactLabelList(activeSubscriptions.map(getLocalizedPlanName));
+
+    if (customer.active_subscription_count > 0) {
+      return {
+        primary: formatPlanCount(customer.active_subscription_count, true),
+        secondary:
+          activeLabels ??
+          (customer.total_subscription_count === customer.active_subscription_count
+            ? formatPlanCount(customer.total_subscription_count)
+            : `${formatPlanCount(customer.total_subscription_count)} ${lang === "fr" ? "au total" : "total"}`),
+      };
+    }
+
+    return {
+      primary: formatPlanCount(0, true),
+      secondary: `${formatPlanCount(customer.total_subscription_count)} ${lang === "fr" ? "au total" : "total"}`,
+    };
+  };
+
+  const getCustomerStatusSummary = (customer: AdminCustomer): { status: "active" | "pending" | "expired" | "cancelled" | "info"; label: string } => {
+    const statusCounts = customer.subscriptions.reduce<Record<string, number>>((acc, subscription) => {
+      acc[subscription.status] = (acc[subscription.status] ?? 0) + 1;
+      return acc;
+    }, {});
+
+    if (customer.active_subscription_count > 0) {
+      return {
+        status: "active",
+        label: lang === "fr"
+          ? `${customer.active_subscription_count} actif${customer.active_subscription_count > 1 ? "s" : ""}`
+          : `${customer.active_subscription_count} active plan${customer.active_subscription_count > 1 ? "s" : ""}`,
+      };
+    }
+
+    if ((statusCounts.pending ?? 0) > 0) {
+      return {
+        status: "pending",
+        label: lang === "fr"
+          ? `${statusCounts.pending} en attente`
+          : `${statusCounts.pending} pending`,
+      };
+    }
+
+    if ((statusCounts.expired ?? 0) > 0) {
+      return {
+        status: "expired",
+        label: lang === "fr"
+          ? `${statusCounts.expired} expiré${statusCounts.expired > 1 ? "s" : ""}`
+          : `${statusCounts.expired} expired`,
+      };
+    }
+
+    if ((statusCounts.cancelled ?? 0) > 0) {
+      return {
+        status: "cancelled",
+        label: lang === "fr"
+          ? `${statusCounts.cancelled} annulé${statusCounts.cancelled > 1 ? "s" : ""}`
+          : `${statusCounts.cancelled} cancelled`,
+      };
+    }
+
+    return {
+      status: "info",
+      label: lang === "fr" ? "Aucun forfait" : "No plans",
+    };
   };
 
   const parseCommissionPercentage = (value: string) => {
@@ -693,32 +835,135 @@ export default function AdminPage() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-slate-100 bg-slate-50/50">
-                        {[lang === "fr" ? "Client" : "Customer", "Phone", "Email", lang === "fr" ? "Forfait" : "Plan", lang === "fr" ? "Appareils" : "Devices", lang === "fr" ? "Statut" : "Status"].map(h => (
+                        {[lang === "fr" ? "Client" : "Customer", "Phone", "Email", lang === "fr" ? "Forfaits" : "Plans", lang === "fr" ? "Appareils" : "Devices", lang === "fr" ? "Statut" : "Status"].map(h => (
                           <th key={h} className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-400 whitespace-nowrap">{h}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody>
-                      {(customers ?? []).map((c) => (
-                        <tr key={c.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/30">
-                          <td className="px-5 py-3.5 font-medium text-indigo-950">{c.full_name}</td>
-                          <td className="px-5 py-3.5 text-slate-500">{c.phone || "—"}</td>
-                          <td className="px-5 py-3.5 text-slate-400 text-xs">{c.email}</td>
-                          <td className="px-5 py-3.5">
-                            {(lang === "fr" ? c.plan_name_fr : c.plan_name_en)
-                              ? <span className="rounded-full bg-yellow-400/15 px-2.5 py-0.5 text-xs font-medium text-yellow-600">{lang === "fr" ? c.plan_name_fr : c.plan_name_en}</span>
-                              : <span className="text-slate-400 text-xs">—</span>
-                            }
-                          </td>
-                          <td className="px-5 py-3.5 text-center text-slate-500">{c.device_count}</td>
-                          <td className="px-5 py-3.5">
-                            <StatusBadge
-                              status={c.subscription_status === "active" ? "active" : "pending"}
-                              label={c.subscription_status ? (statusLabels[c.subscription_status] || c.subscription_status) : "—"}
-                            />
-                          </td>
-                        </tr>
-                      ))}
+                      {(customers ?? []).map((c) => {
+                        const isExpanded = expandedCustomerId === c.id;
+                        const planSummary = getCustomerPlanSummary(c);
+                        const statusSummary = getCustomerStatusSummary(c);
+
+                        return (
+                          <Fragment key={c.id}>
+                            <tr key={c.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/30">
+                              <td className="px-5 py-3.5">
+                                <div className="flex flex-col gap-1">
+                                  <span className="font-medium text-indigo-950">{c.full_name}</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => setExpandedCustomerId((current) => current === c.id ? null : c.id)}
+                                    className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 transition-colors hover:text-indigo-950"
+                                  >
+                                    {isExpanded ? <ChevronDownIcon size={14} /> : <ChevronRightIcon size={14} />}
+                                    {isExpanded
+                                      ? (lang === "fr" ? "Masquer les forfaits" : "Hide plans")
+                                      : (lang === "fr" ? "Voir les forfaits" : "View plans")}
+                                  </button>
+                                </div>
+                              </td>
+                              <td className="px-5 py-3.5 text-slate-500">{c.phone || "—"}</td>
+                              <td className="px-5 py-3.5 text-xs text-slate-400">{c.email}</td>
+                              <td className="px-5 py-3.5">
+                                <div className="flex flex-col gap-1">
+                                  <span className={cn(
+                                    "text-sm font-medium",
+                                    c.total_subscription_count > 0 ? "text-indigo-950" : "text-slate-400",
+                                  )}>
+                                    {planSummary.primary}
+                                  </span>
+                                  <span className="text-xs text-slate-500">{planSummary.secondary}</span>
+                                </div>
+                              </td>
+                              <td className="px-5 py-3.5 text-center text-slate-500">{c.device_count}</td>
+                              <td className="px-5 py-3.5">
+                                <StatusBadge
+                                  status={statusSummary.status}
+                                  label={statusSummary.label}
+                                />
+                              </td>
+                            </tr>
+                            {isExpanded && (
+                              <tr className="border-b border-slate-50 bg-slate-50/40 last:border-0">
+                                <td colSpan={6} className="px-5 pb-4 pt-0">
+                                  <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">
+                                    <div className="mb-4 flex items-center justify-between gap-3">
+                                      <div>
+                                        <p className="text-sm font-medium text-indigo-950">
+                                          {lang === "fr" ? "Forfaits du client" : "Customer plans"}
+                                        </p>
+                                        <p className="text-xs text-slate-500">
+                                          {c.total_subscription_count > 0
+                                            ? `${formatPlanCount(c.total_subscription_count)} ${lang === "fr" ? "rattaché(s) à ce client" : "linked to this customer"}`
+                                            : (lang === "fr" ? "Aucun forfait enregistré pour ce client." : "No plans recorded for this customer.")}
+                                        </p>
+                                      </div>
+                                      {c.active_subscription_count > 0 && (
+                                        <StatusBadge
+                                          status="active"
+                                          label={formatPlanCount(c.active_subscription_count, true)}
+                                        />
+                                      )}
+                                    </div>
+
+                                    {c.subscriptions.length === 0 ? (
+                                      <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500">
+                                        {lang === "fr"
+                                          ? "Ce client n’a encore aucun abonnement associé."
+                                          : "This customer does not have any linked subscriptions yet."}
+                                      </div>
+                                    ) : (
+                                      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                                        {c.subscriptions.map((subscription) => (
+                                          <div key={subscription.id} className="rounded-xl border border-slate-200/80 bg-slate-50/60 p-4">
+                                            <div className="flex items-start justify-between gap-3">
+                                              <div>
+                                                <p className="text-sm font-medium text-indigo-950">
+                                                  {getLocalizedPlanName(subscription) || "—"}
+                                                </p>
+                                                <p className="mt-1 text-xs text-slate-500">
+                                                  {lang === "fr"
+                                                    ? subscription.billing_cycle === "annual" ? "Annuel" : "Mensuel"
+                                                    : subscription.billing_cycle === "annual" ? "Annual" : "Monthly"}
+                                                </p>
+                                              </div>
+                                              <StatusBadge
+                                                status={subscription.status as "active" | "pending" | "expired" | "cancelled"}
+                                                label={statusLabels[subscription.status] || subscription.status}
+                                              />
+                                            </div>
+
+                                            <div className="mt-4 space-y-2 text-xs text-slate-500">
+                                              <div className="flex items-center justify-between gap-3">
+                                                <span>{lang === "fr" ? "Appareil" : "Device"}</span>
+                                                <span className="text-right font-medium text-slate-700">{getDeviceLabel(subscription)}</span>
+                                              </div>
+                                              <div className="flex items-center justify-between gap-3">
+                                                <span>{lang === "fr" ? "Début" : "Start"}</span>
+                                                <span className="text-right font-medium text-slate-700">
+                                                  {formatShortDate(subscription.current_period_start ?? subscription.created_at)}
+                                                </span>
+                                              </div>
+                                              <div className="flex items-center justify-between gap-3">
+                                                <span>{lang === "fr" ? "Expiration" : "Expiry"}</span>
+                                                <span className="text-right font-medium text-slate-700">
+                                                  {formatShortDate(subscription.current_period_end)}
+                                                </span>
+                                              </div>
+                                            </div>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </Fragment>
+                        );
+                      })}
                       {(customers ?? []).length === 0 && (
                         <tr>
                           <td colSpan={6} className="px-5 py-8 text-center text-sm text-slate-400">
