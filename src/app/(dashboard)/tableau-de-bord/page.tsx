@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/icons";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { StatCard } from "@/components/cards/stat-card";
-import { CardSkeleton } from "@/components/ui/skeleton";
+import { CardSkeleton, Skeleton } from "@/components/ui/skeleton";
 import {
   useDevices,
   useClaims,
@@ -152,6 +152,60 @@ function RepairProgress({
   );
 }
 
+function DashboardStatCardSkeleton() {
+  return (
+    <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-[0_1px_3px_0_rgba(0,0,0,0.02)]">
+      <div className="flex items-start justify-between">
+        <div className="space-y-2">
+          <Skeleton className="h-3 w-24" />
+          <Skeleton className="h-7 w-12" />
+        </div>
+        <Skeleton className="h-10 w-10 rounded-xl" />
+      </div>
+    </div>
+  );
+}
+
+function DashboardBannerSkeleton() {
+  return (
+    <div className="mb-6 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-1 items-start gap-3">
+          <Skeleton className="mt-0.5 h-5 w-5 rounded-full" />
+          <div className="flex-1 space-y-2">
+            <Skeleton className="h-4 w-40" />
+            <Skeleton className="h-3 w-full max-w-2xl" />
+            <Skeleton className="h-3 w-64" />
+          </div>
+        </div>
+        <Skeleton className="h-4 w-24" />
+      </div>
+    </div>
+  );
+}
+
+function DashboardSidebarSectionSkeleton({ rows = 2 }: { rows?: number }) {
+  return (
+    <div className="space-y-3">
+      {Array.from({ length: rows }).map((_, index) => (
+        <div
+          key={index}
+          className="rounded-xl border border-slate-100 bg-slate-50 p-4"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex-1 space-y-2">
+              <Skeleton className="h-4 w-36" />
+              <Skeleton className="h-3 w-24" />
+            </div>
+            <Skeleton className="h-6 w-20 rounded-full" />
+          </div>
+          <Skeleton className="mt-3 h-3 w-28" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function DashboardPage() {
   const { lang, t } = useLanguage();
   const { user } = useAuth();
@@ -172,7 +226,11 @@ export default function DashboardPage() {
   const { data: claims, isLoading: claimsLoading } = useClaims();
   const { data: repairRequests, isLoading: repairsLoading } = useMyRepairRequests();
   const { data: payments, isLoading: paymentsLoading } = usePayments();
-  const { data: subscriptions, refetch: refetchSubscriptions } = useSubscriptions();
+  const {
+    data: subscriptions,
+    isLoading: subscriptionsLoading,
+    refetch: refetchSubscriptions,
+  } = useSubscriptions();
 
   const createClaim = useCreateClaim();
   const updateDevice = useUpdateDevice();
@@ -267,6 +325,12 @@ export default function DashboardPage() {
     void refetchSubscriptions();
   }, [completedPaymentIdsSignature, refetchDevices, refetchSubscriptions]);
 
+  const subscriptionsReady = !subscriptionsLoading;
+  const coverageDataLoading =
+    devicesLoading || subscriptionsLoading || paymentsLoading;
+  const coverageDataReady = !coverageDataLoading;
+  const plansSectionLoading = devicesLoading || subscriptionsLoading;
+
   const handleClaimSubmit = async () => {
     if (!claimType || !claimDesc || !claimDeviceId) return;
     const sub = subscriptions?.find(
@@ -330,19 +394,33 @@ export default function DashboardPage() {
     }
   };
 
-  const latestSubscriptionByDeviceId = new Map<string, Subscription>();
-  (subscriptions ?? []).forEach((sub) => {
-    if (!latestSubscriptionByDeviceId.has(sub.device_id)) {
-      latestSubscriptionByDeviceId.set(sub.device_id, sub);
-    }
-  });
+  const latestSubscriptionByDeviceId = useMemo(() => {
+    const subscriptionMap = new Map<string, Subscription>();
 
-  const latestPaymentBySubscriptionId = new Map<string, Payment>();
-  (payments ?? []).forEach((payment) => {
-    if (!latestPaymentBySubscriptionId.has(payment.subscription_id)) {
-      latestPaymentBySubscriptionId.set(payment.subscription_id, payment);
-    }
-  });
+    if (!coverageDataReady) return subscriptionMap;
+
+    (subscriptions ?? []).forEach((sub) => {
+      if (!subscriptionMap.has(sub.device_id)) {
+        subscriptionMap.set(sub.device_id, sub);
+      }
+    });
+
+    return subscriptionMap;
+  }, [coverageDataReady, subscriptions]);
+
+  const latestPaymentBySubscriptionId = useMemo(() => {
+    const paymentMap = new Map<string, Payment>();
+
+    if (!coverageDataReady) return paymentMap;
+
+    (payments ?? []).forEach((payment) => {
+      if (!paymentMap.has(payment.subscription_id)) {
+        paymentMap.set(payment.subscription_id, payment);
+      }
+    });
+
+    return paymentMap;
+  }, [coverageDataReady, payments]);
 
   const getDeviceCoverageMeta = (device: Device): DeviceCoverageMeta => {
     const subscription = latestSubscriptionByDeviceId.get(device.id);
@@ -387,23 +465,33 @@ export default function DashboardPage() {
   };
 
   const deviceCoverageById = new Map<string, DeviceCoverageMeta>();
-  (devices ?? []).forEach((device) => {
-    deviceCoverageById.set(device.id, getDeviceCoverageMeta(device));
-  });
+  if (coverageDataReady && devices) {
+    devices.forEach((device) => {
+      deviceCoverageById.set(device.id, getDeviceCoverageMeta(device));
+    });
+  }
 
-  const devicesPendingActivation = (devices ?? []).filter(
-    (device) =>
-      deviceCoverageById.get(device.id)?.status === "pending_activation",
-  );
-  const activeDevices = (devices ?? []).filter(
-    (device) => deviceCoverageById.get(device.id)?.status === "active",
-  );
-  const activeSubscriptions =
-    subscriptions?.filter((s) => s.status === "active") ?? [];
-  const eligibleDevices = activeDevices.filter((device) => {
-    const meta = deviceCoverageById.get(device.id);
-    return meta?.status === "active" && meta.subscription?.status === "active";
-  });
+  const devicesPendingActivation =
+    coverageDataReady && devices
+      ? devices.filter(
+          (device) =>
+            deviceCoverageById.get(device.id)?.status === "pending_activation",
+        )
+      : [];
+
+  const activeSubscriptions = subscriptionsReady
+    ? (subscriptions ?? []).filter((sub) => sub.status === "active")
+    : [];
+
+  const eligibleDevices =
+    coverageDataReady && devices
+      ? devices.filter((device) => {
+          const meta = deviceCoverageById.get(device.id);
+          return (
+            meta?.status === "active" && meta.subscription?.status === "active"
+          );
+        })
+      : [];
 
   const userName = user?.name || "Utilisateur";
 
@@ -434,59 +522,80 @@ export default function DashboardPage() {
         )}
 
         {/* IMEI completion alert */}
-        {devicesPendingActivation.length > 0 && tab !== "devices" && (
-          <div className="mb-6 flex items-start justify-between rounded-2xl border border-amber-200 bg-amber-50 p-4">
-            <div className="flex items-start gap-3">
-              <ShieldCheckIcon
-                size={20}
-                className="mt-0.5 shrink-0 text-amber-600"
-              />
-              <div>
-                <p className="text-sm font-medium text-amber-800">
-                  {lang === "fr"
-                    ? "Complétez l'enregistrement"
-                    : "Complete registration"}
-                </p>
-                <p className="mt-0.5 text-xs text-amber-700">
-                  {lang === "fr"
-                    ? `${devicesPendingActivation.map((d) => formatDeviceDisplayName(d)).join(", ")} — ajoutez le numéro IMEI pour finaliser l'activation après confirmation du paiement.`
-                    : `${devicesPendingActivation.map((d) => formatDeviceDisplayName(d)).join(", ")} — add the IMEI to finish activation after payment confirmation.`}
-                </p>
-                <p className="mt-1 text-xs text-amber-700/90">{imeiHelpText}</p>
+        {tab !== "devices" && coverageDataLoading && <DashboardBannerSkeleton />}
+        {tab !== "devices" &&
+          coverageDataReady &&
+          devicesPendingActivation.length > 0 && (
+            <div className="mb-6 flex items-start justify-between rounded-2xl border border-amber-200 bg-amber-50 p-4">
+              <div className="flex items-start gap-3">
+                <ShieldCheckIcon
+                  size={20}
+                  className="mt-0.5 shrink-0 text-amber-600"
+                />
+                <div>
+                  <p className="text-sm font-medium text-amber-800">
+                    {lang === "fr"
+                      ? "Complétez l'enregistrement"
+                      : "Complete registration"}
+                  </p>
+                  <p className="mt-0.5 text-xs text-amber-700">
+                    {lang === "fr"
+                      ? `${devicesPendingActivation.map((d) => formatDeviceDisplayName(d)).join(", ")} — ajoutez le numéro IMEI pour finaliser l'activation après confirmation du paiement.`
+                      : `${devicesPendingActivation.map((d) => formatDeviceDisplayName(d)).join(", ")} — add the IMEI to finish activation after payment confirmation.`}
+                  </p>
+                  <p className="mt-1 text-xs text-amber-700/90">
+                    {imeiHelpText}
+                  </p>
+                </div>
               </div>
+              <button
+                type="button"
+                onClick={() => setTab("devices")}
+                className="ml-3 shrink-0 text-xs font-medium text-amber-700 hover:underline"
+              >
+                {lang === "fr" ? "Ajouter l'IMEI →" : "Add IMEI →"}
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={() => setTab("devices")}
-              className="ml-3 shrink-0 text-xs font-medium text-amber-700 hover:underline"
-            >
-              {lang === "fr" ? "Ajouter l'IMEI →" : "Add IMEI →"}
-            </button>
-          </div>
-        )}
+          )}
 
         {/* Stats Strip */}
         <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-4">
-          <StatCard
-            label={t.dashboard.active}
-            value={String(activeSubscriptions.length)}
-            icon={<ShieldCheckIcon size={20} className="text-emerald-500" />}
-          />
-          <StatCard
-            label={t.dashboard.devices}
-            value={String(devices?.length ?? 0)}
-            icon={<PhoneIcon size={20} className="text-indigo-600" />}
-          />
-          <StatCard
-            label={t.dashboard.claims}
-            value={String(claims?.length ?? 0)}
-            icon={<ClockIcon size={20} className="text-yellow-500" />}
-          />
-          <StatCard
-            label={t.dashboard.payments}
-            value={String(payments?.length ?? 0)}
-            icon={<CreditCardIcon size={20} className="text-slate-500" />}
-          />
+          {subscriptionsLoading ? (
+            <DashboardStatCardSkeleton />
+          ) : (
+            <StatCard
+              label={t.dashboard.active}
+              value={String(activeSubscriptions.length)}
+              icon={<ShieldCheckIcon size={20} className="text-emerald-500" />}
+            />
+          )}
+          {devicesLoading ? (
+            <DashboardStatCardSkeleton />
+          ) : (
+            <StatCard
+              label={t.dashboard.devices}
+              value={String(devices?.length ?? 0)}
+              icon={<PhoneIcon size={20} className="text-indigo-600" />}
+            />
+          )}
+          {claimsLoading ? (
+            <DashboardStatCardSkeleton />
+          ) : (
+            <StatCard
+              label={t.dashboard.claims}
+              value={String(claims?.length ?? 0)}
+              icon={<ClockIcon size={20} className="text-yellow-500" />}
+            />
+          )}
+          {paymentsLoading ? (
+            <DashboardStatCardSkeleton />
+          ) : (
+            <StatCard
+              label={t.dashboard.payments}
+              value={String(payments?.length ?? 0)}
+              icon={<CreditCardIcon size={20} className="text-slate-500" />}
+            />
+          )}
         </div>
 
         {/* Tab Bar */}
@@ -526,7 +635,7 @@ export default function DashboardPage() {
                     {t.dashboard.viewAll}
                   </button>
                 </div>
-                {devicesLoading ? (
+                {coverageDataLoading ? (
                   <div className="space-y-3">
                     {Array.from({ length: 2 }).map((_, i) => (
                       <CardSkeleton key={i} />
@@ -545,9 +654,9 @@ export default function DashboardPage() {
                 ) : (
                   <div className="space-y-3">
                     {devices.slice(0, 3).map((d) => {
-                      const coverage = deviceCoverageById.get(d.id) ?? {
-                        status: d.status,
-                      };
+                      const coverage = deviceCoverageById.get(d.id);
+                      if (!coverage) return null;
+
                       return (
                         <div
                           key={d.id}
@@ -677,7 +786,9 @@ export default function DashboardPage() {
                 <h3 className="mb-4 text-xs font-medium uppercase tracking-wider text-slate-400">
                   {t.dashboard.myPlans}
                 </h3>
-                {activeSubscriptions.length === 0 ? (
+                {plansSectionLoading ? (
+                  <DashboardSidebarSectionSkeleton />
+                ) : activeSubscriptions.length === 0 ? (
                   <p className="text-sm text-slate-500">
                     {lang === "fr"
                       ? "Aucun forfait actif."
@@ -836,26 +947,35 @@ export default function DashboardPage() {
                 </h3>
                 <div className="space-y-5">
                   <FormField label={t.claims.device}>
-                    <Select
-                      value={claimDeviceId}
-                      onChange={(e) =>
-                        setClaimDeviceId((e.target as HTMLSelectElement).value)
-                      }
-                    >
-                      <option value="">
-                        {lang === "fr"
-                          ? "Sélectionnez un appareil"
-                          : "Select a device"}
-                      </option>
-                      {eligibleDevices.map((d) => (
-                        <option key={d.id} value={d.id}>
-                          {d.brand} {d.model}
-                          {d.imei && d.imei !== "000000000000000"
-                            ? ` — IMEI: ${d.imei}`
-                            : ""}
+                    {coverageDataLoading ? (
+                      <div className="space-y-2">
+                        <Skeleton className="h-12 w-full rounded-xl" />
+                        <Skeleton className="h-3 w-48" />
+                      </div>
+                    ) : (
+                      <Select
+                        value={claimDeviceId}
+                        onChange={(e) =>
+                          setClaimDeviceId(
+                            (e.target as HTMLSelectElement).value,
+                          )
+                        }
+                      >
+                        <option value="">
+                          {lang === "fr"
+                            ? "Sélectionnez un appareil"
+                            : "Select a device"}
                         </option>
-                      ))}
-                    </Select>
+                        {eligibleDevices.map((d) => (
+                          <option key={d.id} value={d.id}>
+                            {d.brand} {d.model}
+                            {d.imei && d.imei !== "000000000000000"
+                              ? ` — IMEI: ${d.imei}`
+                              : ""}
+                          </option>
+                        ))}
+                      </Select>
+                    )}
                   </FormField>
 
                   <FormField label={t.claims.type}>
@@ -903,7 +1023,12 @@ export default function DashboardPage() {
                     fullWidth
                     onClick={handleClaimSubmit}
                     loading={createClaim.isPending}
-                    disabled={!claimType || !claimDesc || !claimDeviceId}
+                    disabled={
+                      coverageDataLoading ||
+                      !claimType ||
+                      !claimDesc ||
+                      !claimDeviceId
+                    }
                   >
                     {t.claims.submit}
                   </Button>
@@ -1111,7 +1236,7 @@ export default function DashboardPage() {
               </Link>
             </div>
 
-            {devicesLoading ? (
+            {coverageDataLoading ? (
               <div className="space-y-4">
                 {Array.from({ length: 3 }).map((_, i) => (
                   <CardSkeleton key={i} />
@@ -1130,9 +1255,9 @@ export default function DashboardPage() {
             ) : (
               <div className="space-y-4">
                 {devices.map((d) => {
-                  const coverage = deviceCoverageById.get(d.id) ?? {
-                    status: d.status,
-                  };
+                  const coverage = deviceCoverageById.get(d.id);
+                  if (!coverage) return null;
+
                   const canResume =
                     !!coverage.payment &&
                     ["pending", "failed", "cancelled", "expired"].includes(
