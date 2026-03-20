@@ -187,5 +187,6 @@ export const payments = {
   list: (params?: PaginationParams) =>
     api.get<Payment[]>("/payments", params as Record<string, string | number>),
   get: (id: string) => api.get<Payment>(`/payments/${id}`),
+  checkout: (id: string) => api.get<CheckoutResult>(`/payments/${id}/checkout`),
   resume: (id: string) => api.post<CheckoutResult>(`/payments/${id}/resume`),
 };

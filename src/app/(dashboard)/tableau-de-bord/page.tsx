@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FormField, Input, Select, Textarea } from "@/components/ui/form-field";
@@ -154,13 +155,24 @@ function RepairProgress({
 export default function DashboardPage() {
   const { lang, t } = useLanguage();
   const { user } = useAuth();
-  const [tab, setTab] = useState<DashboardTab>("overview");
+  const searchParams = useSearchParams();
+  const requestedTab = searchParams.get("tab");
+  const [tab, setTab] = useState<DashboardTab>(() => {
+    if (requestedTab && DASHBOARD_TABS.includes(requestedTab as DashboardTab)) {
+      return requestedTab as DashboardTab;
+    }
+    return "overview";
+  });
 
-  const { data: devices, isLoading: devicesLoading } = useDevices();
+  const {
+    data: devices,
+    isLoading: devicesLoading,
+    refetch: refetchDevices,
+  } = useDevices();
   const { data: claims, isLoading: claimsLoading } = useClaims();
   const { data: repairRequests, isLoading: repairsLoading } = useMyRepairRequests();
   const { data: payments, isLoading: paymentsLoading } = usePayments();
-  const { data: subscriptions } = useSubscriptions();
+  const { data: subscriptions, refetch: refetchSubscriptions } = useSubscriptions();
 
   const createClaim = useCreateClaim();
   const updateDevice = useUpdateDevice();
@@ -238,6 +250,22 @@ export default function DashboardPage() {
     const methodLabel = getPaymentMethodLabel(payment);
     return methodLabel ? `${providerLabel} • ${methodLabel}` : providerLabel;
   };
+
+  const completedPaymentIdsSignature = useMemo(
+    () =>
+      (payments ?? [])
+        .filter((payment) => payment.status === "completed")
+        .map((payment) => payment.id)
+        .sort()
+        .join(","),
+    [payments],
+  );
+
+  useEffect(() => {
+    if (!completedPaymentIdsSignature) return;
+    void refetchDevices();
+    void refetchSubscriptions();
+  }, [completedPaymentIdsSignature, refetchDevices, refetchSubscriptions]);
 
   const handleClaimSubmit = async () => {
     if (!claimType || !claimDesc || !claimDeviceId) return;
@@ -331,6 +359,10 @@ export default function DashboardPage() {
 
     if (payment) {
       switch (payment.status) {
+        case "completed":
+          return device.status === "active"
+            ? { status: "active", payment, subscription }
+            : { status: "pending_activation", payment, subscription };
         case "pending":
           return { status: "awaiting_payment", payment, subscription };
         case "failed":
