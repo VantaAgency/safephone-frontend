@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useDeferredValue, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { RouteGuardLoader } from "@/components/auth/route-guard-loader";
 import { StatCard } from "@/components/cards/stat-card";
@@ -12,11 +12,11 @@ import { CardSkeleton } from "@/components/ui/skeleton";
 import {
   useAcceptRepairRequest,
   useAdminClaims,
+  useAdminOverview,
   useAdminRepairRequests,
   useUpdateClaimStatus,
   useUpdateRepairRequestAmount,
   useUpdateRepairRequestStatus,
-  useAdminStats,
   useAdminCustomers,
   useAdminPayments,
   useAdminPartners,
@@ -59,23 +59,38 @@ export default function AdminPage() {
   const router = useRouter();
   const [tab, setTab] = useState<AdminTab>("overview");
   const [search, setSearch] = useState("");
+  const deferredSearch = useDeferredValue(search);
 
   const isAdmin = user?.role === "admin";
-  const { data: adminClaims, isLoading: claimsLoading } = useAdminClaims(undefined, { enabled: isAdmin });
+  const { data: overview, isLoading: overviewLoading } = useAdminOverview({
+    enabled: isAdmin,
+  });
+  const { data: adminClaims, isLoading: claimsLoading } = useAdminClaims(undefined, {
+    enabled: isAdmin && tab === "claims",
+  });
   const { data: adminRepairs = [], isLoading: repairsLoading } = useAdminRepairRequests(
-    { search },
-    { enabled: isAdmin },
+    { search: deferredSearch },
+    { enabled: isAdmin && tab === "repairs" },
   );
   const updateClaimStatus = useUpdateClaimStatus();
   const acceptRepair = useAcceptRepairRequest();
   const rejectRepair = useRejectRepairRequest();
   const updateRepairStatus = useUpdateRepairRequestStatus();
   const updateRepairAmount = useUpdateRepairRequestAmount();
-  const { data: stats, isLoading: statsLoading } = useAdminStats({ enabled: isAdmin });
-  const { data: customers, isLoading: customersLoading } = useAdminCustomers(search, { enabled: isAdmin });
-  const { data: adminPayments, isLoading: paymentsLoading } = useAdminPayments({ enabled: isAdmin });
-  const { data: adminPartners = [], isLoading: partnersLoading } = useAdminPartners({ enabled: isAdmin });
-  const { data: partnerApps = [], isLoading: appsLoading } = useAdminPartnerApplications(undefined, { enabled: isAdmin });
+  const { data: customers, isLoading: customersLoading } = useAdminCustomers(
+    deferredSearch,
+    { enabled: isAdmin && tab === "customers" },
+  );
+  const { data: adminPayments, isLoading: paymentsLoading } = useAdminPayments({
+    enabled: isAdmin && tab === "payments",
+  });
+  const { data: adminPartners = [], isLoading: partnersLoading } = useAdminPartners({
+    enabled: isAdmin && tab === "partners",
+  });
+  const { data: partnerApps = [], isLoading: appsLoading } =
+    useAdminPartnerApplications(undefined, {
+      enabled: isAdmin && tab === "applications",
+    });
   const reviewApplication = useReviewPartnerApplication();
   const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [rejectionReason, setRejectionReason] = useState("");
@@ -89,7 +104,7 @@ export default function AdminPage() {
   const selectedPartner = adminPartners.find((partner) => partner.id === selectedPartnerId) ?? null;
   const { data: selectedPartnerCommissions = [], isLoading: partnerCommissionsLoading } = useAdminPartnerCommissions(
     selectedPartnerId ?? undefined,
-    { enabled: isAdmin && !!selectedPartnerId },
+    { enabled: isAdmin && tab === "partners" && !!selectedPartnerId },
   );
 
   useEffect(() => {
@@ -136,6 +151,8 @@ export default function AdminPage() {
     card: lang === "fr" ? "Carte bancaire" : "Bank card",
   };
 
+  const stats = overview?.stats;
+  const overviewClaims = overview?.recent_claims ?? [];
   const revenueByProviderEntries = Object.entries(stats?.revenue_by_provider ?? {});
   const providerCards: Array<[string, number]> =
     revenueByProviderEntries.length > 0 ? revenueByProviderEntries : [["dexpay", 0]];
@@ -220,46 +237,118 @@ export default function AdminPage() {
     return `${uniqueLabels.slice(0, 2).join(" · ")} +${uniqueLabels.length - 2}`;
   };
 
-  const getCustomerPlanSummary = (customer: AdminCustomer) => {
-    if (customer.total_subscription_count === 0) {
+  const getSubscriptionDisplayRank = (
+    subscription: Pick<AdminCustomerSubscription, "status">,
+  ) => {
+    switch (subscription.status) {
+      case "active":
+        return 0;
+      case "pending":
+        return 1;
+      case "expired":
+        return 2;
+      case "cancelled":
+        return 3;
+      default:
+        return 4;
+    }
+  };
+
+  const getSubscriptionDisplayTimestamp = (
+    subscription: Pick<
+      AdminCustomerSubscription,
+      "current_period_end" | "current_period_start" | "created_at"
+    >,
+  ) =>
+    Date.parse(
+      subscription.current_period_end ??
+        subscription.current_period_start ??
+        subscription.created_at,
+    ) || 0;
+
+  const compareSubscriptionsForDisplay = (
+    left: AdminCustomerSubscription,
+    right: AdminCustomerSubscription,
+  ) => {
+    const rankDiff =
+      getSubscriptionDisplayRank(left) - getSubscriptionDisplayRank(right);
+    if (rankDiff !== 0) return rankDiff;
+
+    const timeDiff =
+      getSubscriptionDisplayTimestamp(right) -
+      getSubscriptionDisplayTimestamp(left);
+    if (timeDiff !== 0) return timeDiff;
+
+    return Date.parse(right.created_at) - Date.parse(left.created_at);
+  };
+
+  const getVisibleCustomerSubscriptions = (customer: AdminCustomer) => {
+    const subscriptionsByDevice = new Map<string, AdminCustomerSubscription>();
+
+    customer.subscriptions.forEach((subscription) => {
+      const key = subscription.device_id || subscription.id;
+      const existing = subscriptionsByDevice.get(key);
+
+      if (
+        !existing ||
+        compareSubscriptionsForDisplay(subscription, existing) < 0
+      ) {
+        subscriptionsByDevice.set(key, subscription);
+      }
+    });
+
+    return Array.from(subscriptionsByDevice.values()).sort(
+      compareSubscriptionsForDisplay,
+    );
+  };
+
+  const getCustomerPlanSummary = (
+    visibleSubscriptions: AdminCustomerSubscription[],
+  ) => {
+    if (visibleSubscriptions.length === 0) {
       return {
         primary: "—",
         secondary: lang === "fr" ? "Aucun forfait enregistré" : "No plans yet",
       };
     }
 
-    const activeSubscriptions = customer.subscriptions.filter((subscription) => subscription.status === "active");
+    const activeSubscriptions = visibleSubscriptions.filter(
+      (subscription) => subscription.status === "active",
+    );
     const activeLabels = formatCompactLabelList(activeSubscriptions.map(getLocalizedPlanName));
+    const activeCount = activeSubscriptions.length;
 
-    if (customer.active_subscription_count > 0) {
+    if (activeCount > 0) {
       return {
-        primary: formatPlanCount(customer.active_subscription_count, true),
+        primary: formatPlanCount(activeCount, true),
         secondary:
           activeLabels ??
-          (customer.total_subscription_count === customer.active_subscription_count
-            ? formatPlanCount(customer.total_subscription_count)
-            : `${formatPlanCount(customer.total_subscription_count)} ${lang === "fr" ? "au total" : "total"}`),
+          (visibleSubscriptions.length === activeCount
+            ? formatPlanCount(visibleSubscriptions.length)
+            : `${formatPlanCount(visibleSubscriptions.length)} ${lang === "fr" ? "au total" : "total"}`),
       };
     }
 
     return {
       primary: formatPlanCount(0, true),
-      secondary: `${formatPlanCount(customer.total_subscription_count)} ${lang === "fr" ? "au total" : "total"}`,
+      secondary: `${formatPlanCount(visibleSubscriptions.length)} ${lang === "fr" ? "au total" : "total"}`,
     };
   };
 
-  const getCustomerStatusSummary = (customer: AdminCustomer): { status: "active" | "pending" | "expired" | "cancelled" | "info"; label: string } => {
-    const statusCounts = customer.subscriptions.reduce<Record<string, number>>((acc, subscription) => {
+  const getCustomerStatusSummary = (
+    visibleSubscriptions: AdminCustomerSubscription[],
+  ): { status: "active" | "pending" | "expired" | "cancelled" | "info"; label: string } => {
+    const statusCounts = visibleSubscriptions.reduce<Record<string, number>>((acc, subscription) => {
       acc[subscription.status] = (acc[subscription.status] ?? 0) + 1;
       return acc;
     }, {});
 
-    if (customer.active_subscription_count > 0) {
+    if ((statusCounts.active ?? 0) > 0) {
       return {
         status: "active",
         label: lang === "fr"
-          ? `${customer.active_subscription_count} actif${customer.active_subscription_count > 1 ? "s" : ""}`
-          : `${customer.active_subscription_count} active plan${customer.active_subscription_count > 1 ? "s" : ""}`,
+          ? `${statusCounts.active} actif${statusCounts.active > 1 ? "s" : ""}`
+          : `${statusCounts.active} active plan${statusCounts.active > 1 ? "s" : ""}`,
       };
     }
 
@@ -424,7 +513,7 @@ export default function AdminPage() {
         {tab === "overview" && (
           <div>
             <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-4">
-              {statsLoading ? (
+              {overviewLoading ? (
                 Array.from({ length: 4 }).map((_, i) => <CardSkeleton key={i} />)
               ) : (
                 <>
@@ -457,7 +546,7 @@ export default function AdminPage() {
                 <h3 className="mb-4 text-sm font-medium uppercase tracking-wider text-slate-400">
                   {lang === "fr" ? "Revenu par prestataire" : "Revenue by provider"}
                 </h3>
-                {statsLoading ? (
+                {overviewLoading ? (
                   <div className="grid grid-cols-1 gap-3">
                     {Array.from({ length: 1 }).map((_, i) => <CardSkeleton key={i} />)}
                   </div>
@@ -486,11 +575,11 @@ export default function AdminPage() {
                 <h3 className="mb-4 text-sm font-medium uppercase tracking-wider text-slate-400">
                   {lang === "fr" ? "Sinistres recents" : "Recent claims"}
                 </h3>
-                {claimsLoading ? (
+                {overviewLoading ? (
                   <div className="space-y-2.5">{Array.from({ length: 4 }).map((_, i) => <CardSkeleton key={i} />)}</div>
                 ) : (
                   <div className="space-y-2.5">
-                    {(adminClaims ?? []).slice(0, 4).map((c) => (
+                    {overviewClaims.map((c) => (
                       <div key={c.id} className="flex items-center justify-between rounded-xl border border-slate-200/80 bg-white p-3.5 shadow-sm">
                         <div>
                           <div className="text-sm font-medium text-indigo-950">
@@ -843,8 +932,17 @@ export default function AdminPage() {
                     <tbody>
                       {(customers ?? []).map((c) => {
                         const isExpanded = expandedCustomerId === c.id;
-                        const planSummary = getCustomerPlanSummary(c);
-                        const statusSummary = getCustomerStatusSummary(c);
+                        const visibleSubscriptions =
+                          getVisibleCustomerSubscriptions(c);
+                        const visibleActiveSubscriptionCount =
+                          visibleSubscriptions.filter(
+                            (subscription) => subscription.status === "active",
+                          ).length;
+                        const planSummary =
+                          getCustomerPlanSummary(visibleSubscriptions);
+                        const statusSummary = getCustomerStatusSummary(
+                          visibleSubscriptions,
+                        );
 
                         return (
                           <Fragment key={c.id}>
@@ -895,20 +993,20 @@ export default function AdminPage() {
                                           {lang === "fr" ? "Forfaits du client" : "Customer plans"}
                                         </p>
                                         <p className="text-xs text-slate-500">
-                                          {c.total_subscription_count > 0
-                                            ? `${formatPlanCount(c.total_subscription_count)} ${lang === "fr" ? "rattaché(s) à ce client" : "linked to this customer"}`
+                                          {visibleSubscriptions.length > 0
+                                            ? `${formatPlanCount(visibleSubscriptions.length)} ${lang === "fr" ? "actuellement rattaché(s) à ce client" : "currently linked to this customer"}`
                                             : (lang === "fr" ? "Aucun forfait enregistré pour ce client." : "No plans recorded for this customer.")}
                                         </p>
                                       </div>
-                                      {c.active_subscription_count > 0 && (
+                                      {visibleActiveSubscriptionCount > 0 && (
                                         <StatusBadge
                                           status="active"
-                                          label={formatPlanCount(c.active_subscription_count, true)}
+                                          label={formatPlanCount(visibleActiveSubscriptionCount, true)}
                                         />
                                       )}
                                     </div>
 
-                                    {c.subscriptions.length === 0 ? (
+                                    {visibleSubscriptions.length === 0 ? (
                                       <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500">
                                         {lang === "fr"
                                           ? "Ce client n’a encore aucun abonnement associé."
@@ -916,7 +1014,7 @@ export default function AdminPage() {
                                       </div>
                                     ) : (
                                       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                                        {c.subscriptions.map((subscription) => (
+                                        {visibleSubscriptions.map((subscription) => (
                                           <div key={subscription.id} className="rounded-xl border border-slate-200/80 bg-slate-50/60 p-4">
                                             <div className="flex items-start justify-between gap-3">
                                               <div>

@@ -5,7 +5,7 @@ import { plans } from "../endpoints";
 import type { Plan } from "../types";
 import { DEVELOPMENT_TEST_PLAN_SLUG, isDevelopmentRuntime } from "@/lib/plans";
 
-export function usePlans() {
+export function usePlans({ enabled = true }: { enabled?: boolean } = {}) {
   return useQuery<Plan[]>({
     queryKey: ["plans"],
     queryFn: async () => {
@@ -15,5 +15,7 @@ export function usePlans() {
       }
       return result.filter((plan) => plan.slug !== DEVELOPMENT_TEST_PLAN_SLUG);
     },
+    enabled,
+    staleTime: 30 * 60 * 1000,
   });
 }

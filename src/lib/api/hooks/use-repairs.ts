@@ -28,10 +28,13 @@ export function useLookupRepairRequest() {
   });
 }
 
-export function useMyRepairRequests() {
+export function useMyRepairRequests(
+  { enabled = true }: { enabled?: boolean } = {},
+) {
   return useQuery<RepairRequest[]>({
     queryKey: ["repair-requests", "mine"],
     queryFn: () => repairs.mine(),
+    enabled,
   });
 }
 
@@ -62,6 +65,7 @@ export function useAcceptRepairRequest() {
   return useMutation({
     mutationFn: (id: string) => repairs.adminAccept(id),
     onSuccess: (_, id) => {
+      queryClient.invalidateQueries({ queryKey: ["admin-overview"] });
       queryClient.invalidateQueries({ queryKey: ["repair-requests", "mine"] });
       queryClient.invalidateQueries({ queryKey: ["repair-requests", "admin"] });
       queryClient.invalidateQueries({
@@ -76,6 +80,7 @@ export function useRejectRepairRequest() {
   return useMutation({
     mutationFn: (id: string) => repairs.adminReject(id),
     onSuccess: (_, id) => {
+      queryClient.invalidateQueries({ queryKey: ["admin-overview"] });
       queryClient.invalidateQueries({ queryKey: ["repair-requests", "mine"] });
       queryClient.invalidateQueries({ queryKey: ["repair-requests", "admin"] });
       queryClient.invalidateQueries({
@@ -96,6 +101,7 @@ export function useUpdateRepairRequestStatus() {
       data: UpdateRepairRequestStatus;
     }) => repairs.adminUpdateStatus(id, data),
     onSuccess: (_, { id }) => {
+      queryClient.invalidateQueries({ queryKey: ["admin-overview"] });
       queryClient.invalidateQueries({ queryKey: ["repair-requests", "mine"] });
       queryClient.invalidateQueries({ queryKey: ["repair-requests", "admin"] });
       queryClient.invalidateQueries({
@@ -116,6 +122,7 @@ export function useUpdateRepairRequestAmount() {
       data: UpdateRepairRequestAmount;
     }) => repairs.adminUpdateAmount(id, data),
     onSuccess: (_, { id }) => {
+      queryClient.invalidateQueries({ queryKey: ["admin-overview"] });
       queryClient.invalidateQueries({ queryKey: ["repair-requests", "mine"] });
       queryClient.invalidateQueries({ queryKey: ["repair-requests", "admin"] });
       queryClient.invalidateQueries({

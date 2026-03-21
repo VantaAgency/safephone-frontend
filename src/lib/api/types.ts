@@ -48,6 +48,16 @@ export type RepairRequestStatus =
   | "cancelled";
 export type RepairServiceMode = "center" | "home";
 export type RepairRequestSource = "public_visitor" | "safephone_user";
+export type DashboardCoverageStatus =
+  | "active"
+  | "awaiting_payment"
+  | "pending_activation"
+  | "pending"
+  | "failed"
+  | "cancelled"
+  | "expired"
+  | "refunded"
+  | "suspended";
 
 // --- Domain models ---
 
@@ -169,6 +179,30 @@ export interface Payment {
   updated_at: string;
 }
 
+export interface MemberDashboardDeviceSummary {
+  device: Device;
+  coverage_status: DashboardCoverageStatus;
+  subscription?: Subscription;
+  payment?: Payment;
+}
+
+export interface MemberDashboardActiveSubscription {
+  subscription: Subscription;
+  device?: Device;
+}
+
+export interface MemberDashboardSummary {
+  active_subscriptions_count: number;
+  devices_count: number;
+  claims_count: number;
+  payments_count: number;
+  pending_activation_devices: Device[];
+  recent_devices: MemberDashboardDeviceSummary[];
+  recent_claims: Claim[];
+  recent_payments: Payment[];
+  active_subscriptions: MemberDashboardActiveSubscription[];
+}
+
 // --- Request types ---
 
 export interface UpdateProfileRequest {
@@ -256,6 +290,11 @@ export interface PartnerProfile {
   total_commission_earned_xof: number;
   total_commission_owed_xof: number;
   total_commission_paid_xof: number;
+}
+
+export interface PartnerDashboardOverview {
+  profile?: PartnerProfile;
+  recent_clients: PartnerClient[];
 }
 
 export interface PartnerClient {
@@ -505,6 +544,12 @@ export interface AdminStats {
   revenue_by_provider: Record<string, number>;
   total_customers: number;
   total_devices: number;
+}
+
+export interface AdminDashboardOverview {
+  stats: AdminStats;
+  recent_claims: Claim[];
+  recent_repairs: RepairRequest[];
 }
 
 export interface AdminCustomerSubscription {

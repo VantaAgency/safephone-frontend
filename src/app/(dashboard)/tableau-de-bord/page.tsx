@@ -26,6 +26,7 @@ import { CardSkeleton, Skeleton } from "@/components/ui/skeleton";
 import {
   useDevices,
   useClaims,
+  useMemberDashboardSummary,
   usePayments,
   usePlans,
   useRenewSubscriptionPayment,
@@ -232,27 +233,6 @@ export default function DashboardPage() {
     return "overview";
   });
 
-  const {
-    data: devices,
-    isLoading: devicesLoading,
-    refetch: refetchDevices,
-  } = useDevices();
-  const { data: claims, isLoading: claimsLoading } = useClaims();
-  const { data: repairRequests, isLoading: repairsLoading } =
-    useMyRepairRequests();
-  const { data: plans, isLoading: plansLoading } = usePlans();
-  const { data: payments, isLoading: paymentsLoading } = usePayments();
-  const {
-    data: subscriptions,
-    isLoading: subscriptionsLoading,
-    refetch: refetchSubscriptions,
-  } = useSubscriptions();
-
-  const createClaim = useCreateClaim();
-  const updateDevice = useUpdateDevice();
-  const renewSubscriptionPayment = useRenewSubscriptionPayment();
-  const resumePayment = useResumePayment();
-
   // Claims form state
   const [claimView, setClaimView] = useState<"history" | "new">("history");
   const [claimType, setClaimType] = useState("");
@@ -268,6 +248,49 @@ export default function DashboardPage() {
   const [renewalBillingCycle, setRenewalBillingCycle] =
     useState<Subscription["billing_cycle"]>("monthly");
   const [renewalActionError, setRenewalActionError] = useState("");
+
+  const isDevicesTab = tab === "devices";
+  const isClaimsTab = tab === "claims";
+  const isPaymentsTab = tab === "payments";
+  const shouldLoadClaimFormData = isClaimsTab && claimView === "new";
+  const shouldLoadCoverageDetails = isDevicesTab;
+  const shouldLoadDevices = shouldLoadCoverageDetails || shouldLoadClaimFormData;
+  const shouldLoadSubscriptions =
+    shouldLoadCoverageDetails || shouldLoadClaimFormData;
+  const shouldLoadPayments = shouldLoadCoverageDetails || isPaymentsTab;
+  const shouldLoadClaims = isClaimsTab;
+  const shouldLoadRepairs = tab === "repairs";
+  const shouldLoadPlans = isDevicesTab;
+
+  const { data: dashboardSummary, isLoading: dashboardSummaryLoading } =
+    useMemberDashboardSummary();
+
+  const {
+    data: devices,
+    isLoading: devicesLoading,
+    refetch: refetchDevices,
+  } = useDevices({ enabled: shouldLoadDevices });
+  const { data: claims, isLoading: claimsLoading } = useClaims({
+    enabled: shouldLoadClaims,
+  });
+  const { data: repairRequests, isLoading: repairsLoading } =
+    useMyRepairRequests({ enabled: shouldLoadRepairs });
+  const { data: plans, isLoading: plansLoading } = usePlans({
+    enabled: shouldLoadPlans,
+  });
+  const { data: payments, isLoading: paymentsLoading } = usePayments({
+    enabled: shouldLoadPayments,
+  });
+  const {
+    data: subscriptions,
+    isLoading: subscriptionsLoading,
+    refetch: refetchSubscriptions,
+  } = useSubscriptions({ enabled: shouldLoadSubscriptions });
+
+  const createClaim = useCreateClaim();
+  const updateDevice = useUpdateDevice();
+  const renewSubscriptionPayment = useRenewSubscriptionPayment();
+  const resumePayment = useResumePayment();
 
   const tabLabels: Record<DashboardTab, string> = {
     overview: t.dashboard.tabOverview,
@@ -342,16 +365,26 @@ export default function DashboardPage() {
   );
 
   useEffect(() => {
-    if (!completedPaymentIdsSignature) return;
+    if (!completedPaymentIdsSignature || !shouldLoadDevices) return;
     void refetchDevices();
     void refetchSubscriptions();
-  }, [completedPaymentIdsSignature, refetchDevices, refetchSubscriptions]);
+  }, [
+    completedPaymentIdsSignature,
+    refetchDevices,
+    refetchSubscriptions,
+    shouldLoadDevices,
+  ]);
 
-  const subscriptionsReady = !subscriptionsLoading;
   const coverageDataLoading =
-    devicesLoading || subscriptionsLoading || paymentsLoading;
-  const coverageDataReady = !coverageDataLoading;
-  const plansSectionLoading = devicesLoading || subscriptionsLoading;
+    devicesLoading ||
+    subscriptionsLoading ||
+    (shouldLoadPayments ? paymentsLoading : false);
+  const coverageDataReady =
+    shouldLoadDevices &&
+    shouldLoadSubscriptions &&
+    !devicesLoading &&
+    !subscriptionsLoading &&
+    (!shouldLoadPayments || !paymentsLoading);
 
   const handleClaimSubmit = async () => {
     if (!claimType || !claimDesc || !claimDeviceId) return;
@@ -470,7 +503,7 @@ export default function DashboardPage() {
   const latestSubscriptionByDeviceId = useMemo(() => {
     const subscriptionMap = new Map<string, Subscription>();
 
-    if (!coverageDataReady) return subscriptionMap;
+    if (!subscriptions || subscriptions.length === 0) return subscriptionMap;
 
     (subscriptions ?? []).forEach((sub) => {
       if (!subscriptionMap.has(sub.device_id)) {
@@ -479,12 +512,12 @@ export default function DashboardPage() {
     });
 
     return subscriptionMap;
-  }, [coverageDataReady, subscriptions]);
+  }, [subscriptions]);
 
   const latestPaymentBySubscriptionId = useMemo(() => {
     const paymentMap = new Map<string, Payment>();
 
-    if (!coverageDataReady) return paymentMap;
+    if (!payments || payments.length === 0) return paymentMap;
 
     (payments ?? []).forEach((payment) => {
       if (!paymentMap.has(payment.subscription_id)) {
@@ -493,7 +526,7 @@ export default function DashboardPage() {
     });
 
     return paymentMap;
-  }, [coverageDataReady, payments]);
+  }, [payments]);
 
   const getDeviceCoverageMeta = (device: Device): DeviceCoverageMeta => {
     const subscription = latestSubscriptionByDeviceId.get(device.id);
@@ -554,21 +587,6 @@ export default function DashboardPage() {
     });
   }
 
-  const devicesPendingActivation =
-    coverageDataReady && devices
-      ? devices.filter(
-          (device) =>
-            deviceRequiresImei(device.device_type) &&
-            deviceCoverageById.get(device.id)?.status === "pending_activation",
-        )
-      : [];
-
-  const activeSubscriptions = subscriptionsReady
-    ? (subscriptions ?? []).filter((sub) => sub.status === "active")
-    : [];
-  const expiredSubscriptions = subscriptionsReady
-    ? (subscriptions ?? []).filter((sub) => sub.status === "expired")
-    : [];
   const effectiveRenewalPlanId =
     renewalFormSubscriptionId && plans && plans.length > 0
       ? plans.some((plan) => plan.id === renewalPlanId)
@@ -577,7 +595,7 @@ export default function DashboardPage() {
       : renewalPlanId;
 
   const eligibleDevices =
-    coverageDataReady && devices
+    devices && subscriptions && !devicesLoading && !subscriptionsLoading
       ? devices.filter((device) => {
           const meta = deviceCoverageById.get(device.id);
           return (
@@ -585,6 +603,14 @@ export default function DashboardPage() {
           );
         })
       : [];
+
+  const overviewPendingActivationDevices =
+    dashboardSummary?.pending_activation_devices ?? [];
+  const overviewRecentDevices = dashboardSummary?.recent_devices ?? [];
+  const overviewRecentClaims = dashboardSummary?.recent_claims ?? [];
+  const overviewRecentPayments = dashboardSummary?.recent_payments ?? [];
+  const overviewActiveSubscriptions =
+    dashboardSummary?.active_subscriptions ?? [];
 
   const userName = user?.name || "Utilisateur";
 
@@ -615,12 +641,12 @@ export default function DashboardPage() {
         )}
 
         {/* IMEI completion alert */}
-        {tab !== "devices" && coverageDataLoading && (
+        {tab !== "devices" && dashboardSummaryLoading && (
           <DashboardBannerSkeleton />
         )}
         {tab !== "devices" &&
-          coverageDataReady &&
-          devicesPendingActivation.length > 0 && (
+          !dashboardSummaryLoading &&
+          overviewPendingActivationDevices.length > 0 && (
             <div className="mb-6 flex items-start justify-between rounded-2xl border border-amber-200 bg-amber-50 p-4">
               <div className="flex items-start gap-3">
                 <ShieldCheckIcon
@@ -635,8 +661,8 @@ export default function DashboardPage() {
                   </p>
                   <p className="mt-0.5 text-xs text-amber-700">
                     {lang === "fr"
-                      ? `${devicesPendingActivation.map((d) => formatDeviceDisplayName(d, lang)).join(", ")} — ajoutez le numéro IMEI pour finaliser l'activation après confirmation du paiement.`
-                      : `${devicesPendingActivation.map((d) => formatDeviceDisplayName(d, lang)).join(", ")} — add the IMEI to finish activation after payment confirmation.`}
+                      ? `${overviewPendingActivationDevices.map((d) => formatDeviceDisplayName(d, lang)).join(", ")} — ajoutez le numéro IMEI pour finaliser l'activation après confirmation du paiement.`
+                      : `${overviewPendingActivationDevices.map((d) => formatDeviceDisplayName(d, lang)).join(", ")} — add the IMEI to finish activation after payment confirmation.`}
                   </p>
                   <p className="mt-1 text-xs text-amber-700/90">
                     {imeiHelpText}
@@ -655,39 +681,39 @@ export default function DashboardPage() {
 
         {/* Stats Strip */}
         <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-4">
-          {subscriptionsLoading ? (
+          {dashboardSummaryLoading ? (
             <DashboardStatCardSkeleton />
           ) : (
             <StatCard
               label={t.dashboard.active}
-              value={String(activeSubscriptions.length)}
+              value={String(dashboardSummary?.active_subscriptions_count ?? 0)}
               icon={<ShieldCheckIcon size={20} className="text-emerald-500" />}
             />
           )}
-          {devicesLoading ? (
+          {dashboardSummaryLoading ? (
             <DashboardStatCardSkeleton />
           ) : (
             <StatCard
               label={t.dashboard.devices}
-              value={String(devices?.length ?? 0)}
+              value={String(dashboardSummary?.devices_count ?? 0)}
               icon={<PhoneIcon size={20} className="text-indigo-600" />}
             />
           )}
-          {claimsLoading ? (
+          {dashboardSummaryLoading ? (
             <DashboardStatCardSkeleton />
           ) : (
             <StatCard
               label={t.dashboard.claims}
-              value={String(claims?.length ?? 0)}
+              value={String(dashboardSummary?.claims_count ?? 0)}
               icon={<ClockIcon size={20} className="text-yellow-500" />}
             />
           )}
-          {paymentsLoading ? (
+          {dashboardSummaryLoading ? (
             <DashboardStatCardSkeleton />
           ) : (
             <StatCard
               label={t.dashboard.payments}
-              value={String(payments?.length ?? 0)}
+              value={String(dashboardSummary?.payments_count ?? 0)}
               icon={<CreditCardIcon size={20} className="text-slate-500" />}
             />
           )}
@@ -730,13 +756,13 @@ export default function DashboardPage() {
                     {t.dashboard.viewAll}
                   </button>
                 </div>
-                {coverageDataLoading ? (
+                {dashboardSummaryLoading ? (
                   <div className="space-y-3">
                     {Array.from({ length: 2 }).map((_, i) => (
                       <CardSkeleton key={i} />
                     ))}
                   </div>
-                ) : !devices || devices.length === 0 ? (
+                ) : overviewRecentDevices.length === 0 ? (
                   <EmptyState
                     icon={<PhoneIcon size={28} />}
                     title={lang === "fr" ? "Aucun appareil" : "No devices"}
@@ -748,20 +774,18 @@ export default function DashboardPage() {
                   />
                 ) : (
                   <div className="space-y-3">
-                    {devices.slice(0, 3).map((d) => {
-                      const coverage = deviceCoverageById.get(d.id);
-                      if (!coverage) return null;
-                      const DeviceIcon = getDeviceIcon(d.device_type);
-                      const identifier = getDeviceIdentifierSummary(d, lang);
+                    {overviewRecentDevices.map(({ device, coverage_status }) => {
+                      const DeviceIcon = getDeviceIcon(device.device_type);
+                      const identifier = getDeviceIdentifierSummary(device, lang);
                       const detail = getDeviceMetadataSummary(
-                        d.metadata,
-                        d.device_type,
+                        device.metadata,
+                        device.device_type,
                         lang,
                       );
 
                       return (
                         <div
-                          key={d.id}
+                          key={device.id}
                           className="flex items-center justify-between rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm"
                         >
                           <div className="flex items-center gap-4">
@@ -773,20 +797,18 @@ export default function DashboardPage() {
                             </div>
                             <div>
                               <div className="font-medium text-indigo-950">
-                                {formatDeviceDisplayName(d, lang)}
+                                {formatDeviceDisplayName(device, lang)}
                               </div>
                               <div className="mt-0.5 text-xs text-slate-400">
-                                {getDeviceTypeLabel(d.device_type, lang)}
+                                {getDeviceTypeLabel(device.device_type, lang)}
                                 {detail ? ` • ${detail}` : ""}
                                 {identifier ? ` • ${identifier}` : ""}
                               </div>
                             </div>
                           </div>
                           <StatusBadge
-                            status={coverage.status}
-                            label={
-                              statusLabels[coverage.status] || coverage.status
-                            }
+                            status={coverage_status}
+                            label={statusLabels[coverage_status] || coverage_status}
                           />
                         </div>
                       );
@@ -809,13 +831,13 @@ export default function DashboardPage() {
                     {t.dashboard.viewAll}
                   </button>
                 </div>
-                {claimsLoading ? (
+                {dashboardSummaryLoading ? (
                   <div className="space-y-3">
                     {Array.from({ length: 2 }).map((_, i) => (
                       <CardSkeleton key={i} />
                     ))}
                   </div>
-                ) : !claims || claims.length === 0 ? (
+                ) : overviewRecentClaims.length === 0 ? (
                   <EmptyState
                     icon={<ShieldCheckIcon size={28} />}
                     title={t.claims.empty}
@@ -823,7 +845,7 @@ export default function DashboardPage() {
                   />
                 ) : (
                   <div className="space-y-3">
-                    {claims.slice(0, 3).map((c) => {
+                    {overviewRecentClaims.map((c) => {
                       const Icon = CLAIM_TYPE_ICONS[c.claim_type] || PhoneIcon;
                       return (
                         <div
@@ -886,36 +908,31 @@ export default function DashboardPage() {
                 <h3 className="mb-4 text-xs font-medium uppercase tracking-wider text-slate-400">
                   {t.dashboard.myPlans}
                 </h3>
-                {plansSectionLoading ? (
+                {dashboardSummaryLoading ? (
                   <DashboardSidebarSectionSkeleton />
-                ) : activeSubscriptions.length === 0 ? (
+                ) : overviewActiveSubscriptions.length === 0 ? (
                   <div className="space-y-2">
                     <p className="text-sm text-slate-500">
                       {lang === "fr"
                         ? "Aucun forfait actif."
                         : "No active plans."}
                     </p>
-                    {expiredSubscriptions.length > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => setTab("devices")}
-                        className="text-xs font-medium text-indigo-600 hover:underline"
-                      >
-                        {lang === "fr"
-                          ? "Renouvelez votre forfait depuis l’onglet appareils."
-                          : "Renew your plan from the devices tab."}
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      onClick={() => setTab("devices")}
+                      className="text-xs font-medium text-indigo-600 hover:underline"
+                    >
+                      {lang === "fr"
+                        ? "Gérez vos renouvellements depuis l’onglet appareils."
+                        : "Manage renewals from the devices tab."}
+                    </button>
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {activeSubscriptions.map((sub) => {
-                      const device = devices?.find(
-                        (d) => d.id === sub.device_id,
-                      );
+                    {overviewActiveSubscriptions.map(({ subscription, device }) => {
                       return (
                         <div
-                          key={sub.id}
+                          key={subscription.id}
                           className="rounded-xl border border-slate-100 bg-slate-50 p-4"
                         >
                           <div className="flex items-start justify-between">
@@ -926,7 +943,7 @@ export default function DashboardPage() {
                                   : "—"}
                               </div>
                               <div className="mt-0.5 text-xs text-slate-500">
-                                {sub.billing_cycle === "annual"
+                                {subscription.billing_cycle === "annual"
                                   ? lang === "fr"
                                     ? "Annuel"
                                     : "Annual"
@@ -941,11 +958,11 @@ export default function DashboardPage() {
                               dot={false}
                             />
                           </div>
-                          {sub.current_period_end && (
+                          {subscription.current_period_end && (
                             <div className="mt-2 text-xs text-slate-400">
                               {t.dashboard.expires}{" "}
                               {new Date(
-                                sub.current_period_end,
+                                subscription.current_period_end,
                               ).toLocaleDateString(
                                 lang === "fr" ? "fr-FR" : "en-US",
                               )}
@@ -971,19 +988,19 @@ export default function DashboardPage() {
                     {t.dashboard.viewAll}
                   </button>
                 </div>
-                {paymentsLoading ? (
+                {dashboardSummaryLoading ? (
                   <div className="space-y-3">
                     {Array.from({ length: 2 }).map((_, i) => (
                       <CardSkeleton key={i} />
                     ))}
                   </div>
-                ) : !payments || payments.length === 0 ? (
+                ) : overviewRecentPayments.length === 0 ? (
                   <p className="text-sm text-slate-500">
                     {t.dashboard.noPaymentsDesc}
                   </p>
                 ) : (
                   <div className="space-y-0">
-                    {payments.slice(0, 5).map((p) => (
+                    {overviewRecentPayments.map((p) => (
                       <div
                         key={p.id}
                         className="flex items-center justify-between border-b border-slate-50 py-3 last:border-0"

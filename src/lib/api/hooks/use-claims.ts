@@ -9,10 +9,11 @@ import type {
   UpdateClaimStatusRequest,
 } from "../types";
 
-export function useClaims() {
+export function useClaims({ enabled = true }: { enabled?: boolean } = {}) {
   return useQuery<Claim[]>({
     queryKey: ["claims"],
     queryFn: () => claims.list(),
+    enabled,
   });
 }
 
@@ -21,8 +22,10 @@ export function useCreateClaim() {
   return useMutation({
     mutationFn: (data: CreateClaimRequest) => claims.create(data),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["dashboard", "summary"] });
       queryClient.invalidateQueries({ queryKey: ["claims"] });
       queryClient.invalidateQueries({ queryKey: ["admin-claims"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-overview"] });
     },
   });
 }
@@ -46,8 +49,10 @@ export function useUpdateClaimStatus() {
       data: UpdateClaimStatusRequest;
     }) => claims.adminUpdateStatus(id, data),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["dashboard", "summary"] });
       queryClient.invalidateQueries({ queryKey: ["claims"] });
       queryClient.invalidateQueries({ queryKey: ["admin-claims"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-overview"] });
       queryClient.invalidateQueries({ queryKey: ["admin-stats"] });
     },
   });

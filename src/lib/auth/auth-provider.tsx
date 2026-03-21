@@ -6,6 +6,7 @@ import {
   useCallback,
   useMemo,
   useEffect,
+  useRef,
   type ReactNode,
 } from "react";
 import { useSession, authClient } from "./client";
@@ -29,6 +30,11 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const session = useSession();
+  const tokenCacheRef = useRef<{ token: string | null; expiresAt: number }>({
+    token: null,
+    expiresAt: 0,
+  });
+  const tokenPromiseRef = useRef<Promise<string | null> | null>(null);
 
   const user = useMemo(() => {
     if (!session.data?.user) return null;
@@ -43,16 +49,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [session.data]);
 
   const getToken = useCallback(async (): Promise<string | null> => {
+    const cached = tokenCacheRef.current;
+    if (cached.token && Date.now() < cached.expiresAt) {
+      return cached.token;
+    }
+
+    if (tokenPromiseRef.current) {
+      return tokenPromiseRef.current;
+    }
+
     try {
-      const res = await authClient.token();
-      if (res.data) return res.data.token;
-      return null;
+      tokenPromiseRef.current = authClient
+        .token()
+        .then((res) => {
+          const token = res.data?.token ?? null;
+          if (!token) {
+            tokenCacheRef.current = { token: null, expiresAt: 0 };
+            return null;
+          }
+
+          const expiresAt = getTokenExpiry(token);
+          tokenCacheRef.current = {
+            token,
+            expiresAt: expiresAt ?? Date.now() + 60 * 1000,
+          };
+          return token;
+        })
+        .finally(() => {
+          tokenPromiseRef.current = null;
+        });
+
+      return await tokenPromiseRef.current;
     } catch {
+      tokenCacheRef.current = { token: null, expiresAt: 0 };
       return null;
     }
   }, []);
 
   const handleSignOut = useCallback(async () => {
+    tokenCacheRef.current = { token: null, expiresAt: 0 };
+    tokenPromiseRef.current = null;
     await authClient.signOut();
   }, []);
 
@@ -73,6 +109,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
+function getTokenExpiry(token: string) {
+  try {
+    const [, payload] = token.split(".");
+    if (!payload) return null;
+    const decoded = JSON.parse(atob(payload)) as { exp?: number };
+    if (!decoded.exp) return null;
+    return decoded.exp * 1000 - 5 * 1000;
+  } catch {
+    return null;
+  }
 }
 
 export function useAuth() {

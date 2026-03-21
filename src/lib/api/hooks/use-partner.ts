@@ -2,10 +2,22 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { partner } from "../endpoints";
-import type { CreatePartnerClientRequest } from "../types";
+import type {
+  CreatePartnerClientRequest,
+  PartnerDashboardOverview,
+} from "../types";
 
 interface PartnerQueryOptions {
   enabled?: boolean;
+}
+
+export function usePartnerOverview({ enabled = true }: PartnerQueryOptions = {}) {
+  return useQuery<PartnerDashboardOverview>({
+    queryKey: ["partner", "overview"],
+    queryFn: () => partner.overview(),
+    enabled,
+    staleTime: 60 * 1000,
+  });
 }
 
 export function usePartnerProfile({ enabled = true }: PartnerQueryOptions = {}) {
@@ -29,6 +41,7 @@ export function useCreatePartnerClient() {
   return useMutation({
     mutationFn: (data: CreatePartnerClientRequest) => partner.createClient(data),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["partner", "overview"] });
       queryClient.invalidateQueries({ queryKey: ["partner", "clients"] });
       queryClient.invalidateQueries({ queryKey: ["partner", "profile"] });
     },
@@ -40,6 +53,7 @@ export function useRefreshPartnerInvitation() {
   return useMutation({
     mutationFn: (clientId: string) => partner.refreshInvitation(clientId),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["partner", "overview"] });
       queryClient.invalidateQueries({ queryKey: ["partner", "clients"] });
       queryClient.invalidateQueries({ queryKey: ["partner", "profile"] });
     },
@@ -61,6 +75,7 @@ export function useClaimPartnerInvitation() {
     mutationFn: (token: string) => partner.claimInvitation(token),
     onSuccess: (_, token) => {
       queryClient.invalidateQueries({ queryKey: ["partner", "invitation", token] });
+      queryClient.invalidateQueries({ queryKey: ["partner", "overview"] });
       queryClient.invalidateQueries({ queryKey: ["partner", "clients"] });
       queryClient.invalidateQueries({ queryKey: ["partner", "profile"] });
     },

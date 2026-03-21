@@ -18,8 +18,7 @@ import { useAuth } from "@/lib/auth/auth-provider";
 import { useLanguage } from "@/lib/language-context";
 import { usePlans } from "@/lib/api/hooks";
 import {
-  usePartnerProfile,
-  usePartnerClients,
+  usePartnerOverview,
   useCreatePartnerClient,
   useRefreshPartnerInvitation,
   usePartnerSales,
@@ -43,23 +42,20 @@ export default function PartnerDashboardPage() {
   const { lang } = useLanguage();
   const { user, isPending } = useAuth();
   const router = useRouter();
+  const [tab, setTab] = useState<PartnerTab>("pipeline");
   const isPartner = user?.role === "partner";
-  const { data: profile, isLoading: profileLoading } = usePartnerProfile({
-    enabled: isPartner,
-  });
-  const { data: clients = [], isLoading: clientsLoading } = usePartnerClients({
+  const { data: overview, isLoading: overviewLoading } = usePartnerOverview({
     enabled: isPartner,
   });
   const { data: sales = [], isLoading: salesLoading } = usePartnerSales({
-    enabled: isPartner,
+    enabled: isPartner && tab === "performance",
   });
   const { data: payouts = [], isLoading: payoutsLoading } = usePartnerPayouts({
-    enabled: isPartner,
+    enabled: isPartner && tab === "performance",
   });
   const { data: plans } = usePlans();
   const createClient = useCreatePartnerClient();
   const refreshInvitation = useRefreshPartnerInvitation();
-  const [tab, setTab] = useState<PartnerTab>("pipeline");
   const [showModal, setShowModal] = useState(false);
   const [modalName, setModalName] = useState("");
   const [modalPhone, setModalPhone] = useState("");
@@ -68,6 +64,10 @@ export default function PartnerDashboardPage() {
     null,
   );
   const [copiedClientId, setCopiedClientId] = useState<string | null>(null);
+  const profile = overview?.profile;
+  const clients = overview?.recent_clients ?? [];
+  const profileLoading = overviewLoading;
+  const clientsLoading = overviewLoading;
 
   useEffect(() => {
     if (!isPending && !isPartner) {

@@ -14,10 +14,11 @@ interface PaymentQueryOptions {
   refetchInterval?: number | false;
 }
 
-export function usePayments() {
+export function usePayments({ enabled = true }: { enabled?: boolean } = {}) {
   return useQuery<Payment[]>({
     queryKey: ["payments"],
     queryFn: () => payments.list(),
+    enabled,
   });
 }
 
@@ -46,6 +47,7 @@ export function useCreatePayment() {
   return useMutation({
     mutationFn: (data: CreatePaymentRequest) => payments.create(data),
     onSuccess: (result: CheckoutResult) => {
+      queryClient.invalidateQueries({ queryKey: ["dashboard", "summary"] });
       queryClient.invalidateQueries({ queryKey: ["payments"] });
       queryClient.invalidateQueries({ queryKey: ["devices"] });
       queryClient.invalidateQueries({ queryKey: ["subscriptions"] });
@@ -64,6 +66,7 @@ export function useRenewSubscriptionPayment() {
     mutationFn: (data: RenewSubscriptionPaymentRequest) =>
       payments.renewSubscription(data),
     onSuccess: (result: CheckoutResult) => {
+      queryClient.invalidateQueries({ queryKey: ["dashboard", "summary"] });
       queryClient.invalidateQueries({ queryKey: ["payments"] });
       queryClient.invalidateQueries({ queryKey: ["devices"] });
       queryClient.invalidateQueries({ queryKey: ["subscriptions"] });
@@ -82,6 +85,7 @@ export function useResumePayment() {
   return useMutation({
     mutationFn: (id: string) => payments.resume(id),
     onSuccess: (result: CheckoutResult) => {
+      queryClient.invalidateQueries({ queryKey: ["dashboard", "summary"] });
       queryClient.invalidateQueries({ queryKey: ["payments"] });
       queryClient.invalidateQueries({ queryKey: ["devices"] });
       queryClient.invalidateQueries({ queryKey: ["subscriptions"] });

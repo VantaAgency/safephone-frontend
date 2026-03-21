@@ -1,9 +1,15 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { admin } from "../endpoints";
 import type {
   AdminCustomer,
+  AdminDashboardOverview,
   AdminPartner,
   AdminPartnerCommission,
   AdminPartnerApplication,
@@ -15,6 +21,15 @@ import type {
 
 interface AdminQueryOptions {
   enabled?: boolean;
+}
+
+export function useAdminOverview({ enabled = true }: AdminQueryOptions = {}) {
+  return useQuery<AdminDashboardOverview>({
+    queryKey: ["admin-overview"],
+    queryFn: () => admin.overview(),
+    enabled,
+    staleTime: 60 * 1000,
+  });
 }
 
 export function useAdminStats({ enabled = true }: AdminQueryOptions = {}) {
@@ -30,6 +45,7 @@ export function useAdminCustomers(search?: string, { enabled = true }: AdminQuer
     queryKey: ["admin-customers", search],
     queryFn: () => admin.customers({ search }),
     enabled,
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -62,6 +78,7 @@ export function useAdminPartnerApplications(status?: PartnerApplicationStatus, {
     queryKey: ["admin-partner-applications", status],
     queryFn: () => admin.partnerApplications({ status }),
     enabled,
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -73,6 +90,7 @@ export function useReviewPartnerApplication() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-partner-applications"] });
       queryClient.invalidateQueries({ queryKey: ["admin-partners"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-overview"] });
       queryClient.invalidateQueries({ queryKey: ["admin-stats"] });
       queryClient.invalidateQueries({ queryKey: ["admin-partner-commissions"] });
     },

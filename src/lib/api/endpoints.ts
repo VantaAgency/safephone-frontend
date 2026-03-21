@@ -2,6 +2,7 @@ import { api } from "./client";
 import type {
   AdminClaimParams,
   AdminCustomer,
+  AdminDashboardOverview,
   AdminPartner,
   AdminPartnerCommission,
   AdminPartnerApplication,
@@ -21,9 +22,11 @@ import type {
   CreateSubscriptionRequest,
   Device,
   LookupRepairRequest,
+  MemberDashboardSummary,
   PaginationParams,
   PartnerApplication,
   PartnerClient,
+  PartnerDashboardOverview,
   PartnerInvitation,
   PartnerPayout,
   PartnerProfile,
@@ -41,6 +44,10 @@ import type {
   UpdateProfileRequest,
   User,
 } from "./types";
+
+export const dashboard = {
+  summary: () => api.get<MemberDashboardSummary>("/dashboard/summary"),
+};
 
 export const users = {
   updateProfile: (data: UpdateProfileRequest) =>
@@ -85,6 +92,7 @@ export const subscriptions = {
 };
 
 export const admin = {
+  overview: () => api.get<AdminDashboardOverview>("/admin/overview"),
   stats: () => api.get<AdminStats>("/admin/stats"),
   customers: (params?: PaginationParams & { search?: string }) =>
     api.get<AdminCustomer[]>(
@@ -148,6 +156,7 @@ export const repairs = {
 };
 
 export const partner = {
+  overview: () => api.get<PartnerDashboardOverview>("/partner/overview"),
   getProfile: () => api.get<PartnerProfile>("/partner/profile"),
   listClients: (params?: PaginationParams) =>
     api.get<PartnerClient[]>(

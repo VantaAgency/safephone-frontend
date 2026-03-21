@@ -8,10 +8,11 @@ import type {
   UpdateDeviceRequest,
 } from "../types";
 
-export function useDevices() {
+export function useDevices({ enabled = true }: { enabled?: boolean } = {}) {
   return useQuery<Device[]>({
     queryKey: ["devices"],
     queryFn: () => devices.list(),
+    enabled,
   });
 }
 
@@ -28,6 +29,7 @@ export function useCreateDevice() {
   return useMutation({
     mutationFn: (data: CreateDeviceRequest) => devices.create(data),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["dashboard", "summary"] });
       queryClient.invalidateQueries({ queryKey: ["devices"] });
     },
   });
@@ -39,6 +41,7 @@ export function useUpdateDevice() {
     mutationFn: ({ id, data }: { id: string; data: UpdateDeviceRequest }) =>
       devices.update(id, data),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["dashboard", "summary"] });
       queryClient.invalidateQueries({ queryKey: ["devices"] });
     },
   });
@@ -49,6 +52,7 @@ export function useDeleteDevice() {
   return useMutation({
     mutationFn: (id: string) => devices.delete(id),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["dashboard", "summary"] });
       queryClient.invalidateQueries({ queryKey: ["devices"] });
     },
   });
