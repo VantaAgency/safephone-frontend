@@ -962,7 +962,7 @@ function PanelShell({
 }) {
   return (
     <section className="rounded-[1.75rem] border border-slate-200/80 bg-white p-5 shadow-sm md:p-6">
-      <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+      <div className="mb-5 flex flex-col gap-4 border-b border-slate-100 pb-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <h2 className="text-lg font-semibold text-indigo-950">{title}</h2>
           {subtitle && <p className="mt-1 text-sm text-slate-500">{subtitle}</p>}
@@ -1026,6 +1026,123 @@ function StackedSkeleton() {
   );
 }
 
+function DetailSection({
+  title,
+  subtitle,
+  actions,
+  defaultOpen = true,
+  collapsible = true,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  actions?: ReactNode;
+  defaultOpen?: boolean;
+  collapsible?: boolean;
+  children: ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+
+  return (
+    <section className="rounded-[1.5rem] border border-slate-200/80 bg-white shadow-sm">
+      <div className="flex flex-wrap items-start justify-between gap-3 px-5 py-4">
+        <div className="min-w-0">
+          <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-400">
+            {title}
+          </h3>
+          {subtitle ? (
+            <p className="mt-1 text-sm leading-6 text-slate-500">{subtitle}</p>
+          ) : null}
+        </div>
+        <div className="flex items-center gap-2">
+          {actions}
+          {collapsible ? (
+            <button
+              type="button"
+              onClick={() => setOpen((current) => !current)}
+              className="inline-flex cursor-pointer items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-2 text-xs font-semibold text-slate-600 transition-colors hover:border-slate-300 hover:text-indigo-950"
+              aria-expanded={open}
+            >
+              <ChevronToggle open={open} />
+              <span className="sr-only">Toggle section</span>
+            </button>
+          ) : null}
+        </div>
+      </div>
+      {open || !collapsible ? (
+        <div className="border-t border-slate-100 px-5 py-5">{children}</div>
+      ) : null}
+    </section>
+  );
+}
+
+function DetailCard({
+  title,
+  subtitle,
+  children,
+  tone = "soft",
+}: {
+  title?: string;
+  subtitle?: string;
+  children: ReactNode;
+  tone?: "soft" | "plain";
+}) {
+  return (
+    <div
+      className={cn(
+        "rounded-[1.25rem] border p-4",
+        tone === "soft"
+          ? "border-slate-200/80 bg-slate-50/80"
+          : "border-slate-200/80 bg-white",
+      )}
+    >
+      {title ? (
+        <div className="mb-3">
+          <p className="text-sm font-semibold text-indigo-950">{title}</p>
+          {subtitle ? <p className="mt-1 text-sm text-slate-500">{subtitle}</p> : null}
+        </div>
+      ) : null}
+      {children}
+    </div>
+  );
+}
+
+function ChevronToggle({ open }: { open: boolean }) {
+  return (
+    <svg
+      className={cn("h-4 w-4 transition-transform", open ? "rotate-180" : "rotate-0")}
+      viewBox="0 0 20 20"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path
+        d="M5 7.5L10 12.5L15 7.5"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function MetaItem({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="rounded-[1rem] border border-slate-200/70 bg-white px-3 py-3">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+        {label}
+      </p>
+      <p className="mt-1 text-sm font-medium leading-6 text-indigo-950">{value}</p>
+    </div>
+  );
+}
+
 function ClientDetailPanel({
   detail,
   lang,
@@ -1034,19 +1151,28 @@ function ClientDetailPanel({
   lang: "fr" | "en";
 }) {
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div className="rounded-[1.5rem] border border-slate-200/80 bg-slate-50/80 p-5">
         <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <h3 className="text-lg font-semibold text-indigo-950">
-              {detail.full_name}
-            </h3>
-            <p className="mt-1 text-sm text-slate-500">{detail.email}</p>
-            {detail.partner_store_name && (
-              <p className="mt-2 text-xs font-medium uppercase tracking-[0.16em] text-slate-400">
-                {lang === "fr" ? "Enrôlé par" : "Enrolled by"} {detail.partner_store_name}
-              </p>
-            )}
+          <div className="space-y-3">
+            <div>
+              <h3 className="text-xl font-semibold text-indigo-950">
+                {detail.full_name}
+              </h3>
+              <p className="mt-1 text-sm text-slate-500">{detail.email}</p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {detail.phone ? (
+                <span className="rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-slate-600">
+                  {detail.phone}
+                </span>
+              ) : null}
+              {detail.partner_store_name ? (
+                <span className="rounded-full bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-700">
+                  {lang === "fr" ? "Enrôlé par" : "Enrolled by"} {detail.partner_store_name}
+                </span>
+              ) : null}
+            </div>
           </div>
           <ContactActions email={detail.email} phone={detail.phone} lang={lang} />
         </div>
@@ -1073,17 +1199,19 @@ function ClientDetailPanel({
         ]}
       />
 
-      <div>
-        <SectionTitle
-          title={lang === "fr" ? "Appareils couverts" : "Covered devices"}
-        />
-        <div className="mt-3 space-y-3">
+      <DetailSection
+        title={lang === "fr" ? "Appareils couverts" : "Covered devices"}
+        subtitle={
+          lang === "fr"
+            ? "Consultez les appareils actifs, leur couverture et les blocages éventuels."
+            : "Review covered devices, current coverage, and activation blockers."
+        }
+        defaultOpen
+      >
+        <div className="space-y-3">
           {detail.devices.length ? (
             detail.devices.map((item) => (
-              <div
-                key={item.device.id}
-                className="rounded-[1.35rem] border border-slate-200/80 bg-white p-4"
-              >
+              <DetailCard key={item.device.id}>
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <p className="text-sm font-semibold text-indigo-950">
@@ -1103,35 +1231,31 @@ function ClientDetailPanel({
                     label={coverageStatusLabel(item.coverage_status, lang)}
                   />
                 </div>
-                <div className="mt-3 grid gap-3 text-sm text-slate-500 md:grid-cols-2">
-                  <div>
-                    <span className="font-medium text-slate-700">
-                      {lang === "fr" ? "Formule" : "Plan"}:
-                    </span>{" "}
-                    {item.plan_name_fr || item.plan_name_en || "—"}
-                  </div>
-                  <div>
-                    <span className="font-medium text-slate-700">
-                      {lang === "fr" ? "Statut abonnement" : "Subscription status"}:
-                    </span>{" "}
-                    {item.subscription
-                      ? subscriptionStatusLabel(item.subscription.status, lang)
-                      : "—"}
-                  </div>
-                  <div>
-                    <span className="font-medium text-slate-700">
-                      {lang === "fr" ? "Paiement" : "Payment"}:
-                    </span>{" "}
-                    {item.payment ? paymentStatusLabel(item.payment.status, lang) : "—"}
-                  </div>
-                  <div>
-                    <span className="font-medium text-slate-700">
-                      {lang === "fr" ? "Dernière mise à jour" : "Updated"}:
-                    </span>{" "}
-                    {formatDateTime(item.device.updated_at, lang)}
-                  </div>
+                <div className="mt-4 grid gap-3 md:grid-cols-2">
+                  <MetaItem
+                    label={lang === "fr" ? "Formule" : "Plan"}
+                    value={item.plan_name_fr || item.plan_name_en || "—"}
+                  />
+                  <MetaItem
+                    label={lang === "fr" ? "Statut abonnement" : "Subscription status"}
+                    value={
+                      item.subscription
+                        ? subscriptionStatusLabel(item.subscription.status, lang)
+                        : "—"
+                    }
+                  />
+                  <MetaItem
+                    label={lang === "fr" ? "Paiement" : "Payment"}
+                    value={
+                      item.payment ? paymentStatusLabel(item.payment.status, lang) : "—"
+                    }
+                  />
+                  <MetaItem
+                    label={lang === "fr" ? "Dernière mise à jour" : "Updated"}
+                    value={formatDateTime(item.device.updated_at, lang)}
+                  />
                 </div>
-              </div>
+              </DetailCard>
             ))
           ) : (
             <EmptyState
@@ -1144,73 +1268,83 @@ function ClientDetailPanel({
             />
           )}
         </div>
-      </div>
+      </DetailSection>
 
-      <div className="grid gap-6 xl:grid-cols-2">
-        <div>
-          <SectionTitle
-            title={lang === "fr" ? "Paiements / abonnements" : "Payments / subscriptions"}
-          />
-          <div className="mt-3 space-y-3">
-            {detail.payment_follow_ups.length ? (
-              detail.payment_follow_ups.map((item) => (
-                <div
-                  key={item.subscription?.id ?? `${item.user_id}-${item.device.id}`}
-                  className="rounded-[1.35rem] border border-slate-200/80 bg-white p-4"
-                >
-                  <PaymentCard item={item} lang={lang} />
-                </div>
-              ))
-            ) : (
-              <EmptyState
-                title={lang === "fr" ? "Aucun abonnement" : "No subscriptions"}
-                description={
-                  lang === "fr"
-                    ? "Aucun historique d’abonnement disponible."
-                    : "No subscription history available."
-                }
-              />
-            )}
-          </div>
+      <DetailSection
+        title={lang === "fr" ? "Paiements / abonnements" : "Payments / subscriptions"}
+        subtitle={
+          lang === "fr"
+            ? "Historique des paiements et statut de couverture associé."
+            : "Payment history and related coverage status."
+        }
+        defaultOpen
+      >
+        <div className="space-y-3">
+          {detail.payment_follow_ups.length ? (
+            detail.payment_follow_ups.map((item) => (
+              <DetailCard
+                key={item.subscription?.id ?? `${item.user_id}-${item.device.id}`}
+              >
+                <PaymentCard item={item} lang={lang} />
+              </DetailCard>
+            ))
+          ) : (
+            <EmptyState
+              title={lang === "fr" ? "Aucun abonnement" : "No subscriptions"}
+              description={
+                lang === "fr"
+                  ? "Aucun historique d’abonnement disponible."
+                  : "No subscription history available."
+              }
+            />
+          )}
         </div>
+      </DetailSection>
 
-        <div>
-          <SectionTitle title={lang === "fr" ? "Sinistres" : "Claims"} />
-          <div className="mt-3 space-y-3">
-            {detail.claims.length ? (
-              detail.claims.map((item) => (
-                <div
-                  key={item.claim.id}
-                  className="rounded-[1.35rem] border border-slate-200/80 bg-white p-4"
-                >
-                  <ClaimCard item={item} lang={lang} />
-                </div>
-              ))
-            ) : (
-              <EmptyState
-                title={lang === "fr" ? "Aucun sinistre" : "No claims"}
-                description={
-                  lang === "fr"
-                    ? "Aucune demande enregistrée pour ce client."
-                    : "No claim history for this client yet."
-                }
-              />
-            )}
-          </div>
+      <DetailSection
+        title={lang === "fr" ? "Sinistres" : "Claims"}
+        subtitle={
+          lang === "fr"
+            ? "Demandes déclarées par le client et état de traitement."
+            : "Client claims and current processing state."
+        }
+        defaultOpen={false}
+      >
+        <div className="space-y-3">
+          {detail.claims.length ? (
+            detail.claims.map((item) => (
+              <DetailCard key={item.claim.id}>
+                <ClaimCard item={item} lang={lang} />
+              </DetailCard>
+            ))
+          ) : (
+            <EmptyState
+              title={lang === "fr" ? "Aucun sinistre" : "No claims"}
+              description={
+                lang === "fr"
+                  ? "Aucune demande enregistrée pour ce client."
+                  : "No claim history for this client yet."
+              }
+            />
+          )}
         </div>
-      </div>
+      </DetailSection>
 
-      <div>
-        <SectionTitle title={lang === "fr" ? "Réparations" : "Repairs"} />
-        <div className="mt-3 space-y-3">
+      <DetailSection
+        title={lang === "fr" ? "Réparations" : "Repairs"}
+        subtitle={
+          lang === "fr"
+            ? "Réparations liées au client, avec leur progression et leur devis."
+            : "Client-linked repairs with progress and quoted amount."
+        }
+        defaultOpen={false}
+      >
+        <div className="space-y-3">
           {detail.repairs.length ? (
             detail.repairs.map((item) => (
-              <div
-                key={item.repair.id}
-                className="rounded-[1.35rem] border border-slate-200/80 bg-white p-4"
-              >
+              <DetailCard key={item.repair.id}>
                 <RepairCard item={item} lang={lang} />
-              </div>
+              </DetailCard>
             ))
           ) : (
             <EmptyState
@@ -1223,7 +1357,7 @@ function ClientDetailPanel({
             />
           )}
         </div>
-      </div>
+      </DetailSection>
 
       <OperationalWorkbench
         entityType="client"
@@ -1248,7 +1382,7 @@ function PaymentDetailPanel({
   const entityId = item.subscription?.id;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div className="rounded-[1.5rem] border border-slate-200/80 bg-slate-50/80 p-5">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
@@ -1301,43 +1435,46 @@ function PaymentDetailPanel({
         ]}
       />
 
-      <div className="rounded-[1.5rem] border border-slate-200/80 bg-white p-5">
-        <SectionTitle title={lang === "fr" ? "Détails abonnement" : "Subscription detail"} />
-        <div className="mt-3 grid gap-3 text-sm text-slate-500 md:grid-cols-2">
-          <div>
-            <span className="font-medium text-slate-700">
-              {lang === "fr" ? "ID abonnement" : "Subscription ID"}:
-            </span>{" "}
-            {item.subscription?.id ?? "—"}
-          </div>
-          <div>
-            <span className="font-medium text-slate-700">
-              {lang === "fr" ? "Statut" : "Status"}:
-            </span>{" "}
-            {item.subscription
-              ? subscriptionStatusLabel(item.subscription.status, lang)
-              : "—"}
-          </div>
-          <div>
-            <span className="font-medium text-slate-700">
-              {lang === "fr" ? "Période" : "Billing cycle"}:
-            </span>{" "}
-            {item.subscription?.billing_cycle === "annual"
-              ? lang === "fr"
-                ? "Annuel"
-                : "Annual"
-              : lang === "fr"
-                ? "Mensuel"
-                : "Monthly"}
-          </div>
-          <div>
-            <span className="font-medium text-slate-700">
-              {lang === "fr" ? "Partenaire" : "Partner"}:
-            </span>{" "}
-            {item.partner_store_name ?? "—"}
-          </div>
+      <DetailSection
+        title={lang === "fr" ? "Abonnement et activation" : "Subscription and activation"}
+        subtitle={
+          lang === "fr"
+            ? "Retrouvez le contexte de paiement et les informations nécessaires au suivi."
+            : "Review billing context and the information needed for follow-up."
+        }
+        defaultOpen
+      >
+        <div className="grid gap-3 md:grid-cols-2">
+          <MetaItem
+            label={lang === "fr" ? "ID abonnement" : "Subscription ID"}
+            value={item.subscription?.id ?? "—"}
+          />
+          <MetaItem
+            label={lang === "fr" ? "Statut" : "Status"}
+            value={
+              item.subscription
+                ? subscriptionStatusLabel(item.subscription.status, lang)
+                : "—"
+            }
+          />
+          <MetaItem
+            label={lang === "fr" ? "Période" : "Billing cycle"}
+            value={
+              item.subscription?.billing_cycle === "annual"
+                ? lang === "fr"
+                  ? "Annuel"
+                  : "Annual"
+                : lang === "fr"
+                  ? "Mensuel"
+                  : "Monthly"
+            }
+          />
+          <MetaItem
+            label={lang === "fr" ? "Partenaire" : "Partner"}
+            value={item.partner_store_name ?? "—"}
+          />
         </div>
-      </div>
+      </DetailSection>
 
       {entityId && (
         <OperationalWorkbench
@@ -1366,7 +1503,7 @@ function ClaimDetailPanel({
   updating: boolean;
 }) {
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div className="rounded-[1.5rem] border border-slate-200/80 bg-slate-50/80 p-5">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
@@ -1417,12 +1554,17 @@ function ClaimDetailPanel({
       />
 
       {item.claim.description && (
-        <div className="rounded-[1.5rem] border border-slate-200/80 bg-white p-5">
-          <SectionTitle title={lang === "fr" ? "Description" : "Description"} />
-          <p className="mt-3 text-sm leading-6 text-slate-600">
-            {item.claim.description}
-          </p>
-        </div>
+        <DetailSection
+          title={lang === "fr" ? "Description du sinistre" : "Claim description"}
+          subtitle={
+            lang === "fr"
+              ? "Résumé déclaré par le client ou par l’équipe."
+              : "Summary provided by the client or the operations team."
+          }
+          defaultOpen
+        >
+          <p className="text-sm leading-6 text-slate-600">{item.claim.description}</p>
+        </DetailSection>
       )}
 
       {item.claim.status === "pending" && (
@@ -1472,7 +1614,7 @@ function RepairDetailPanel({
   lang: "fr" | "en";
 }) {
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div className="rounded-[1.5rem] border border-slate-200/80 bg-slate-50/80 p-5">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
@@ -1528,38 +1670,38 @@ function RepairDetailPanel({
         ]}
       />
 
-      <div className="rounded-[1.5rem] border border-slate-200/80 bg-white p-5">
-        <SectionTitle title={lang === "fr" ? "Planification" : "Scheduling"} />
-        <div className="mt-3 grid gap-3 text-sm text-slate-500 md:grid-cols-2">
-          <div>
-            <span className="font-medium text-slate-700">
-              {lang === "fr" ? "Préférence client" : "Requested slot"}:
-            </span>{" "}
-            {formatShortDate(item.repair.preferred_date, lang)} •{" "}
-            {item.repair.preferred_time}
-          </div>
-          <div>
-            <span className="font-medium text-slate-700">
-              {lang === "fr" ? "Créée le" : "Created"}:
-            </span>{" "}
-            {formatDateTime(item.repair.created_at, lang)}
-          </div>
-          <div>
-            <span className="font-medium text-slate-700">
-              {lang === "fr" ? "Planifiée pour" : "Scheduled for"}:
-            </span>{" "}
-            {item.repair.scheduled_date
-              ? `${formatShortDate(item.repair.scheduled_date, lang)} • ${item.repair.scheduled_time ?? "—"}`
-              : "—"}
-          </div>
-          <div>
-            <span className="font-medium text-slate-700">
-              {lang === "fr" ? "Partenaire" : "Partner"}:
-            </span>{" "}
-            {item.partner_store_name ?? "—"}
-          </div>
+      <DetailSection
+        title={lang === "fr" ? "Planification" : "Scheduling"}
+        subtitle={
+          lang === "fr"
+            ? "Créneau demandé, planification confirmée et partenaire associé."
+            : "Requested slot, confirmed scheduling, and assigned partner."
+        }
+        defaultOpen
+      >
+        <div className="grid gap-3 md:grid-cols-2">
+          <MetaItem
+            label={lang === "fr" ? "Préférence client" : "Requested slot"}
+            value={`${formatShortDate(item.repair.preferred_date, lang)} • ${item.repair.preferred_time}`}
+          />
+          <MetaItem
+            label={lang === "fr" ? "Créée le" : "Created"}
+            value={formatDateTime(item.repair.created_at, lang)}
+          />
+          <MetaItem
+            label={lang === "fr" ? "Planifiée pour" : "Scheduled for"}
+            value={
+              item.repair.scheduled_date
+                ? `${formatShortDate(item.repair.scheduled_date, lang)} • ${item.repair.scheduled_time ?? "—"}`
+                : "—"
+            }
+          />
+          <MetaItem
+            label={lang === "fr" ? "Partenaire" : "Partner"}
+            value={item.partner_store_name ?? "—"}
+          />
         </div>
-      </div>
+      </DetailSection>
     </div>
   );
 }
@@ -1602,7 +1744,16 @@ function RepairUpdateControls({
   );
 
   return (
-    <div className="grid gap-4 rounded-[1.5rem] border border-slate-200/80 bg-slate-50/70 p-4">
+    <div className="rounded-[1.5rem] border border-slate-200/80 bg-white p-5 shadow-sm">
+      <div className="mb-4">
+        <SectionTitle title={lang === "fr" ? "Actions de mise à jour" : "Update actions"} />
+        <p className="mt-1 text-sm text-slate-500">
+          {lang === "fr"
+            ? "Séparez ici la progression de la réparation et la mise à jour du devis."
+            : "Manage repair progression and quote updates separately here."}
+        </p>
+      </div>
+      <div className="grid gap-4 rounded-[1.25rem] border border-slate-200/70 bg-slate-50/80 p-4">
       <div className="grid gap-4 md:grid-cols-2">
         <FormField label={lang === "fr" ? "Nouveau statut" : "Next status"}>
           <Select
@@ -1670,6 +1821,7 @@ function RepairUpdateControls({
           {lang === "fr" ? "Enregistrer le montant" : "Save amount"}
         </Button>
       </div>
+      </div>
     </div>
   );
 }
@@ -1684,9 +1836,15 @@ function PaymentCard({
   compact?: boolean;
 }) {
   return (
-    <div className="space-y-3">
+    <div
+      className={cn(
+        "space-y-3",
+        compact &&
+          "rounded-[1.25rem] border border-slate-200/80 bg-slate-50/80 p-4 shadow-sm",
+      )}
+    >
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
+        <div className="min-w-0">
           <p className="text-sm font-semibold text-indigo-950">{item.client_name}</p>
           <p className="mt-1 text-sm text-slate-500">
             {item.device.brand} {item.device.model}
@@ -1713,28 +1871,24 @@ function PaymentCard({
           </span>
         )}
       </div>
-      {!compact && (
-        <div className="grid gap-2 text-sm text-slate-500 md:grid-cols-2">
-          <div>
-            <span className="font-medium text-slate-700">
-              {lang === "fr" ? "Paiement" : "Payment"}:
-            </span>{" "}
-            {item.payment ? paymentStatusLabel(item.payment.status, lang) : "—"}
-          </div>
-          <div>
-            <span className="font-medium text-slate-700">
-              {lang === "fr" ? "Contexte" : "Context"}:
-            </span>{" "}
-            {item.payment_context === "first_payment"
+      <div className="grid gap-2 text-sm md:grid-cols-2">
+        <MetaItem
+          label={lang === "fr" ? "Paiement" : "Payment"}
+          value={item.payment ? paymentStatusLabel(item.payment.status, lang) : "—"}
+        />
+        <MetaItem
+          label={lang === "fr" ? "Contexte" : "Context"}
+          value={
+            item.payment_context === "first_payment"
               ? lang === "fr"
                 ? "Premier paiement"
                 : "First payment"
               : lang === "fr"
                 ? "Renouvellement"
-                : "Renewal"}
-          </div>
-        </div>
-      )}
+                : "Renewal"
+          }
+        />
+      </div>
     </div>
   );
 }
@@ -1749,9 +1903,15 @@ function ClaimCard({
   compact?: boolean;
 }) {
   return (
-    <div className="space-y-3">
+    <div
+      className={cn(
+        "space-y-3",
+        compact &&
+          "rounded-[1.25rem] border border-slate-200/80 bg-slate-50/80 p-4 shadow-sm",
+      )}
+    >
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
+        <div className="min-w-0">
           <p className="text-sm font-semibold text-indigo-950">{item.client_name}</p>
           <p className="mt-1 text-sm text-slate-500">
             {claimTypeLabel(item.claim.claim_type, lang)} • {item.device_brand}{" "}
@@ -1776,22 +1936,16 @@ function ClaimCard({
           </span>
         )}
       </div>
-      {!compact && (
-        <div className="grid gap-2 text-sm text-slate-500 md:grid-cols-2">
-          <div>
-            <span className="font-medium text-slate-700">
-              {lang === "fr" ? "Déposé le" : "Filed"}:
-            </span>{" "}
-            {formatDateTime(item.claim.filed_at, lang)}
-          </div>
-          <div>
-            <span className="font-medium text-slate-700">
-              {lang === "fr" ? "Couverture" : "Coverage"}:
-            </span>{" "}
-            {coverageStatusLabel(item.coverage_status, lang)}
-          </div>
-        </div>
-      )}
+      <div className="grid gap-2 text-sm md:grid-cols-2">
+        <MetaItem
+          label={lang === "fr" ? "Déposé le" : "Filed"}
+          value={formatDateTime(item.claim.filed_at, lang)}
+        />
+        <MetaItem
+          label={lang === "fr" ? "Couverture" : "Coverage"}
+          value={coverageStatusLabel(item.coverage_status, lang)}
+        />
+      </div>
     </div>
   );
 }
@@ -1806,9 +1960,15 @@ function RepairCard({
   compact?: boolean;
 }) {
   return (
-    <div className="space-y-3">
+    <div
+      className={cn(
+        "space-y-3",
+        compact &&
+          "rounded-[1.25rem] border border-slate-200/80 bg-slate-50/80 p-4 shadow-sm",
+      )}
+    >
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
+        <div className="min-w-0">
           <p className="text-sm font-semibold text-indigo-950">
             {item.repair.customer_name}
           </p>
@@ -1835,24 +1995,20 @@ function RepairCard({
           </span>
         )}
       </div>
-      {!compact && (
-        <div className="grid gap-2 text-sm text-slate-500 md:grid-cols-2">
-          <div>
-            <span className="font-medium text-slate-700">
-              {lang === "fr" ? "Créée le" : "Created"}:
-            </span>{" "}
-            {formatDateTime(item.repair.created_at, lang)}
-          </div>
-          <div>
-            <span className="font-medium text-slate-700">
-              {lang === "fr" ? "Montant" : "Amount"}:
-            </span>{" "}
-            {item.repair.repair_amount_xof !== undefined
+      <div className="grid gap-2 text-sm md:grid-cols-2">
+        <MetaItem
+          label={lang === "fr" ? "Créée le" : "Created"}
+          value={formatDateTime(item.repair.created_at, lang)}
+        />
+        <MetaItem
+          label={lang === "fr" ? "Montant" : "Amount"}
+          value={
+            item.repair.repair_amount_xof !== undefined
               ? formatXOF(item.repair.repair_amount_xof)
-              : "—"}
-          </div>
-        </div>
-      )}
+              : "—"
+          }
+        />
+      </div>
     </div>
   );
 }
@@ -1867,9 +2023,15 @@ function TaskCard({
   compact?: boolean;
 }) {
   return (
-    <div className="space-y-3">
+    <div
+      className={cn(
+        "space-y-3",
+        compact &&
+          "rounded-[1.25rem] border border-slate-200/80 bg-slate-50/80 p-4 shadow-sm",
+      )}
+    >
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
+        <div className="min-w-0">
           <p className="text-sm font-semibold text-indigo-950">{task.title}</p>
           <p className="mt-1 text-sm text-slate-500">{task.description}</p>
         </div>
@@ -1886,22 +2048,16 @@ function TaskCard({
           />
         )}
       </div>
-      {!compact && (
-        <div className="grid gap-2 text-sm text-slate-500 md:grid-cols-2">
-          <div>
-            <span className="font-medium text-slate-700">
-              {lang === "fr" ? "Client" : "Client"}:
-            </span>{" "}
-            {task.client_name}
-          </div>
-          <div>
-            <span className="font-medium text-slate-700">
-              {lang === "fr" ? "Mis à jour" : "Updated"}:
-            </span>{" "}
-            {formatDateTime(task.updated_at, lang)}
-          </div>
-        </div>
-      )}
+      <div className="grid gap-2 text-sm md:grid-cols-2">
+        <MetaItem
+          label={lang === "fr" ? "Client" : "Client"}
+          value={task.client_name}
+        />
+        <MetaItem
+          label={lang === "fr" ? "Mis à jour" : "Updated"}
+          value={formatDateTime(task.updated_at, lang)}
+        />
+      </div>
     </div>
   );
 }
@@ -1933,15 +2089,12 @@ function OperationalWorkbench({
   );
 
   return (
-    <div className="space-y-5 rounded-[1.5rem] border border-slate-200/80 bg-white p-5">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <SectionTitle title={title} />
-          {subtitle && <p className="mt-1 text-sm text-slate-500">{subtitle}</p>}
-        </div>
-        <ContactActions email={contactEmail} phone={contactPhone} lang={lang} />
-      </div>
-
+    <DetailSection
+      title={title}
+      subtitle={subtitle}
+      actions={<ContactActions email={contactEmail} phone={contactPhone} lang={lang} />}
+      defaultOpen
+    >
       {followUpLoading ? (
         <StackedSkeleton />
       ) : (
@@ -1955,7 +2108,7 @@ function OperationalWorkbench({
           lang={lang}
         />
       )}
-    </div>
+    </DetailSection>
   );
 }
 
@@ -2013,104 +2166,140 @@ function OperationalWorkbenchForm({
   }
 
   return (
-    <>
-      <div className="grid gap-4 md:grid-cols-2">
-        <FormField label={lang === "fr" ? "Statut de suivi" : "Follow-up status"}>
-          <Select
-            value={status}
-            onChange={(event) => setStatus(event.target.value as FollowUpStatus)}
-          >
-            {FOLLOW_UP_STATUS_OPTIONS.map((value) => (
-              <option key={value} value={value}>
-                {followUpStatusLabel(value, lang)}
-              </option>
-            ))}
-          </Select>
-        </FormField>
-        <FormField label={lang === "fr" ? "Dernier contact" : "Last contact"}>
-          <Input
-            type="datetime-local"
-            value={lastContactAt}
-            onChange={(event) => setLastContactAt(event.target.value)}
-          />
-        </FormField>
-      </div>
-
-      <FormField label={lang === "fr" ? "Raison du suivi" : "Follow-up reason"}>
-        <Input
-          value={reason}
-          onChange={(event) => setReason(event.target.value)}
-          placeholder={
-            lang === "fr"
-              ? "Ex. paiement échoué, documents manquants..."
-              : "Example: failed payment, missing documents..."
-          }
-        />
-      </FormField>
-
-      <FormField label={lang === "fr" ? "Prochaine action" : "Next action"}>
-        <Textarea
-          rows={3}
-          value={nextAction}
-          onChange={(event) => setNextAction(event.target.value)}
-          placeholder={
-            lang === "fr"
-              ? "Décrire la prochaine étape opérationnelle..."
-              : "Describe the next operational step..."
-          }
-        />
-      </FormField>
-
-      <Button
-        variant="primary"
-        onClick={handleSaveFollowUp}
-        loading={upsertFollowUp.isPending}
+    <div className="space-y-4">
+      <DetailSection
+        title={lang === "fr" ? "Action de suivi" : "Follow-up action"}
+        subtitle={
+          lang === "fr"
+            ? "Statut, raison et prochaine étape opérationnelle."
+            : "Status, reason, and next operational step."
+        }
+        defaultOpen
       >
-        {lang === "fr" ? "Enregistrer le suivi" : "Save follow-up"}
-      </Button>
+        <div className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2">
+            <FormField label={lang === "fr" ? "Statut de suivi" : "Follow-up status"}>
+              <Select
+                value={status}
+                onChange={(event) => setStatus(event.target.value as FollowUpStatus)}
+              >
+                {FOLLOW_UP_STATUS_OPTIONS.map((value) => (
+                  <option key={value} value={value}>
+                    {followUpStatusLabel(value, lang)}
+                  </option>
+                ))}
+              </Select>
+            </FormField>
+            <FormField label={lang === "fr" ? "Dernier contact" : "Last contact"}>
+              <Input
+                type="datetime-local"
+                value={lastContactAt}
+                onChange={(event) => setLastContactAt(event.target.value)}
+              />
+            </FormField>
+          </div>
 
-      <div className="border-t border-slate-100 pt-5">
-        <SectionTitle title={lang === "fr" ? "Notes internes" : "Internal notes"} />
-        <div className="mt-4 space-y-3">
-          <FormField label={lang === "fr" ? "Nouvelle note" : "New note"}>
-            <Textarea
-              rows={4}
-              value={noteBody}
-              onChange={(event) => setNoteBody(event.target.value)}
+          <FormField label={lang === "fr" ? "Raison du suivi" : "Follow-up reason"}>
+            <Input
+              value={reason}
+              onChange={(event) => setReason(event.target.value)}
               placeholder={
                 lang === "fr"
-                  ? "Ajouter une note interne visible uniquement par l’équipe..."
-                  : "Add an internal note visible only to the team..."
+                  ? "Ex. paiement échoué, documents manquants..."
+                  : "Example: failed payment, missing documents..."
               }
             />
           </FormField>
-          <Button
-            variant="outline"
-            onClick={handleCreateNote}
-            loading={createNote.isPending}
-          >
-            {lang === "fr" ? "Ajouter la note" : "Add note"}
-          </Button>
-        </div>
 
-        <div className="mt-5 space-y-3">
-          {notesLoading ? (
-            <StackedSkeleton />
-          ) : notes.length ? (
-            notes.map((note) => <NoteCard key={note.id} note={note} lang={lang} />)
-          ) : (
-            <EmptyState
-              title={lang === "fr" ? "Aucune note" : "No notes yet"}
-              description={
+          <FormField label={lang === "fr" ? "Prochaine action" : "Next action"}>
+            <Textarea
+              rows={3}
+              value={nextAction}
+              onChange={(event) => setNextAction(event.target.value)}
+              placeholder={
                 lang === "fr"
-                  ? "Les commentaires internes ajoutés par l’équipe apparaîtront ici."
-                  : "Internal comments added by the team will appear here."
+                  ? "Décrire la prochaine étape opérationnelle..."
+                  : "Describe the next operational step..."
               }
             />
-          )}
+          </FormField>
+
+          <div className="flex flex-wrap gap-3">
+            <Button
+              variant="primary"
+              onClick={handleSaveFollowUp}
+              loading={upsertFollowUp.isPending}
+            >
+              {lang === "fr" ? "Enregistrer le suivi" : "Save follow-up"}
+            </Button>
+            {followUp?.last_contact_at ? (
+              <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-2 text-xs font-medium text-slate-500">
+                {lang === "fr" ? "Dernier enregistrement" : "Last update"}:{" "}
+                {formatDateTime(followUp.last_contact_at, lang)}
+              </span>
+            ) : null}
+          </div>
         </div>
-      </div>
-    </>
+      </DetailSection>
+
+      <DetailSection
+        title={lang === "fr" ? "Notes internes" : "Internal notes"}
+        subtitle={
+          lang === "fr"
+            ? "Commentaires visibles uniquement par l’équipe opérationnelle."
+            : "Comments visible only to the operations team."
+        }
+        defaultOpen={false}
+      >
+        <div className="space-y-4">
+          <DetailCard
+            title={lang === "fr" ? "Nouvelle note" : "New note"}
+            subtitle={
+              lang === "fr"
+                ? "Documentez les échanges, les décisions ou les blocages internes."
+                : "Record conversations, decisions, or internal blockers."
+            }
+          >
+            <div className="space-y-3">
+              <Textarea
+                rows={4}
+                value={noteBody}
+                onChange={(event) => setNoteBody(event.target.value)}
+                placeholder={
+                  lang === "fr"
+                    ? "Ajouter une note interne visible uniquement par l’équipe..."
+                    : "Add an internal note visible only to the team..."
+                }
+              />
+              <Button
+                variant="outline"
+                onClick={handleCreateNote}
+                loading={createNote.isPending}
+              >
+                {lang === "fr" ? "Ajouter la note" : "Add note"}
+              </Button>
+            </div>
+          </DetailCard>
+
+          <div className="space-y-3">
+            {notesLoading ? (
+              <StackedSkeleton />
+            ) : notes.length ? (
+              notes.map((note) => <NoteCard key={note.id} note={note} lang={lang} />)
+            ) : (
+              <EmptyState
+                title={lang === "fr" ? "Aucune note" : "No notes yet"}
+                description={
+                  lang === "fr"
+                    ? "Les commentaires internes ajoutés par l’équipe apparaîtront ici."
+                    : "Internal comments added by the team will appear here."
+                }
+              />
+            )}
+          </div>
+        </div>
+      </DetailSection>
+    </div>
   );
 }
 
@@ -2182,7 +2371,7 @@ function InfoGrid({
       {items.map((item) => (
         <div
           key={item.label}
-          className="rounded-[1.35rem] border border-slate-200/80 bg-white px-4 py-4"
+          className="rounded-[1.35rem] border border-slate-200/80 bg-white px-4 py-4 shadow-sm"
         >
           <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
             {item.label}
