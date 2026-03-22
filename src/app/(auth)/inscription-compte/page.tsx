@@ -8,7 +8,9 @@ import { Button } from "@/components/ui/button";
 import { FormErrorAlert, FormField, Input, PasswordInput } from "@/components/ui/form-field";
 import { authClient } from "@/lib/auth/client";
 import { users } from "@/lib/api/endpoints";
+import { getPostAuthRedirect } from "@/lib/auth/home-route";
 import { registerSchema } from "@/lib/validation/schemas";
+import type { UserRole } from "@/lib/api/types";
 
 export default function RegisterPage() {
   const { lang, t } = useLanguage();
@@ -24,7 +26,7 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const redirect = searchParams.get("redirect") || "/tableau-de-bord";
+  const redirect = searchParams.get("redirect");
 
   const validate = () => {
     const parsed = registerSchema.safeParse({
@@ -86,7 +88,9 @@ export default function RegisterPage() {
         );
         return;
       }
-      router.push(redirect);
+      const session = await authClient.getSession();
+      const role = (session.data?.user as { role?: UserRole } | undefined)?.role;
+      router.push(getPostAuthRedirect(redirect, role));
     } catch {
       setError(
         lang === "fr"

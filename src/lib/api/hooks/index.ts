@@ -3,6 +3,24 @@ export { useSubmitContact, useSubmitPartnerApplication, useMyPartnerApplication 
 export { useMemberDashboardSummary } from "./use-dashboard";
 export { useAdminOverview, useAdminStats, useAdminCustomers, useAdminPayments, useAdminPartners, useAdminPartnerCommissions, useAdminPartnerApplications, useReviewPartnerApplication } from "./use-admin";
 export {
+  useEmployeeOverview,
+  useEmployeeClients,
+  useEmployeeClient,
+  useEmployeePaymentFollowUps,
+  useEmployeeClaims,
+  useEmployeeClaim,
+  useEmployeeUpdateClaimStatus,
+  useEmployeeRepairs,
+  useEmployeeRepair,
+  useEmployeeUpdateRepairStatus,
+  useEmployeeUpdateRepairAmount,
+  useEmployeeTasks,
+  useEmployeeFollowUp,
+  useUpsertOperationalFollowUp,
+  useEmployeeNotes,
+  useCreateOperationalNote,
+} from "./use-employee";
+export {
   usePartnerOverview,
   usePartnerProfile,
   usePartnerClients,

@@ -7,10 +7,12 @@ import { useLanguage } from "@/lib/language-context";
 import { useAuth } from "@/lib/auth/auth-provider";
 import { authClient } from "@/lib/auth/client";
 import { users } from "@/lib/api/endpoints";
+import { getPostAuthRedirect } from "@/lib/auth/home-route";
 import { Button } from "@/components/ui/button";
 import { FormErrorAlert, FormField, Input, PasswordInput } from "@/components/ui/form-field";
 import { XIcon } from "@/components/ui/icons";
 import { loginSchema, registerSchema } from "@/lib/validation/schemas";
+import type { UserRole } from "@/lib/api/types";
 
 export type AuthView = "sign-in" | "sign-up";
 
@@ -68,12 +70,10 @@ export function AuthModal({ view: initialView, onClose, redirectTo }: AuthModalP
     if (e.target === backdropRef.current) handleClose();
   };
 
-  const onAuthSuccess = () => {
-    if (redirectTo) {
-      router.push(redirectTo);
-    } else {
-      router.refresh();
-    }
+  const onAuthSuccess = async () => {
+    const session = await authClient.getSession();
+    const role = (session.data?.user as { role?: UserRole } | undefined)?.role;
+    router.push(getPostAuthRedirect(redirectTo, role));
     handleClose();
   };
 
@@ -131,7 +131,7 @@ function SignInForm({
 }: {
   lang: string;
   t: { nav: { login: string }; common: { close: string } };
-  onSuccess: () => void;
+  onSuccess: () => Promise<void> | void;
   onSwitchToSignUp: () => void;
 }) {
   const [email, setEmail] = useState("");
@@ -175,7 +175,7 @@ function SignInForm({
         );
         return;
       }
-      onSuccess();
+      await onSuccess();
     } catch {
       setError(
         lang === "fr"
@@ -283,7 +283,7 @@ function SignUpForm({
 }: {
   lang: string;
   t: { nav: { login: string }; common: { close: string } };
-  onSuccess: () => void;
+  onSuccess: () => Promise<void> | void;
   onSwitchToSignIn: () => void;
 }) {
   const [form, setForm] = useState({
@@ -356,7 +356,7 @@ function SignUpForm({
         );
         return;
       }
-      onSuccess();
+      await onSuccess();
     } catch {
       setError(
         lang === "fr"

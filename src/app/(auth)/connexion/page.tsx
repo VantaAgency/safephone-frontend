@@ -7,7 +7,9 @@ import { useLanguage } from "@/lib/language-context";
 import { Button } from "@/components/ui/button";
 import { FormErrorAlert, FormField, Input, PasswordInput } from "@/components/ui/form-field";
 import { authClient } from "@/lib/auth/client";
+import { getPostAuthRedirect } from "@/lib/auth/home-route";
 import { loginSchema } from "@/lib/validation/schemas";
+import type { UserRole } from "@/lib/api/types";
 
 export default function LoginPage() {
   const { lang, t } = useLanguage();
@@ -18,7 +20,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const redirect = searchParams.get("redirect") || "/tableau-de-bord";
+  const redirect = searchParams.get("redirect");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,7 +57,9 @@ export default function LoginPage() {
         );
         return;
       }
-      router.push(redirect);
+      const session = await authClient.getSession();
+      const role = (session.data?.user as { role?: UserRole } | undefined)?.role;
+      router.push(getPostAuthRedirect(redirect, role));
     } catch {
       setError(
         lang === "fr"

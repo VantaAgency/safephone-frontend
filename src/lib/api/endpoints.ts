@@ -1,6 +1,7 @@
 import { api } from "./client";
 import type {
   AdminClaimParams,
+  CreateOperationalNoteRequest,
   AdminCustomer,
   AdminDashboardOverview,
   AdminPartner,
@@ -21,8 +22,24 @@ import type {
   CreateRepairRequest,
   CreateSubscriptionRequest,
   Device,
+  EmployeeClaimDetail,
+  EmployeeClaimParams,
+  EmployeeClientDetail,
+  EmployeeClientListItem,
+  EmployeeClientParams,
+  EmployeeDashboardOverview,
+  EmployeePaymentFollowUpItem,
+  EmployeePaymentFollowUpParams,
+  EmployeeRepairDetail,
+  EmployeeRepairParams,
+  EmployeeTaskItem,
+  EmployeeTaskParams,
+  EmployeeUpdateClaimStatusRequest,
   LookupRepairRequest,
   MemberDashboardSummary,
+  OperationalEntityType,
+  OperationalFollowUp,
+  OperationalNote,
   PaginationParams,
   PartnerApplication,
   PartnerClient,
@@ -42,6 +59,7 @@ import type {
   UpdateClaimStatusRequest,
   UpdateDeviceRequest,
   UpdateProfileRequest,
+  UpsertOperationalFollowUpRequest,
   User,
 } from "./types";
 
@@ -195,6 +213,59 @@ export const claims = {
     ),
   adminUpdateStatus: (id: string, data: UpdateClaimStatusRequest) =>
     api.put<Claim>(`/admin/claims/${id}/status`, data),
+};
+
+export const employee = {
+  overview: () => api.get<EmployeeDashboardOverview>("/employee/overview"),
+  clients: (params?: EmployeeClientParams) =>
+    api.get<EmployeeClientListItem[]>(
+      "/employee/clients",
+      params as Record<string, string | number>,
+    ),
+  client: (id: string) => api.get<EmployeeClientDetail>(`/employee/clients/${id}`),
+  paymentFollowUps: (params?: EmployeePaymentFollowUpParams) =>
+    api.get<EmployeePaymentFollowUpItem[]>(
+      "/employee/payment-follow-ups",
+      params as Record<string, string | number>,
+    ),
+  claims: (params?: EmployeeClaimParams) =>
+    api.get<EmployeeClaimDetail[]>(
+      "/employee/claims",
+      params as Record<string, string | number>,
+    ),
+  claim: (id: string) => api.get<EmployeeClaimDetail>(`/employee/claims/${id}`),
+  updateClaimStatus: (id: string, data: EmployeeUpdateClaimStatusRequest) =>
+    api.patch<Claim>(`/employee/claims/${id}/status`, data),
+  repairs: (params?: EmployeeRepairParams) =>
+    api.get<EmployeeRepairDetail[]>(
+      "/employee/repairs",
+      params as Record<string, string | number>,
+    ),
+  repair: (id: string) => api.get<EmployeeRepairDetail>(`/employee/repairs/${id}`),
+  updateRepairStatus: (id: string, data: UpdateRepairRequestStatus) =>
+    api.put<RepairRequest>(`/employee/repairs/${id}/status`, data),
+  updateRepairAmount: (id: string, data: UpdateRepairRequestAmount) =>
+    api.put<RepairRequest>(`/employee/repairs/${id}/amount`, data),
+  tasks: (params?: EmployeeTaskParams) =>
+    api.get<EmployeeTaskItem[]>(
+      "/employee/tasks",
+      params as Record<string, string | number>,
+    ),
+  followUp: (entityType: OperationalEntityType, entityId: string) =>
+    api.get<OperationalFollowUp | null>("/employee/follow-ups", {
+      entity_type: entityType,
+      entity_id: entityId,
+    }),
+  upsertFollowUp: (data: UpsertOperationalFollowUpRequest) =>
+    api.put<OperationalFollowUp>("/employee/follow-ups", data),
+  notes: (entityType: OperationalEntityType, entityId: string, params?: PaginationParams) =>
+    api.get<OperationalNote[]>("/employee/notes", {
+      entity_type: entityType,
+      entity_id: entityId,
+      ...(params as Record<string, string | number | undefined>),
+    }),
+  createNote: (data: CreateOperationalNoteRequest) =>
+    api.post<OperationalNote>("/employee/notes", data),
 };
 
 export const payments = {

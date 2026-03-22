@@ -11,6 +11,7 @@ import {
 } from "react";
 import { useSession, authClient } from "./client";
 import { setAuthTokenGetter } from "@/lib/api/client";
+import type { UserRole } from "@/lib/api/types";
 
 interface AuthContextValue {
   user: {
@@ -18,7 +19,7 @@ interface AuthContextValue {
     name: string;
     email: string;
     phone?: string;
-    role?: string;
+    role?: UserRole;
   } | null;
   isPending: boolean;
   isAuthenticated: boolean;
@@ -44,7 +45,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       name: session.data.user.name,
       email: session.data.user.email,
       phone: u.phone as string | undefined,
-      role: u.role as string | undefined,
+      role: u.role as UserRole | undefined,
     };
   }, [session.data]);
 

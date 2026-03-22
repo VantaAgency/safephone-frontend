@@ -6,9 +6,10 @@ import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Logo } from "./logo";
 import { Button } from "@/components/ui/button";
-import { ChevronDownIcon, MenuIcon, PhoneIcon, ShieldCheckIcon, UsersIcon, XIcon } from "@/components/ui/icons";
+import { ChevronDownIcon, MenuIcon, PhoneIcon, SettingsIcon, ShieldCheckIcon, UsersIcon, XIcon } from "@/components/ui/icons";
 import { useAuth } from "@/lib/auth/auth-provider";
 import { useAuthModal } from "@/components/auth/auth-modal-provider";
+import { getHomeRouteForRole } from "@/lib/auth/home-route";
 import type { Lang, Translations } from "@/lib/i18n";
 
 interface NavbarProps {
@@ -59,12 +60,21 @@ export function Navbar({ lang, setLang, t }: NavbarProps) {
 
   const accountDestinations: AccountDestination[] = [
     {
-      href: "/tableau-de-bord",
+      href: getHomeRouteForRole(user?.role === "member" ? "member" : undefined),
       icon: PhoneIcon,
       label: lang === "fr" ? "Mon espace" : "My space",
       description: lang === "fr" ? "Appareils, paiements et sinistres" : "Devices, payments and claims",
     },
   ];
+
+  if (user?.role === "employee") {
+    accountDestinations.unshift({
+      href: "/espace-employe",
+      icon: SettingsIcon,
+      label: lang === "fr" ? "Espace employé" : "Employee workspace",
+      description: lang === "fr" ? "Clients, suivis et opérations" : "Clients, follow-up and operations",
+    });
+  }
 
   if (user?.role === "partner") {
     accountDestinations.push({

@@ -27,7 +27,7 @@ export type PaymentStatus =
   | "expired"
   | "refunded";
 export type PlanTier = "entry" | "mid" | "mid-high" | "premium" | "household";
-export type UserRole = "admin" | "member" | "partner" | "viewer";
+export type UserRole = "admin" | "employee" | "member" | "partner" | "viewer";
 export type PartnerApplicationStatus = "pending" | "approved" | "rejected";
 export type PartnerClientStatus =
   | "draft"
@@ -58,6 +58,17 @@ export type DashboardCoverageStatus =
   | "expired"
   | "refunded"
   | "suspended";
+export type OperationalEntityType =
+  | "client"
+  | "subscription"
+  | "claim"
+  | "repair";
+export type FollowUpStatus =
+  | "to_contact"
+  | "contacted"
+  | "awaiting_response"
+  | "resolved";
+export type PaymentFollowUpContext = "first_payment" | "renewal";
 
 // --- Domain models ---
 
@@ -297,6 +308,156 @@ export interface PartnerDashboardOverview {
   recent_clients: PartnerClient[];
 }
 
+export interface OperationalFollowUp {
+  id: string;
+  org_id: string;
+  entity_type: OperationalEntityType;
+  entity_id: string;
+  reason?: string;
+  status: FollowUpStatus;
+  next_action?: string;
+  last_contact_at?: string;
+  created_by?: string;
+  updated_by?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface OperationalNote {
+  id: string;
+  org_id: string;
+  entity_type: OperationalEntityType;
+  entity_id: string;
+  body: string;
+  created_by: string;
+  created_by_name?: string;
+  created_at: string;
+}
+
+export interface EmployeeOverviewMetrics {
+  unpaid_subscriptions_count: number;
+  pending_payments_count: number;
+  failed_payments_count: number;
+  clients_needing_follow_up_count: number;
+  pending_claims_count: number;
+  repairs_in_progress_count: number;
+  overdue_repairs_count: number;
+  pending_activation_count: number;
+  missing_imei_count: number;
+  urgent_tasks_count: number;
+}
+
+export interface EmployeeClientListItem {
+  id: string;
+  full_name: string;
+  email: string;
+  phone?: string;
+  device_count: number;
+  active_subscription_count: number;
+  missing_imei_count: number;
+  pending_claims_count: number;
+  open_repairs_count: number;
+  latest_coverage_status: DashboardCoverageStatus;
+  partner_store_name?: string;
+  requires_attention: boolean;
+  follow_up?: OperationalFollowUp;
+}
+
+export interface EmployeeClientDeviceCoverage {
+  device: Device;
+  coverage_status: DashboardCoverageStatus;
+  subscription?: Subscription;
+  payment?: Payment;
+  plan_name_fr?: string;
+  plan_name_en?: string;
+  partner_store_name?: string;
+}
+
+export interface EmployeePaymentFollowUpItem {
+  user_id: string;
+  client_name: string;
+  client_email: string;
+  client_phone?: string;
+  device: Device;
+  subscription?: Subscription;
+  payment?: Payment;
+  coverage_status: DashboardCoverageStatus;
+  plan_name_fr?: string;
+  plan_name_en?: string;
+  payment_context: PaymentFollowUpContext;
+  requires_attention: boolean;
+  attention_reason: string;
+  partner_store_name?: string;
+  follow_up?: OperationalFollowUp;
+}
+
+export interface EmployeeClaimDetail {
+  claim: Claim;
+  client_name: string;
+  client_email: string;
+  client_phone?: string;
+  device_brand: string;
+  device_model: string;
+  device_type: DeviceType;
+  subscription_status: SubscriptionStatus;
+  coverage_status: DashboardCoverageStatus;
+  plan_name_fr?: string;
+  plan_name_en?: string;
+  partner_store_name?: string;
+  follow_up?: OperationalFollowUp;
+  notes: OperationalNote[];
+}
+
+export interface EmployeeRepairDetail {
+  repair: RepairRequest;
+  client_id?: string;
+  client_email?: string;
+  partner_store_name?: string;
+  follow_up?: OperationalFollowUp;
+  notes: OperationalNote[];
+}
+
+export interface EmployeeTaskItem {
+  id: string;
+  entity_type: OperationalEntityType;
+  entity_id: string;
+  title: string;
+  description: string;
+  reason: string;
+  priority: "high" | "medium" | "low";
+  client_name: string;
+  client_email?: string;
+  client_phone?: string;
+  partner_store_name?: string;
+  status: string;
+  follow_up_status?: FollowUpStatus;
+  next_action?: string;
+  last_contact_at?: string;
+  updated_at: string;
+}
+
+export interface EmployeeClientDetail {
+  id: string;
+  full_name: string;
+  email: string;
+  phone?: string;
+  partner_store_name?: string;
+  devices: EmployeeClientDeviceCoverage[];
+  payment_follow_ups: EmployeePaymentFollowUpItem[];
+  claims: EmployeeClaimDetail[];
+  repairs: EmployeeRepairDetail[];
+  follow_up?: OperationalFollowUp;
+  notes: OperationalNote[];
+}
+
+export interface EmployeeDashboardOverview {
+  metrics: EmployeeOverviewMetrics;
+  payment_follow_ups: EmployeePaymentFollowUpItem[];
+  pending_claims: EmployeeClaimDetail[];
+  active_repairs: EmployeeRepairDetail[];
+  urgent_tasks: EmployeeTaskItem[];
+}
+
 export interface PartnerClient {
   id: string;
   org_id: string;
@@ -487,6 +648,10 @@ export interface UpdateClaimStatusRequest {
   amount_xof?: number;
 }
 
+export interface EmployeeUpdateClaimStatusRequest {
+  status: "review";
+}
+
 export interface CreatePaymentRequest {
   device_type?: DeviceType;
   brand: string;
@@ -510,6 +675,21 @@ export interface CheckoutResult {
   device: Device;
   subscription: Subscription;
   payment_url?: string;
+}
+
+export interface UpsertOperationalFollowUpRequest {
+  entity_type: OperationalEntityType;
+  entity_id: string;
+  reason?: string;
+  status: FollowUpStatus;
+  next_action?: string;
+  last_contact_at?: string;
+}
+
+export interface CreateOperationalNoteRequest {
+  entity_type: OperationalEntityType;
+  entity_id: string;
+  body: string;
 }
 
 // --- Response envelope ---
@@ -608,3 +788,23 @@ export interface AdminRepairParams extends PaginationParams {
   status?: RepairRequestStatus;
   search?: string;
 }
+
+export interface EmployeeClientParams extends PaginationParams {
+  search?: string;
+}
+
+export interface EmployeePaymentFollowUpParams extends PaginationParams {
+  search?: string;
+}
+
+export interface EmployeeClaimParams extends PaginationParams {
+  status?: ClaimStatus;
+  search?: string;
+}
+
+export interface EmployeeRepairParams extends PaginationParams {
+  status?: RepairRequestStatus;
+  search?: string;
+}
+
+export type EmployeeTaskParams = PaginationParams;

@@ -22,7 +22,11 @@ type BadgeVariant =
   | "draft"
   | "invited"
   | "account_created"
-  | "payment_pending";
+  | "payment_pending"
+  | "to_contact"
+  | "contacted"
+  | "awaiting_response"
+  | "resolved";
 
 const variantStyles: Record<BadgeVariant, string> = {
   awaiting_payment: "bg-amber-50 text-amber-700 border-amber-200",
@@ -47,6 +51,10 @@ const variantStyles: Record<BadgeVariant, string> = {
   invited: "bg-sky-50 text-sky-700 border-sky-200",
   account_created: "bg-blue-50 text-blue-700 border-blue-200",
   payment_pending: "bg-violet-50 text-violet-700 border-violet-200",
+  to_contact: "bg-amber-50 text-amber-700 border-amber-200",
+  contacted: "bg-sky-50 text-sky-700 border-sky-200",
+  awaiting_response: "bg-violet-50 text-violet-700 border-violet-200",
+  resolved: "bg-emerald-50 text-emerald-700 border-emerald-200",
 };
 
 const dotColors: Record<BadgeVariant, string> = {
@@ -72,6 +80,10 @@ const dotColors: Record<BadgeVariant, string> = {
   invited: "bg-sky-500",
   account_created: "bg-blue-500",
   payment_pending: "bg-violet-500",
+  to_contact: "bg-amber-500",
+  contacted: "bg-sky-500",
+  awaiting_response: "bg-violet-500",
+  resolved: "bg-emerald-500",
 };
 
 interface StatusBadgeProps {
