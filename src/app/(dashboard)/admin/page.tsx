@@ -2,6 +2,7 @@
 
 import { Fragment, useDeferredValue, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { AdminEmployeesTab } from "@/components/admin/admin-employees-tab";
 import { RouteGuardLoader } from "@/components/auth/route-guard-loader";
 import { StatCard } from "@/components/cards/stat-card";
 import { Button } from "@/components/ui/button";
@@ -40,7 +41,7 @@ import {
 import { cn } from "@/lib/utils";
 import type { AdminCustomer, AdminCustomerSubscription, ClaimStatus, RepairRequest, RepairRequestStatus } from "@/lib/api/types";
 
-const ADMIN_TABS = ["overview", "claims", "repairs", "customers", "payments", "applications", "partners"] as const;
+const ADMIN_TABS = ["overview", "claims", "repairs", "customers", "employees", "payments", "applications", "partners"] as const;
 type AdminTab = (typeof ADMIN_TABS)[number];
 
 const STATUS_TRANSITIONS: Record<string, ClaimStatus[]> = {
@@ -122,6 +123,7 @@ export default function AdminPage() {
     claims: lang === "fr" ? "Sinistres" : "Claims",
     repairs: lang === "fr" ? "Réparations" : "Repairs",
     customers: lang === "fr" ? "Clients" : "Customers",
+    employees: lang === "fr" ? "Employés" : "Employees",
     payments: lang === "fr" ? "Paiements" : "Payments",
     applications: lang === "fr" ? "Candidatures" : "Applications",
     partners: lang === "fr" ? "Partenaires" : "Partners",
@@ -1076,6 +1078,8 @@ export default function AdminPage() {
             )}
           </div>
         )}
+
+        {tab === "employees" && <AdminEmployeesTab />}
 
         {/* Payments Tab -- Real API */}
         {tab === "payments" && (

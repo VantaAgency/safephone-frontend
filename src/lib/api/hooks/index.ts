@@ -1,7 +1,22 @@
 export { useUpdateProfile } from "./use-users";
 export { useSubmitContact, useSubmitPartnerApplication, useMyPartnerApplication } from "./use-contact";
 export { useMemberDashboardSummary } from "./use-dashboard";
-export { useAdminOverview, useAdminStats, useAdminCustomers, useAdminPayments, useAdminPartners, useAdminPartnerCommissions, useAdminPartnerApplications, useReviewPartnerApplication } from "./use-admin";
+export {
+  useAdminOverview,
+  useAdminStats,
+  useAdminCustomers,
+  useAdminPayments,
+  useAdminEmployees,
+  useAdminEmployee,
+  useCreateEmployeeAccount,
+  useUpdateEmployeeAccount,
+  useResetEmployeePassword,
+  useUpdateEmployeeAccountStatus,
+  useAdminPartners,
+  useAdminPartnerCommissions,
+  useAdminPartnerApplications,
+  useReviewPartnerApplication,
+} from "./use-admin";
 export {
   useEmployeeOverview,
   useEmployeeClients,

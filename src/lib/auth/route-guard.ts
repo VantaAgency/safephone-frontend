@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth/server";
 import type { UserRole } from "@/lib/api/types";
+import { databasePool } from "@/lib/server/db";
 
 function buildSignInRedirect(pathname: string) {
   const params = new URLSearchParams({
@@ -36,6 +37,25 @@ export async function requireRouteRole(
   const role = (session.user as { role?: UserRole }).role;
   if (!role || !allowedRoles.includes(role)) {
     redirect(buildUnauthorizedRedirect(pathname, allowedRoles));
+  }
+
+  if (role === "employee" && allowedRoles.includes("employee")) {
+    const result = await databasePool.query(
+      `SELECT COALESCE(ep.status, 'active') AS status
+       FROM users u
+       LEFT JOIN employee_profiles ep
+         ON ep.user_id = u.id
+        AND ep.org_id = u.org_id
+       WHERE u.better_auth_id = $1
+         AND u.deleted_at IS NULL
+       LIMIT 1`,
+      [session.user.id],
+    );
+
+    const status = result.rows[0]?.status as string | undefined;
+    if (status !== "active") {
+      redirect(buildUnauthorizedRedirect(pathname, allowedRoles));
+    }
   }
 
   return session;

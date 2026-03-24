@@ -1,6 +1,9 @@
 import { api } from "./client";
 import type {
   AdminClaimParams,
+  AdminEmployeeDetail,
+  AdminEmployeeListItem,
+  AdminEmployeeParams,
   CreateOperationalNoteRequest,
   AdminCustomer,
   AdminDashboardOverview,
@@ -122,6 +125,12 @@ export const admin = {
       "/admin/payments",
       params as Record<string, string | number>,
     ),
+  employees: (params?: AdminEmployeeParams) =>
+    api.get<AdminEmployeeListItem[]>(
+      "/admin/employees",
+      params as Record<string, string | number>,
+    ),
+  employee: (id: string) => api.get<AdminEmployeeDetail>(`/admin/employees/${id}`),
   partners: (params?: PaginationParams) =>
     api.get<AdminPartner[]>(
       "/admin/partners",

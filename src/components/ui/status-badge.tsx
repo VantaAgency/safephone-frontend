@@ -12,6 +12,7 @@ type BadgeVariant =
   | "settled"
   | "completed"
   | "active"
+  | "inactive"
   | "expired"
   | "failed"
   | "rejected"
@@ -40,6 +41,7 @@ const variantStyles: Record<BadgeVariant, string> = {
   settled: "bg-slate-100 text-slate-600 border-slate-200",
   completed: "bg-emerald-50 text-emerald-700 border-emerald-200",
   active: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  inactive: "bg-slate-100 text-slate-600 border-slate-200",
   expired: "bg-red-50 text-red-600 border-red-200",
   failed: "bg-red-50 text-red-600 border-red-200",
   info: "bg-blue-50 text-blue-700 border-blue-200",
@@ -69,6 +71,7 @@ const dotColors: Record<BadgeVariant, string> = {
   settled: "bg-slate-400",
   completed: "bg-emerald-500",
   active: "bg-emerald-500",
+  inactive: "bg-slate-400",
   expired: "bg-red-500",
   failed: "bg-red-500",
   info: "bg-blue-500",

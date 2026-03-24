@@ -69,6 +69,8 @@ export type FollowUpStatus =
   | "awaiting_response"
   | "resolved";
 export type PaymentFollowUpContext = "first_payment" | "renewal";
+export type EmployeeAccountStatus = "active" | "inactive" | "suspended";
+export type AdminEmployeeSort = "recent_activity" | "joined";
 
 // --- Domain models ---
 
@@ -773,6 +775,53 @@ export interface AdminPayment {
   created_at: string;
 }
 
+export interface AdminEmployeeWorkloadSummary {
+  clients_followed_count: number;
+  active_claims_count: number;
+  active_repairs_count: number;
+  open_follow_ups_count: number;
+  last_activity_at?: string;
+  last_login_at?: string;
+}
+
+export interface AdminEmployeeListItem {
+  id: string;
+  better_auth_id?: string;
+  full_name: string;
+  email: string;
+  phone?: string;
+  role: UserRole;
+  status: EmployeeAccountStatus;
+  suspended_reason?: string;
+  joined_at: string;
+  workload: AdminEmployeeWorkloadSummary;
+}
+
+export interface AdminEmployeeActivityItem {
+  kind: string;
+  entity_type: OperationalEntityType;
+  entity_id: string;
+  description: string;
+  occurred_at: string;
+}
+
+export interface AdminEmployeeDetail {
+  id: string;
+  better_auth_id?: string;
+  full_name: string;
+  email: string;
+  phone?: string;
+  role: UserRole;
+  status: EmployeeAccountStatus;
+  suspended_reason?: string;
+  created_at: string;
+  updated_at: string;
+  workspace_access: boolean;
+  permission_summary: string[];
+  workload: AdminEmployeeWorkloadSummary;
+  recent_activity: AdminEmployeeActivityItem[];
+}
+
 // --- Pagination params ---
 
 export interface PaginationParams {
@@ -787,6 +836,12 @@ export interface AdminClaimParams extends PaginationParams {
 export interface AdminRepairParams extends PaginationParams {
   status?: RepairRequestStatus;
   search?: string;
+}
+
+export interface AdminEmployeeParams extends PaginationParams {
+  search?: string;
+  status?: EmployeeAccountStatus;
+  sort?: AdminEmployeeSort;
 }
 
 export interface EmployeeClientParams extends PaginationParams {
@@ -808,3 +863,27 @@ export interface EmployeeRepairParams extends PaginationParams {
 }
 
 export type EmployeeTaskParams = PaginationParams;
+
+export interface CreateEmployeeRequest {
+  full_name: string;
+  email: string;
+  phone?: string;
+  password: string;
+  status: EmployeeAccountStatus;
+  suspended_reason?: string;
+}
+
+export interface UpdateEmployeeProfileRequest {
+  full_name: string;
+  email: string;
+  phone?: string;
+}
+
+export interface ResetEmployeePasswordRequest {
+  password: string;
+}
+
+export interface UpdateEmployeeStatusRequest {
+  status: EmployeeAccountStatus;
+  suspended_reason?: string;
+}
