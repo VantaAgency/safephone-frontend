@@ -21,9 +21,22 @@ async function getSharedOrgId(): Promise<string> {
 }
 
 function readUserRole(user: Record<string, unknown>) {
-  return typeof user.role === "string" && user.role.trim()
-    ? user.role.trim()
-    : "member";
+  const rawRole =
+    typeof user.role === "string" && user.role.trim()
+      ? user.role.trim()
+      : "member";
+
+  switch (rawRole) {
+    case "admin":
+    case "employee":
+    case "member":
+    case "partner":
+    case "viewer":
+      return rawRole;
+    case "user":
+    default:
+      return "member";
+  }
 }
 
 async function ensureEmployeeProfile(userId: string, orgId: string) {

@@ -59,17 +59,31 @@ export default function AdminPage() {
   const { user, isPending } = useAuth();
   const router = useRouter();
   const [tab, setTab] = useState<AdminTab>("overview");
+  const [employeesRefreshKey, setEmployeesRefreshKey] = useState(0);
+  const [isRefreshingTab, setIsRefreshingTab] = useState(false);
   const [search, setSearch] = useState("");
   const deferredSearch = useDeferredValue(search);
 
   const isAdmin = user?.role === "admin";
-  const { data: overview, isLoading: overviewLoading } = useAdminOverview({
+  const {
+    data: overview,
+    isLoading: overviewLoading,
+    refetch: refetchOverview,
+  } = useAdminOverview({
     enabled: isAdmin,
   });
-  const { data: adminClaims, isLoading: claimsLoading } = useAdminClaims(undefined, {
+  const {
+    data: adminClaims,
+    isLoading: claimsLoading,
+    refetch: refetchClaims,
+  } = useAdminClaims(undefined, {
     enabled: isAdmin && tab === "claims",
   });
-  const { data: adminRepairs = [], isLoading: repairsLoading } = useAdminRepairRequests(
+  const {
+    data: adminRepairs = [],
+    isLoading: repairsLoading,
+    refetch: refetchRepairs,
+  } = useAdminRepairRequests(
     { search: deferredSearch },
     { enabled: isAdmin && tab === "repairs" },
   );
@@ -78,17 +92,33 @@ export default function AdminPage() {
   const rejectRepair = useRejectRepairRequest();
   const updateRepairStatus = useUpdateRepairRequestStatus();
   const updateRepairAmount = useUpdateRepairRequestAmount();
-  const { data: customers, isLoading: customersLoading } = useAdminCustomers(
+  const {
+    data: customers,
+    isLoading: customersLoading,
+    refetch: refetchCustomers,
+  } = useAdminCustomers(
     deferredSearch,
     { enabled: isAdmin && tab === "customers" },
   );
-  const { data: adminPayments, isLoading: paymentsLoading } = useAdminPayments({
+  const {
+    data: adminPayments,
+    isLoading: paymentsLoading,
+    refetch: refetchPayments,
+  } = useAdminPayments({
     enabled: isAdmin && tab === "payments",
   });
-  const { data: adminPartners = [], isLoading: partnersLoading } = useAdminPartners({
+  const {
+    data: adminPartners = [],
+    isLoading: partnersLoading,
+    refetch: refetchPartners,
+  } = useAdminPartners({
     enabled: isAdmin && tab === "partners",
   });
-  const { data: partnerApps = [], isLoading: appsLoading } =
+  const {
+    data: partnerApps = [],
+    isLoading: appsLoading,
+    refetch: refetchPartnerApplications,
+  } =
     useAdminPartnerApplications(undefined, {
       enabled: isAdmin && tab === "applications",
     });
@@ -103,7 +133,11 @@ export default function AdminPage() {
   const [repairDateDrafts, setRepairDateDrafts] = useState<Record<string, string>>({});
   const [repairTimeDrafts, setRepairTimeDrafts] = useState<Record<string, string>>({});
   const selectedPartner = adminPartners.find((partner) => partner.id === selectedPartnerId) ?? null;
-  const { data: selectedPartnerCommissions = [], isLoading: partnerCommissionsLoading } = useAdminPartnerCommissions(
+  const {
+    data: selectedPartnerCommissions = [],
+    isLoading: partnerCommissionsLoading,
+    refetch: refetchPartnerCommissions,
+  } = useAdminPartnerCommissions(
     selectedPartnerId ?? undefined,
     { enabled: isAdmin && tab === "partners" && !!selectedPartnerId },
   );
@@ -481,15 +515,65 @@ export default function AdminPage() {
     }
   };
 
+  const handleRefreshTab = async () => {
+    setIsRefreshingTab(true);
+
+    try {
+      switch (tab) {
+        case "overview":
+          await refetchOverview();
+          break;
+        case "claims":
+          await Promise.all([refetchOverview(), refetchClaims()]);
+          break;
+        case "repairs":
+          await Promise.all([refetchOverview(), refetchRepairs()]);
+          break;
+        case "customers":
+          await Promise.all([refetchOverview(), refetchCustomers()]);
+          break;
+        case "employees":
+          setEmployeesRefreshKey((current) => current + 1);
+          break;
+        case "payments":
+          await Promise.all([refetchOverview(), refetchPayments()]);
+          break;
+        case "applications":
+          await Promise.all([refetchOverview(), refetchPartnerApplications()]);
+          break;
+        case "partners":
+          await Promise.all([
+            refetchOverview(),
+            refetchPartners(),
+            ...(selectedPartnerId ? [refetchPartnerCommissions()] : []),
+          ]);
+          break;
+      }
+    } finally {
+      setIsRefreshingTab(false);
+    }
+  };
+
   return (
     <div className="bg-slate-50 py-10 md:py-16">
       <div className="mx-auto max-w-[1200px] px-5 md:px-8">
         {/* Header */}
-        <div className="mb-6 flex items-center gap-2">
-          <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-600">Admin</span>
-          <h1 className="text-2xl font-medium tracking-tight text-indigo-950 md:text-3xl">
-            SafePhone Administration
-          </h1>
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-600">Admin</span>
+            <h1 className="text-2xl font-medium tracking-tight text-indigo-950 md:text-3xl">
+              SafePhone Administration
+            </h1>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            loading={isRefreshingTab}
+            onClick={() => void handleRefreshTab()}
+          >
+            {lang === "fr" ? "Actualiser" : "Refresh"}
+          </Button>
         </div>
 
         {/* Tab Navigation */}
@@ -1079,7 +1163,7 @@ export default function AdminPage() {
           </div>
         )}
 
-        {tab === "employees" && <AdminEmployeesTab />}
+        {tab === "employees" && <AdminEmployeesTab key={employeesRefreshKey} />}
 
         {/* Payments Tab -- Real API */}
         {tab === "payments" && (
