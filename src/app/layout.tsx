@@ -6,12 +6,28 @@ import { AuthProvider } from "@/lib/auth/auth-provider";
 import { AuthModalProvider } from "@/components/auth/auth-modal-provider";
 import { QueryProvider } from "@/lib/api/query-provider";
 import { ToastProvider } from "@/components/ui/toast";
+import { getSiteURL } from "@/lib/site-url";
 import "./globals.css";
+
+const siteURL = getSiteURL();
 
 export const metadata: Metadata = {
   title: "SafePhone — L'assurance smartphone de confiance au Sénégal",
   description:
     "Protégez votre smartphone contre la casse. Abonnement mensuel, déclaration en ligne, réparation gratuite chez MobiTech.",
+  metadataBase: new URL(siteURL),
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    title: "SafePhone — L'assurance smartphone de confiance au Sénégal",
+    description:
+      "Protégez votre smartphone contre la casse. Abonnement mensuel, déclaration en ligne, réparation gratuite chez MobiTech.",
+    url: siteURL,
+    siteName: "SafePhone",
+    locale: "fr_SN",
+    type: "website",
+  },
 };
 
 export default function RootLayout({
