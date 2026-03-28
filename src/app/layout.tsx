@@ -12,15 +12,20 @@ import "./globals.css";
 const siteURL = getSiteURL();
 
 export const metadata: Metadata = {
-  title: "SafePhone — L'assurance smartphone de confiance au Sénégal",
+  title: "SafePhone — La protection smartphone de confiance au Sénégal",
   description:
     "Protégez votre smartphone contre la casse. Abonnement mensuel, déclaration en ligne, réparation gratuite chez MobiTech.",
   metadataBase: new URL(siteURL),
+  icons: {
+    icon: [{ url: "/SAFEPHONEfavicon.png", type: "image/png" }],
+    shortcut: [{ url: "/SAFEPHONEfavicon.png", type: "image/png" }],
+    apple: [{ url: "/SAFEPHONEfavicon.png", type: "image/png" }],
+  },
   alternates: {
     canonical: "/",
   },
   openGraph: {
-    title: "SafePhone — L'assurance smartphone de confiance au Sénégal",
+    title: "SafePhone — La protection smartphone de confiance au Sénégal",
     description:
       "Protégez votre smartphone contre la casse. Abonnement mensuel, déclaration en ligne, réparation gratuite chez MobiTech.",
     url: siteURL,
