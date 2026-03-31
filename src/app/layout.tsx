@@ -17,9 +17,9 @@ export const metadata: Metadata = {
     "Protégez votre smartphone contre la casse. Abonnement mensuel, déclaration en ligne, réparation gratuite chez MobiTech.",
   metadataBase: new URL(siteURL),
   icons: {
-    icon: [{ url: "/SAFEPHONEfavicon.png", type: "image/png" }],
-    shortcut: [{ url: "/SAFEPHONEfavicon.png", type: "image/png" }],
-    apple: [{ url: "/SAFEPHONEfavicon.png", type: "image/png" }],
+    icon: [{ url: "/SafePhoneLogoFavIcon2.svg", type: "image/svg+xml" }],
+    shortcut: [{ url: "/SafePhoneLogoFavIcon2.svg", type: "image/svg+xml" }],
+    apple: [{ url: "/SafePhoneLogoFavIcon2.svg", type: "image/svg+xml" }],
   },
   alternates: {
     canonical: "/",

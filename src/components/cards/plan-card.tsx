@@ -15,6 +15,59 @@ interface PlanCardProps {
   compact?: boolean;
 }
 
+function getProgressiveContent(plan: Plan, lang: Lang) {
+  const isFr = lang === "fr";
+
+  switch (plan.slug) {
+    case "essentiel":
+      return {
+        kicker: isFr ? "Forfait Essentiel" : "Essential plan",
+        bullets: isFr
+          ? ["Écran après chute", "Panne simple", "Suivi standard"]
+          : ["Screen after a drop", "Basic malfunction", "Standard tracking"],
+        exclusion: isFr ? "Hors liquides et vol" : "Excludes liquid damage and theft",
+      };
+    case "ecran-plus":
+      return {
+        kicker: isFr ? "Forfait Écran+" : "Screen+ plan",
+        bullets: isFr
+          ? ["Écran avant et arrière", "Petits dommages du quotidien", "Contact liquide léger", "Suivi prioritaire"]
+          : ["Front and back screen", "Minor daily damage", "Light liquid contact", "Priority tracking"],
+        exclusion: isFr ? "Hors immersion complète et vol" : "Excludes full immersion and theft",
+      };
+    case "plus":
+      return {
+        kicker: isFr ? "Forfait Plus · Écran+ inclus" : "Plus plan · Screen+ included",
+        bullets: isFr
+          ? ["Liquides et immersion", "Dommages accidentels étendus", "Panne matérielle", "Traitement accéléré"]
+          : ["Liquid damage and immersion", "Extended accidental damage", "Hardware failure", "Faster handling"],
+        exclusion: isFr ? "Hors vol et perte" : "Excludes theft and loss",
+      };
+    case "haute":
+      return {
+        kicker: isFr ? "Forfait Haute · Plus inclus" : "Haute plan · Plus included",
+        bullets: isFr
+          ? ["Vol et perte", "Dommages importants", "Support express", "Solution de remplacement si disponible"]
+          : ["Theft and loss", "Major damage", "Express support", "Replacement solution when available"],
+        exclusion: isFr ? "Appareil enregistré requis" : "Registered device required",
+      };
+    case "totale":
+      return {
+        kicker: isFr ? "Forfait Totale · Haute incluse" : "Totale plan · Haute included",
+        bullets: isFr
+          ? ["Appareils du foyer déclarés", "Casse, panne, liquides", "Vol et perte", "Accompagnement premium"]
+          : ["Declared household devices", "Breakage, malfunction, liquids", "Theft and loss", "Premium assistance"],
+        exclusion: isFr ? "Hors matériel non déclaré" : "Excludes undeclared equipment",
+      };
+    default:
+      return {
+        kicker: isFr ? "Protection" : "Protection",
+        bullets: (lang === "fr" ? plan.features_fr : plan.features_en).slice(0, 4),
+        exclusion: (lang === "fr" ? plan.not_covered_fr : plan.not_covered_en)[0],
+      };
+  }
+}
+
 export function PlanCard({
   plan,
   lang,
@@ -31,21 +84,19 @@ export function PlanCard({
   const deviceRange =
     lang === "fr" ? plan.device_range_fr : plan.device_range_en;
   const isDevPlan = isDevelopmentPlan(plan);
+  const progressive = getProgressiveContent(plan, lang);
+  const ctaLabel = compact ? (lang === "fr" ? "Choisir" : "Choose") : `${t.plans.cta} ${name}`;
 
   if (plan.is_popular) {
     return (
       <div
         className={cn(
-          "relative flex flex-col overflow-hidden rounded-[2.5rem] border border-indigo-800 bg-indigo-950 shadow-2xl shadow-indigo-900/30 md:scale-[1.03]",
-          compact ? "p-6" : "p-8 lg:p-10",
+          "relative flex flex-col overflow-hidden rounded-[2.2rem] border border-indigo-800 bg-indigo-950 md:scale-[1.01]",
+          compact ? "p-5" : "p-8 lg:p-10",
         )}
       >
-        {/* Ambient glow */}
-        <div className="pointer-events-none absolute top-0 right-0 h-64 w-64 -translate-y-1/2 translate-x-1/3 rounded-full bg-indigo-500/20 blur-3xl" />
-        <div className="pointer-events-none absolute bottom-0 left-0 h-48 w-48 translate-y-1/3 -translate-x-1/3 rounded-full bg-yellow-400/10 blur-3xl" />
-
-        <div className="relative z-10 mb-8">
-          <div className="mb-6 inline-flex items-center gap-1.5 rounded-full border border-indigo-400/30 bg-indigo-500/20 px-3 py-1 text-xs font-medium text-yellow-400 backdrop-blur-md">
+        <div className={cn("relative z-10", compact ? "mb-4" : "mb-8")}>
+          <div className={cn("inline-flex items-center gap-1.5 rounded-full border border-indigo-400/30 bg-indigo-500/20 px-3 py-1 text-xs font-medium text-yellow-400", compact ? "mb-3" : "mb-6")}>
             <svg
               width="14"
               height="14"
@@ -60,37 +111,42 @@ export function PlanCard({
             </svg>
             {t.plans.popular}
           </div>
+          {compact && (
+            <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-indigo-300">
+              {progressive.kicker}
+            </div>
+          )}
           {isDevPlan && (
             <div className="mb-4 inline-flex items-center rounded-full border border-yellow-300/50 bg-yellow-400/20 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-yellow-300">
               {lang === "fr" ? "Développement" : "Development"}
             </div>
           )}
-          <h3 className="mb-2 text-xl font-medium tracking-tight text-white">
+          <h3 className={cn("font-medium tracking-tight text-white", compact ? "mb-1 text-lg" : "mb-2 text-xl")}>
             {name}
           </h3>
           {deviceRange && (
-            <p className="text-sm leading-relaxed text-indigo-200/80">
+            <p className={cn("text-indigo-200/80", compact ? "text-xs leading-5" : "text-sm leading-relaxed")}>
               {deviceRange}
             </p>
           )}
         </div>
 
-        <div className="relative z-10 mb-8 flex items-end gap-2">
-          <span className="text-4xl font-normal tracking-tighter text-white lg:text-5xl">
+        <div className={cn("relative z-10 flex items-end gap-2", compact ? "mb-4" : "mb-8")}>
+          <span className={cn("font-normal tracking-tighter text-white", compact ? "text-3xl" : "text-4xl lg:text-5xl")}>
             {price.toLocaleString("fr-FR")}
           </span>
-          <span className="mb-1.5 text-sm font-medium text-indigo-300">
+          <span className={cn("font-medium text-indigo-300", compact ? "mb-1 text-xs" : "mb-1.5 text-sm")}>
             {period}
           </span>
         </div>
 
-        <div className="relative z-10 mb-8 h-px w-full bg-indigo-800/60" />
+        {!compact && <div className="relative z-10 mb-8 h-px w-full bg-indigo-800/60" />}
 
-        <ul className="relative z-10 mb-10 flex-grow space-y-4">
-          {features.map((feature) => (
+        <ul className={cn("relative z-10 flex-grow", compact ? "mb-5 space-y-2.5" : "mb-10 space-y-4")}>
+          {(compact ? progressive.bullets : features).map((feature) => (
             <li
               key={feature}
-              className="flex items-start gap-3 text-sm text-indigo-100"
+              className={cn("flex items-start gap-3", compact ? "text-[13px] leading-5 text-indigo-100" : "text-sm text-indigo-100")}
             >
               <svg
                 width="20"
@@ -108,10 +164,10 @@ export function PlanCard({
               <span>{feature}</span>
             </li>
           ))}
-          {notCovered.map((item) => (
+          {(compact ? (progressive.exclusion ? [progressive.exclusion] : []) : notCovered).map((item) => (
             <li
               key={item}
-              className="flex items-start gap-3 text-sm text-indigo-400/60"
+              className={cn("flex items-start gap-3", compact ? "text-[12px] leading-5 text-indigo-300/80" : "text-sm text-indigo-400/60")}
             >
               <svg
                 width="20"
@@ -138,7 +194,7 @@ export function PlanCard({
           onClick={() => onSelect?.(plan.id)}
           className="relative z-10 rounded-xl border border-yellow-300"
         >
-          {t.plans.cta} {name}
+          {ctaLabel}
         </Button>
       </div>
     );
@@ -147,21 +203,26 @@ export function PlanCard({
   return (
     <div
       className={cn(
-        "relative flex flex-col rounded-[2rem] border border-slate-200/80 bg-white shadow-sm transition-all duration-300 hover:shadow-md",
+        "relative flex flex-col rounded-[2rem] border border-slate-200/80 bg-white transition-all duration-300",
         compact ? "p-5" : "p-8 lg:p-10",
       )}
     >
       <div className={cn(compact ? "mb-4" : "mb-8")}>
+        {compact && (
+          <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-indigo-400">
+            {progressive.kicker}
+          </div>
+        )}
         {isDevPlan && (
           <div className="mb-4 inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-700">
             {lang === "fr" ? "Plan test dev" : "Dev test plan"}
           </div>
         )}
-        <h3 className="mb-2 text-lg font-medium tracking-tight text-indigo-950">
+        <h3 className={cn("font-medium tracking-tight text-indigo-950", compact ? "mb-1 text-lg" : "mb-2 text-lg")}>
           {name}
         </h3>
         {deviceRange && (
-          <p className="text-sm leading-relaxed text-slate-500">
+          <p className={cn("text-slate-500", compact ? "text-xs leading-5" : "text-sm leading-relaxed")}>
             {deviceRange}
           </p>
         )}
@@ -183,11 +244,11 @@ export function PlanCard({
 
       {!compact && <div className="mb-8 h-px w-full bg-slate-100" />}
 
-      <ul className={cn("flex-grow space-y-4", compact ? "mb-4" : "mb-10")}>
-        {features.map((feature) => (
+      <ul className={cn("flex-grow", compact ? "mb-5 space-y-2.5" : "mb-10 space-y-4")}>
+        {(compact ? progressive.bullets : features).map((feature) => (
           <li
             key={feature}
-            className="flex items-start gap-3 text-sm text-slate-600"
+            className={cn("flex items-start gap-3", compact ? "text-[13px] leading-5 text-slate-600" : "text-sm text-slate-600")}
           >
             <svg
               width="20"
@@ -202,13 +263,13 @@ export function PlanCard({
             >
               <polyline points="20 6 9 17 4 12" />
             </svg>
-            <span>{feature}</span>
+              <span>{feature}</span>
           </li>
         ))}
-        {notCovered.map((item) => (
+        {(compact ? (progressive.exclusion ? [progressive.exclusion] : []) : notCovered).map((item) => (
           <li
             key={item}
-            className="flex items-start gap-3 text-sm text-slate-400"
+            className={cn("flex items-start gap-3", compact ? "text-[12px] leading-5 text-slate-400" : "text-sm text-slate-400")}
           >
             <svg
               width="20"
@@ -235,7 +296,7 @@ export function PlanCard({
         onClick={() => onSelect?.(plan.id)}
         className="rounded-xl"
       >
-        {t.plans.cta} {name}
+        {ctaLabel}
       </Button>
     </div>
   );

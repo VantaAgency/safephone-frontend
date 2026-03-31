@@ -17,16 +17,31 @@ import { DEVICE_BRANDS, PAYMENT_METHODS } from "@/lib/data";
 import { DEVICE_TYPE_OPTIONS, getDeviceTypeLabel } from "@/lib/devices";
 import { useLanguage } from "@/lib/language-context";
 import {
+  useClaimPartnerReferral,
   useClaimPartnerInvitation,
+  usePartnerReferral,
   usePartnerInvitation,
   usePlans,
+  useTrackPartnerReferralVisit,
 } from "@/lib/api/hooks";
 import { useAuth } from "@/lib/auth/auth-provider";
 import { ApiError } from "@/lib/api/client";
 import { PlanCardSkeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { isTotalPlan } from "@/lib/plans";
-import type { DeviceType, PartnerInvitation, Plan } from "@/lib/api/types";
+import {
+  appendPartnerReferralParams,
+  clearPartnerReferralCookies,
+  normalizePartnerReferralSourceMedium,
+  readPartnerReferralCookies,
+  writePartnerReferralCookies,
+} from "@/lib/partner-referrals";
+import type {
+  DeviceType,
+  PartnerInvitation,
+  PartnerReferralDetails,
+  Plan,
+} from "@/lib/api/types";
 
 export default function InscriptionPage() {
   return (
@@ -44,6 +59,14 @@ function InscriptionContent() {
   const { data: plans, isLoading: plansLoading } = usePlans();
 
   const inviteToken = searchParams.get("invite")?.trim() || "";
+  const partnerCodeFromQuery = searchParams.get("partner")?.trim() || "";
+  const storedReferral = readPartnerReferralCookies();
+  const partnerCode = inviteToken
+    ? ""
+    : partnerCodeFromQuery || storedReferral.code;
+  const partnerSourceMedium = normalizePartnerReferralSourceMedium(
+    searchParams.get("src") || storedReferral.sourceMedium,
+  );
   const planFromQuery = searchParams.get("plan") ?? "";
   const brandFromQuery = searchParams.get("brand") ?? "";
   const deviceTypeFromQuery = (searchParams.get("device_type") ??
@@ -59,6 +82,15 @@ function InscriptionContent() {
     enabled: !!inviteToken,
   });
   const claimInvitation = useClaimPartnerInvitation();
+  const {
+    data: partnerReferral,
+    isLoading: partnerReferralLoading,
+    error: partnerReferralError,
+  } = usePartnerReferral(partnerCode, {
+    enabled: !!partnerCode && !inviteToken,
+  });
+  const trackPartnerReferralVisit = useTrackPartnerReferralVisit();
+  const claimPartnerReferral = useClaimPartnerReferral();
 
   const [step, setStep] = useState(1);
   const [selectedPlanId, setSelectedPlanId] = useState(planFromQuery);
@@ -69,8 +101,18 @@ function InscriptionContent() {
   const [annual, setAnnual] = useState(annualFromQuery);
 
   const attemptedClaimRef = useRef<string | null>(null);
+  const attemptedPartnerClaimRef = useRef<string | null>(null);
+  const attemptedPartnerVisitRef = useRef<string | null>(null);
 
-  const queryString = searchParams.toString();
+  const queryString = useMemo(() => {
+    const params = new URLSearchParams(searchParams.toString());
+
+    if (!inviteToken && partnerCode) {
+      appendPartnerReferralParams(params, partnerCode, partnerSourceMedium);
+    }
+
+    return params.toString();
+  }, [inviteToken, partnerCode, partnerSourceMedium, searchParams]);
   const currentPath = useMemo(
     () => (queryString ? `/inscription?${queryString}` : "/inscription"),
     [queryString],
@@ -110,6 +152,7 @@ function InscriptionContent() {
       plan.id === resolvedSelectedPlanId ||
       plan.slug === resolvedSelectedPlanId,
   );
+  const selectedPlanKey = selectedPlanObj?.id || resolvedSelectedPlanId;
   const claimError =
     claimInvitation.error instanceof ApiError
       ? claimInvitation.error.message
@@ -123,6 +166,23 @@ function InscriptionContent() {
     claimInvitation.error.code === "CONFLICT";
   const invitationClaimedForCurrentAccount =
     !!claimInvitation.data || claimInvitation.isSuccess;
+  const partnerClaimConflict =
+    claimPartnerReferral.error instanceof ApiError &&
+    claimPartnerReferral.error.code === "CONFLICT";
+  const partnerClaimError =
+    claimPartnerReferral.error instanceof ApiError
+      ? getPartnerReferralClaimErrorMessage(
+          claimPartnerReferral.error,
+          lang,
+          partnerReferral,
+        )
+      : claimPartnerReferral.error
+        ? lang === "fr"
+          ? "Impossible de rattacher ce lien partenaire à votre compte."
+          : "We could not attach this partner referral to your account."
+        : "";
+  const partnerClaimedForCurrentAccount =
+    !!claimPartnerReferral.data || claimPartnerReferral.isSuccess;
 
   useEffect(() => {
     if (!inviteToken || !user?.id || !invitation || authPending) return;
@@ -143,6 +203,81 @@ function InscriptionContent() {
     invitationExpired,
     inviteToken,
     user?.id,
+  ]);
+
+  useEffect(() => {
+    if (!partnerCode || inviteToken || storedReferral.visitorToken) return;
+
+    const visitKey = `${partnerCode}:${partnerSourceMedium}`;
+    if (attemptedPartnerVisitRef.current === visitKey) return;
+
+    attemptedPartnerVisitRef.current = visitKey;
+    trackPartnerReferralVisit.mutate(
+      {
+        code: partnerCode,
+        data: {
+          visitor_token: storedReferral.visitorToken || undefined,
+          source_medium: partnerSourceMedium,
+        },
+      },
+      {
+        onSuccess: (result) => {
+          writePartnerReferralCookies({
+            code: result.referral?.referral_code ?? partnerCode,
+            visitorToken: result.visitor_token,
+            sourceMedium: result.source_medium,
+          });
+        },
+      },
+    );
+  }, [
+    inviteToken,
+    partnerCode,
+    partnerSourceMedium,
+    storedReferral.visitorToken,
+    trackPartnerReferralVisit,
+  ]);
+
+  useEffect(() => {
+    if (!partnerCode || !user?.id || !partnerReferral || authPending || inviteToken) {
+      return;
+    }
+
+    const claimKey = `${partnerCode}:${user.id}`;
+    if (attemptedPartnerClaimRef.current === claimKey) return;
+
+    attemptedPartnerClaimRef.current = claimKey;
+    claimPartnerReferral.mutate({
+      code: partnerCode,
+      data: { source_medium: partnerSourceMedium },
+    });
+  }, [
+    authPending,
+    claimPartnerReferral,
+    inviteToken,
+    partnerCode,
+    partnerReferral,
+    partnerSourceMedium,
+    user?.id,
+  ]);
+
+  useEffect(() => {
+    if (partnerClaimedForCurrentAccount) {
+      clearPartnerReferralCookies();
+      return;
+    }
+
+    if (
+      partnerClaimConflict ||
+      (partnerReferralError instanceof ApiError &&
+        partnerReferralError.code === "NOT_FOUND")
+    ) {
+      clearPartnerReferralCookies();
+    }
+  }, [
+    partnerClaimConflict,
+    partnerClaimedForCurrentAccount,
+    partnerReferralError,
   ]);
 
   useEffect(() => {
@@ -178,15 +313,23 @@ function InscriptionContent() {
   ]);
 
   const shouldShowInvitationGate = !!inviteToken;
+  const shouldShowPartnerGate = !inviteToken && !!partnerCode;
   const canProceedToSetup =
-    !shouldShowInvitationGate ||
-    (!authPending &&
+    (!shouldShowInvitationGate && !shouldShowPartnerGate) ||
+    (shouldShowInvitationGate &&
+      !authPending &&
       isAuthenticated &&
       !invitationExpired &&
       !invitationCompleted &&
       !claimConflict &&
       !claimError &&
-      invitationClaimedForCurrentAccount);
+      invitationClaimedForCurrentAccount) ||
+    (shouldShowPartnerGate &&
+      !authPending &&
+      isAuthenticated &&
+      !partnerClaimConflict &&
+      !partnerClaimError &&
+      partnerClaimedForCurrentAccount);
 
   const totalPlanSelected = isTotalPlan(selectedPlanObj);
   const stepLabels = [
@@ -222,6 +365,9 @@ function InscriptionContent() {
     if (inviteToken) {
       params.set("invite", inviteToken);
     }
+    if (!inviteToken && partnerCode) {
+      appendPartnerReferralParams(params, partnerCode, partnerSourceMedium);
+    }
 
     router.push(`/paiement?${params.toString()}`);
   };
@@ -235,6 +381,10 @@ function InscriptionContent() {
               ? lang === "fr"
                 ? "Invitation partenaire"
                 : "Partner invitation"
+              : shouldShowPartnerGate
+                ? lang === "fr"
+                  ? "Lien partenaire"
+                  : "Partner referral"
               : t.register.title}
           </div>
           <h1 className="mt-5 text-3xl font-medium tracking-tight text-indigo-950 md:text-5xl">
@@ -242,6 +392,10 @@ function InscriptionContent() {
               ? lang === "fr"
                 ? "Finalisez votre inscription SafePhone"
                 : "Complete your SafePhone onboarding"
+              : shouldShowPartnerGate
+                ? lang === "fr"
+                  ? "Inscrivez-vous avec votre partenaire SafePhone"
+                  : "Sign up with your SafePhone partner"
               : t.register.title}
           </h1>
           <p className="mx-auto mt-4 max-w-2xl text-base text-slate-500 md:text-lg">
@@ -249,6 +403,10 @@ function InscriptionContent() {
               ? lang === "fr"
                 ? "Votre partenaire a déjà préparé votre invitation. Connectez-vous ou créez votre compte, puis poursuivez directement vers votre formule et votre paiement."
                 : "Your partner has already prepared your invitation. Sign in or create your account, then continue straight to your plan and payment."
+              : shouldShowPartnerGate
+                ? lang === "fr"
+                  ? "Votre partenaire vous a envoyé son lien SafePhone. L’attribution est conservée automatiquement pendant toute l’inscription et la souscription."
+                  : "Your partner shared their SafePhone link with you. Attribution stays attached automatically throughout signup and subscription."
               : lang === "fr"
                 ? "Choisissez votre formule, sélectionnez votre marque et poursuivez votre souscription en quelques étapes."
                 : "Choose your plan, select your brand, and continue your subscription in just a few steps."}
@@ -279,8 +437,49 @@ function InscriptionContent() {
           />
         )}
 
+        {shouldShowPartnerGate && (
+          <PartnerReferralIntro
+            lang={lang}
+            referral={partnerReferral}
+            referralLoading={partnerReferralLoading}
+            referralError={
+              partnerReferralError instanceof ApiError ? partnerReferralError : null
+            }
+            authPending={authPending}
+            isAuthenticated={isAuthenticated}
+            authRedirectPath={authRedirectPath}
+            userName={user?.name}
+            claimConflict={partnerClaimConflict}
+            referralClaimedForCurrentAccount={partnerClaimedForCurrentAccount}
+            claimPending={claimPartnerReferral.isPending}
+            claimError={partnerClaimError}
+          />
+        )}
+
         {canProceedToSetup && (
           <>
+            {!inviteToken && partnerReferral && partnerClaimedForCurrentAccount && (
+              <div className="mb-6 rounded-[1.75rem] border border-emerald-200/80 bg-emerald-50 px-5 py-4 text-left shadow-sm">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-emerald-700">
+                      {lang === "fr"
+                        ? `Vous êtes accompagné par ${partnerReferral.partner_store_name}`
+                        : `You are signing up with ${partnerReferral.partner_store_name}`}
+                    </p>
+                    <p className="mt-1 text-sm text-emerald-900/80">
+                      {lang === "fr"
+                        ? "Votre attribution partenaire est maintenant enregistrée en arrière-plan."
+                        : "Your partner attribution is now preserved in the background."}
+                    </p>
+                  </div>
+                  <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-emerald-700 shadow-sm">
+                    {lang === "fr" ? "Attribution active" : "Attribution active"}
+                  </span>
+                </div>
+              </div>
+            )}
+
             <div className="mb-10 mt-10 flex items-center gap-2">
               {stepLabels.map((label, index) => (
                 <div key={label} className="flex flex-1 items-center gap-2">
@@ -379,7 +578,7 @@ function InscriptionContent() {
                   <div className="space-y-3">
                     {plans?.map((plan) => {
                       const isRecommended = invitationPlanId === plan.id;
-                      const isSelected = resolvedSelectedPlanId === plan.id;
+                      const isSelected = selectedPlanKey === plan.id;
 
                       return (
                         <button
@@ -715,6 +914,219 @@ function InscriptionContent() {
   );
 }
 
+function PartnerReferralIntro({
+  lang,
+  referral,
+  referralLoading,
+  referralError,
+  authPending,
+  isAuthenticated,
+  authRedirectPath,
+  userName,
+  claimConflict,
+  referralClaimedForCurrentAccount,
+  claimPending,
+  claimError,
+}: {
+  lang: "fr" | "en";
+  referral?: PartnerReferralDetails;
+  referralLoading: boolean;
+  referralError: ApiError | null;
+  authPending: boolean;
+  isAuthenticated: boolean;
+  authRedirectPath: string;
+  userName?: string;
+  claimConflict: boolean;
+  referralClaimedForCurrentAccount: boolean;
+  claimPending: boolean;
+  claimError: string;
+}) {
+  if (referralLoading) {
+    return (
+      <div className="rounded-[2rem] border border-slate-200/80 bg-white p-6 shadow-sm md:p-8">
+        <div className="h-5 w-40 animate-pulse rounded bg-slate-200" />
+        <div className="mt-4 h-16 animate-pulse rounded-2xl bg-slate-100" />
+        <div className="mt-4 h-16 animate-pulse rounded-2xl bg-slate-100" />
+      </div>
+    );
+  }
+
+  if (referralError || !referral) {
+    return (
+      <StateCard
+        title={lang === "fr" ? "Lien partenaire introuvable" : "Partner link not found"}
+        description={
+          lang === "fr"
+            ? "Ce lien partenaire n'est plus valide. Demandez un nouveau lien ou un nouveau QR code à votre point de vente."
+            : "This partner link is no longer valid. Ask the store for a new link or QR code."
+        }
+        actionLabel={lang === "fr" ? "Retour à l’accueil" : "Back to home"}
+        onAction={() => (window.location.href = "/")}
+        tone="warning"
+      />
+    );
+  }
+
+  if (claimConflict) {
+    return (
+      <StateCard
+        title={
+          lang === "fr"
+            ? "Attribution partenaire déjà verrouillée"
+            : "Partner attribution already locked"
+        }
+        description={
+          lang === "fr"
+            ? "Ce compte est déjà rattaché à un autre partenaire ou la première souscription a déjà été validée."
+            : "This account is already attached to another partner or the first subscription has already been confirmed."
+        }
+        meta={`${referral.partner_store_name} · ${referral.referral_code}`}
+        tone="warning"
+      />
+    );
+  }
+
+  if (!authPending && !isAuthenticated) {
+    return (
+      <div className="rounded-[2rem] border border-slate-200/80 bg-white p-6 shadow-sm md:p-8">
+        <div className="grid gap-6 md:grid-cols-[1.3fr_1fr] md:items-center">
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-400">
+              {lang === "fr" ? "Votre partenaire" : "Your partner"}
+            </p>
+            <h2 className="mt-3 text-2xl font-medium text-indigo-950">
+              {lang === "fr"
+                ? `${referral.partner_store_name} vous accompagne jusqu’à l’activation`
+                : `${referral.partner_store_name} is guiding you through activation`}
+            </h2>
+            <p className="mt-3 text-slate-500">
+              {lang === "fr"
+                ? "Connectez-vous ou créez votre compte pour conserver automatiquement ce rattachement partenaire, puis poursuivez normalement votre souscription."
+                : "Sign in or create your account to preserve this partner attribution automatically, then continue your subscription normally."}
+            </p>
+            <div className="mt-5 flex flex-wrap gap-3">
+              <Button
+                variant="primary"
+                size="lg"
+                onClick={() =>
+                  (window.location.href = `/connexion?redirect=${encodeURIComponent(authRedirectPath)}`)
+                }
+              >
+                {lang === "fr" ? "Se connecter" : "Sign in"}
+              </Button>
+              <Button
+                variant="secondary"
+                size="lg"
+                onClick={() =>
+                  (window.location.href = `/inscription-compte?redirect=${encodeURIComponent(authRedirectPath)}`)
+                }
+              >
+                {lang === "fr" ? "Créer mon compte" : "Create my account"}
+              </Button>
+            </div>
+          </div>
+
+          <div className="rounded-[1.75rem] border border-slate-200 bg-slate-50 p-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+              {lang === "fr" ? "Contexte partenaire" : "Partner context"}
+            </p>
+            <dl className="mt-4 space-y-3 text-sm">
+              <div className="flex items-center justify-between gap-4">
+                <dt className="text-slate-500">
+                  {lang === "fr" ? "Boutique" : "Store"}
+                </dt>
+                <dd className="text-right font-medium text-indigo-950">
+                  {referral.partner_store_name}
+                </dd>
+              </div>
+              <div className="flex items-center justify-between gap-4">
+                <dt className="text-slate-500">
+                  {lang === "fr" ? "Ville" : "City"}
+                </dt>
+                <dd className="text-right font-medium text-indigo-950">
+                  {referral.partner_city}
+                </dd>
+              </div>
+              <div className="flex items-center justify-between gap-4">
+                <dt className="text-slate-500">
+                  {lang === "fr" ? "Code partenaire" : "Partner code"}
+                </dt>
+                <dd className="text-right font-medium text-indigo-950">
+                  {referral.referral_code}
+                </dd>
+              </div>
+            </dl>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (claimPending) {
+    return (
+      <StateCard
+        title={
+          lang === "fr"
+            ? "Rattachement du partenaire en cours..."
+            : "Linking your partner attribution..."
+        }
+        description={
+          lang === "fr"
+            ? "Nous attachons votre compte à ce partenaire afin que l’inscription, le paiement et le suivi restent correctement attribués."
+            : "We are attaching your account to this partner so signup, payment, and tracking stay correctly attributed."
+        }
+        meta={
+          userName
+            ? `${userName} · ${referral.partner_store_name}`
+            : referral.partner_store_name
+        }
+        tone="neutral"
+      />
+    );
+  }
+
+  if (claimError) {
+    return (
+      <StateCard
+        title={
+          lang === "fr"
+            ? "Lien partenaire en attente de correction"
+            : "Partner link needs attention"
+        }
+        description={claimError}
+        meta={`${referral.partner_store_name} · ${referral.referral_code}`}
+        tone="warning"
+      />
+    );
+  }
+
+  if (referralClaimedForCurrentAccount) {
+    return (
+      <div className="rounded-[2rem] border border-emerald-200/70 bg-emerald-50 p-5 text-left shadow-sm">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="text-sm font-semibold text-emerald-700">
+              {lang === "fr"
+                ? "Lien partenaire bien relié à votre compte"
+                : "Partner link successfully connected to your account"}
+            </p>
+            <p className="mt-1 text-sm text-emerald-900/80">
+              {lang === "fr"
+                ? `Vous pouvez maintenant choisir votre formule et poursuivre le paiement avec ${referral.partner_store_name}.`
+                : `You can now choose your plan and continue payment with ${referral.partner_store_name}.`}
+            </p>
+          </div>
+          <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-emerald-700 shadow-sm">
+            {lang === "fr" ? "Compte prêt" : "Account ready"}
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  return null;
+}
+
 function InvitationIntro({
   lang,
   invitation,
@@ -975,6 +1387,30 @@ function InvitationIntro({
   }
 
   return null;
+}
+
+function getPartnerReferralClaimErrorMessage(
+  error: ApiError,
+  lang: "fr" | "en",
+  referral?: PartnerReferralDetails,
+) {
+  if (error.code === "CONFLICT") {
+    return lang === "fr"
+      ? "Ce compte ne peut plus être rattaché à ce partenaire. Vérifiez que vous utilisez le bon compte et que le premier paiement n’a pas déjà été validé."
+      : "This account can no longer be attached to this partner. Make sure you are using the correct account and that the first payment has not already been completed.";
+  }
+
+  if (error.code === "NOT_FOUND") {
+    return lang === "fr"
+      ? "Ce lien partenaire n’est plus actif."
+      : "This partner link is no longer active.";
+  }
+
+  return referral
+    ? lang === "fr"
+      ? `Impossible de rattacher votre compte à ${referral.partner_store_name} pour le moment.`
+      : `We could not attach your account to ${referral.partner_store_name} right now.`
+    : error.message;
 }
 
 function StateCard({

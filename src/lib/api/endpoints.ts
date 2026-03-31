@@ -9,6 +9,7 @@ import type {
   AdminDashboardOverview,
   AdminPartner,
   AdminPartnerCommission,
+  AdminPartnerReferral,
   AdminPartnerApplication,
   AdminPartnerApplicationParams,
   AdminPayment,
@@ -20,7 +21,9 @@ import type {
   CreateDeviceRequest,
   CreatePartnerApplicationRequest,
   CreatePartnerClientRequest,
+  CreatePartnerReferralVisitRequest,
   CheckoutResult,
+  ClaimPartnerReferralRequest,
   CreatePaymentRequest,
   CreateRepairRequest,
   CreateSubscriptionRequest,
@@ -50,6 +53,8 @@ import type {
   PartnerInvitation,
   PartnerPayout,
   PartnerProfile,
+  PartnerReferralDetails,
+  PartnerReferralVisitResult,
   PartnerSale,
   Payment,
   Plan,
@@ -141,6 +146,11 @@ export const admin = {
       `/admin/partners/${id}/commissions`,
       params as Record<string, string | number>,
     ),
+  partnerReferrals: (id: string, params?: PaginationParams) =>
+    api.get<AdminPartnerReferral[]>(
+      `/admin/partners/${id}/referrals`,
+      params as Record<string, string | number>,
+    ),
   partnerApplications: (params?: AdminPartnerApplicationParams) =>
     api.get<AdminPartnerApplication[]>(
       "/admin/partner-applications",
@@ -198,6 +208,14 @@ export const partner = {
     api.get<PartnerInvitation>(`/partner-invitations/${token}`),
   claimInvitation: (token: string) =>
     api.post<PartnerInvitation>(`/partner-invitations/${token}/claim`),
+  getReferral: (code: string) =>
+    api.get<PartnerReferralDetails>(`/partner-referrals/${code}`),
+  trackReferralVisit: (
+    code: string,
+    data?: CreatePartnerReferralVisitRequest,
+  ) => api.post<PartnerReferralVisitResult>(`/partner-referrals/${code}/visits`, data),
+  claimReferral: (code: string, data?: ClaimPartnerReferralRequest) =>
+    api.post<PartnerReferralDetails>(`/partner-referrals/${code}/claim`, data),
   listSales: (params?: PaginationParams) =>
     api.get<PartnerSale[]>(
       "/partner/sales",

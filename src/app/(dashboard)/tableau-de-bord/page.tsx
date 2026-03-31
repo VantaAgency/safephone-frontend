@@ -226,6 +226,7 @@ export default function DashboardPage() {
   const { user } = useAuth();
   const searchParams = useSearchParams();
   const requestedTab = searchParams.get("tab");
+  const requestedClaimView = searchParams.get("view");
   const [tab, setTab] = useState<DashboardTab>(() => {
     if (requestedTab && DASHBOARD_TABS.includes(requestedTab as DashboardTab)) {
       return requestedTab as DashboardTab;
@@ -234,7 +235,12 @@ export default function DashboardPage() {
   });
 
   // Claims form state
-  const [claimView, setClaimView] = useState<"history" | "new">("history");
+  const [claimView, setClaimView] = useState<"history" | "new">(() => {
+    if (requestedTab === "claims" && requestedClaimView === "new") {
+      return "new";
+    }
+    return "history";
+  });
   const [claimType, setClaimType] = useState("");
   const [claimDesc, setClaimDesc] = useState("");
   const [claimDeviceId, setClaimDeviceId] = useState("");

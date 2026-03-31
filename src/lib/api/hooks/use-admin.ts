@@ -16,6 +16,7 @@ import type {
   AdminEmployeeParams,
   AdminPartner,
   AdminPartnerCommission,
+  AdminPartnerReferral,
   AdminPartnerApplication,
   AdminPayment,
   AdminStats,
@@ -129,6 +130,17 @@ export function useAdminPartnerCommissions(partnerId?: string, { enabled = true 
   });
 }
 
+export function useAdminPartnerReferrals(
+  partnerId?: string,
+  { enabled = true }: AdminQueryOptions = {},
+) {
+  return useQuery<AdminPartnerReferral[]>({
+    queryKey: ["admin-partner-referrals", partnerId],
+    queryFn: () => admin.partnerReferrals(partnerId!),
+    enabled: enabled && !!partnerId,
+  });
+}
+
 export function useAdminPartnerApplications(status?: PartnerApplicationStatus, { enabled = true }: AdminQueryOptions = {}) {
   return useQuery<AdminPartnerApplication[]>({
     queryKey: ["admin-partner-applications", status],
@@ -149,6 +161,7 @@ export function useReviewPartnerApplication() {
       queryClient.invalidateQueries({ queryKey: ["admin-overview"] });
       queryClient.invalidateQueries({ queryKey: ["admin-stats"] });
       queryClient.invalidateQueries({ queryKey: ["admin-partner-commissions"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-partner-referrals"] });
     },
   });
 }

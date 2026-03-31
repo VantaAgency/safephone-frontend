@@ -22,6 +22,7 @@ import {
   useAdminPayments,
   useAdminPartners,
   useAdminPartnerCommissions,
+  useAdminPartnerReferrals,
   useAdminPartnerApplications,
   useRejectRepairRequest,
   useReviewPartnerApplication,
@@ -141,6 +142,14 @@ export default function AdminPage() {
     selectedPartnerId ?? undefined,
     { enabled: isAdmin && tab === "partners" && !!selectedPartnerId },
   );
+  const {
+    data: selectedPartnerReferrals = [],
+    isLoading: partnerReferralsLoading,
+    refetch: refetchPartnerReferrals,
+  } = useAdminPartnerReferrals(
+    selectedPartnerId ?? undefined,
+    { enabled: isAdmin && tab === "partners" && !!selectedPartnerId },
+  );
 
   useEffect(() => {
     if (!isPending && !isAdmin) {
@@ -165,6 +174,9 @@ export default function AdminPage() {
 
   const statusLabels: Record<string, string> = {
     pending: lang === "fr" ? "En attente" : "Pending",
+    invited: lang === "fr" ? "Invité" : "Invited",
+    account_created: lang === "fr" ? "Compte créé" : "Account created",
+    payment_pending: lang === "fr" ? "Paiement en attente" : "Payment pending",
     accepted: lang === "fr" ? "Acceptée" : "Accepted",
     review: lang === "fr" ? "En traitement" : "In progress",
     approved: lang === "fr" ? "Approuve" : "Approved",
@@ -546,6 +558,7 @@ export default function AdminPage() {
             refetchOverview(),
             refetchPartners(),
             ...(selectedPartnerId ? [refetchPartnerCommissions()] : []),
+            ...(selectedPartnerId ? [refetchPartnerReferrals()] : []),
           ]);
           break;
       }
@@ -1036,6 +1049,25 @@ export default function AdminPage() {
                               <td className="px-5 py-3.5">
                                 <div className="flex flex-col gap-1">
                                   <span className="font-medium text-indigo-950">{c.full_name}</span>
+                                  {c.partner_store_name && (
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-medium text-emerald-700">
+                                        {c.partner_store_name}
+                                      </span>
+                                      {c.partner_referral_code && (
+                                        <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                                          {c.partner_referral_code}
+                                        </span>
+                                      )}
+                                    </div>
+                                  )}
+                                  {c.partner_store_name && (
+                                    <span className="text-[11px] text-slate-400">
+                                      {lang === "fr"
+                                        ? `Attribution ${c.partner_attribution_source === "manual_invitation" ? "historique" : "via lien partenaire"}${c.partner_attributed_at ? ` · ${formatShortDate(c.partner_attributed_at)}` : ""}`
+                                        : `Attributed ${c.partner_attribution_source === "manual_invitation" ? "via legacy invitation" : "via partner link"}${c.partner_attributed_at ? ` · ${formatShortDate(c.partner_attributed_at)}` : ""}`}
+                                    </span>
+                                  )}
                                   <button
                                     type="button"
                                     onClick={() => setExpandedCustomerId((current) => current === c.id ? null : c.id)}
@@ -1445,18 +1477,18 @@ export default function AdminPage() {
                   icon={<UsersIcon size={20} className="text-indigo-600" />}
                 />
                 <StatCard
-                  label={lang === "fr" ? "Clients impliques" : "Clients involved"}
-                  value={String(adminPartners.reduce((s, p) => s + p.clients_count, 0))}
+                  label={lang === "fr" ? "Visites référées" : "Referral visits"}
+                  value={String(adminPartners.reduce((sum, partner) => sum + partner.referral_visits, 0))}
                   icon={<ShieldCheckIcon size={20} className="text-violet-600" />}
                 />
                 <StatCard
-                  label={lang === "fr" ? "Commissions gagnées" : "Commissions earned"}
-                  value={formatXOF(adminPartners.reduce((s, p) => s + p.total_commission_earned_xof, 0))}
+                  label={lang === "fr" ? "Inscriptions" : "Signups"}
+                  value={String(adminPartners.reduce((sum, partner) => sum + partner.referral_signups, 0))}
                   icon={<WrenchIcon size={20} className="text-yellow-500" />}
                 />
                 <StatCard
-                  label={lang === "fr" ? "Commissions dues" : "Commissions owed"}
-                  value={formatXOF(adminPartners.reduce((s, p) => s + p.total_commission_owed_xof, 0))}
+                  label={lang === "fr" ? "Activations" : "Activations"}
+                  value={String(adminPartners.reduce((sum, partner) => sum + partner.referral_activations, 0))}
                   icon={<CreditCardIcon size={20} className="text-emerald-500" />}
                 />
               </div>
@@ -1479,13 +1511,13 @@ export default function AdminPage() {
                   <thead>
                     <tr className="border-b border-slate-100 bg-slate-50/50">
                       {[
-                        lang === "fr" ? "Boutique / Proprietaire" : "Store / Owner",
-                        lang === "fr" ? "Ville / Zone" : "City / Area",
-                        lang === "fr" ? "Commission %" : "Commission %",
-                        lang === "fr" ? "Clients" : "Clients",
-                        lang === "fr" ? "Actifs" : "Active",
+                        lang === "fr" ? "Boutique / Code" : "Store / Code",
+                        lang === "fr" ? "Ville / Propriétaire" : "City / Owner",
+                        lang === "fr" ? "Visites" : "Visits",
+                        lang === "fr" ? "Inscriptions" : "Signups",
+                        lang === "fr" ? "Activations" : "Activations",
+                        lang === "fr" ? "Conversion" : "Conversion",
                         lang === "fr" ? "Gagné" : "Earned",
-                        lang === "fr" ? "Dû" : "Owed",
                         lang === "fr" ? "Statut" : "Status",
                         lang === "fr" ? "Détails" : "Details",
                       ].map((h) => (
@@ -1499,20 +1531,22 @@ export default function AdminPage() {
                         <tr key={partner.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/30">
                           <td className="px-5 py-3.5">
                             <div className="font-medium text-indigo-950">{partner.store_name}</div>
-                            <div className="text-xs text-slate-400">{partner.owner_name}</div>
+                            <div className="mt-1 inline-flex rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                              {partner.referral_code}
+                            </div>
                           </td>
                           <td className="px-5 py-3.5">
                             <div className="text-slate-500">{partner.city}</div>
-                            <div className="text-xs text-slate-400">{partner.business_location}</div>
+                            <div className="text-xs text-slate-400">{partner.owner_name}</div>
                           </td>
-                          <td className="px-5 py-3.5 font-medium text-indigo-950">{partner.commission_percentage}%</td>
-                          <td className="px-5 py-3.5 text-center font-medium text-indigo-950">{partner.clients_count}</td>
-                          <td className="px-5 py-3.5 text-center font-medium text-emerald-600">{partner.active_clients}</td>
+                          <td className="px-5 py-3.5 text-center font-medium text-indigo-950">{partner.referral_visits}</td>
+                          <td className="px-5 py-3.5 text-center font-medium text-indigo-950">{partner.referral_signups}</td>
+                          <td className="px-5 py-3.5 text-center font-medium text-emerald-600">{partner.referral_activations}</td>
+                          <td className="px-5 py-3.5 font-medium text-indigo-950">
+                            {partner.referral_conversion_rate.toFixed(1)}%
+                          </td>
                           <td className="px-5 py-3.5 font-medium text-indigo-950">
                             {partner.total_commission_earned_xof > 0 ? formatXOF(partner.total_commission_earned_xof) : "—"}
-                          </td>
-                          <td className="px-5 py-3.5 font-medium text-slate-600">
-                            {partner.total_commission_owed_xof > 0 ? formatXOF(partner.total_commission_owed_xof) : "—"}
                           </td>
                           <td className="px-5 py-3.5">
                             <StatusBadge
@@ -1560,39 +1594,215 @@ export default function AdminPage() {
                     </p>
                     <p className="mt-2 text-xs uppercase tracking-[0.18em] text-slate-400">
                       {lang === "fr"
-                        ? "Commissions d'acquisition uniques"
-                        : "One-time acquisition commissions"}
+                        ? "Attribution partenaire et commissions"
+                        : "Partner attribution and commissions"}
                     </p>
                   </div>
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                     <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
                       <p className="text-xs uppercase tracking-[0.18em] text-slate-400">
-                        {lang === "fr" ? "Commission %" : "Commission %"}
+                        {lang === "fr" ? "Code" : "Code"}
                       </p>
                       <p className="mt-2 text-lg font-medium text-indigo-950">
-                        {selectedPartner.commission_percentage}%
+                        {selectedPartner.referral_code}
                       </p>
                     </div>
                     <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
                       <p className="text-xs uppercase tracking-[0.18em] text-slate-400">
-                        {lang === "fr" ? "Gagné" : "Earned"}
+                        {lang === "fr" ? "Visites" : "Visits"}
                       </p>
                       <p className="mt-2 text-lg font-medium text-indigo-950">
-                        {formatXOF(selectedPartner.total_commission_earned_xof)}
+                        {selectedPartner.referral_visits}
                       </p>
                     </div>
                     <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
                       <p className="text-xs uppercase tracking-[0.18em] text-slate-400">
-                        {lang === "fr" ? "Payé" : "Paid"}
+                        {lang === "fr" ? "Inscriptions" : "Signups"}
                       </p>
                       <p className="mt-2 text-lg font-medium text-indigo-950">
-                        {formatXOF(selectedPartner.total_commission_paid_xof)}
+                        {selectedPartner.referral_signups}
+                      </p>
+                    </div>
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                      <p className="text-xs uppercase tracking-[0.18em] text-slate-400">
+                        {lang === "fr" ? "Conversion" : "Conversion"}
+                      </p>
+                      <p className="mt-2 text-lg font-medium text-indigo-950">
+                        {selectedPartner.referral_conversion_rate.toFixed(1)}%
                       </p>
                     </div>
                   </div>
                 </div>
 
+                <div className="mt-6 grid gap-3 sm:grid-cols-4">
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                    <p className="text-xs uppercase tracking-[0.18em] text-slate-400">
+                      {lang === "fr" ? "Activations" : "Activations"}
+                    </p>
+                    <p className="mt-2 text-lg font-medium text-indigo-950">
+                      {selectedPartner.referral_activations}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                    <p className="text-xs uppercase tracking-[0.18em] text-slate-400">
+                      {lang === "fr" ? "Commission %" : "Commission %"}
+                    </p>
+                    <p className="mt-2 text-lg font-medium text-indigo-950">
+                      {selectedPartner.commission_percentage}%
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                    <p className="text-xs uppercase tracking-[0.18em] text-slate-400">
+                      {lang === "fr" ? "Gagné" : "Earned"}
+                    </p>
+                    <p className="mt-2 text-lg font-medium text-indigo-950">
+                      {formatXOF(selectedPartner.total_commission_earned_xof)}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                    <p className="text-xs uppercase tracking-[0.18em] text-slate-400">
+                      {lang === "fr" ? "Payé" : "Paid"}
+                    </p>
+                    <p className="mt-2 text-lg font-medium text-indigo-950">
+                      {formatXOF(selectedPartner.total_commission_paid_xof)}
+                    </p>
+                  </div>
+                </div>
+
                 <div className="mt-6 overflow-hidden rounded-2xl border border-slate-200/80">
+                  <div className="border-b border-slate-100 px-5 py-4">
+                    <h4 className="text-base font-medium text-indigo-950">
+                      {lang === "fr"
+                        ? "Clients attribués"
+                        : "Attributed customers"}
+                    </h4>
+                  </div>
+                  {partnerReferralsLoading ? (
+                    <div className="p-6 space-y-3">
+                      {[...Array(3)].map((_, i) => (
+                        <div key={i} className="h-10 w-full animate-pulse rounded-xl bg-slate-100" />
+                      ))}
+                    </div>
+                  ) : selectedPartnerReferrals.length === 0 ? (
+                    <div className="py-12 text-center text-sm text-slate-500">
+                      {lang === "fr"
+                        ? "Aucun client attribué pour ce partenaire."
+                        : "No customers have been attributed to this partner yet."}
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-slate-100 bg-slate-50/50">
+                            {[
+                              lang === "fr" ? "Client" : "Customer",
+                              lang === "fr" ? "Source" : "Source",
+                              lang === "fr" ? "Date" : "Date",
+                              lang === "fr" ? "Formule" : "Plan",
+                              lang === "fr" ? "Abonnement" : "Subscription",
+                              lang === "fr" ? "Paiement" : "Payment",
+                              lang === "fr" ? "Commission" : "Commission",
+                            ].map((heading) => (
+                              <th
+                                key={heading}
+                                className="whitespace-nowrap px-5 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-400"
+                              >
+                                {heading}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {selectedPartnerReferrals.map((referral) => (
+                            <tr key={referral.partner_client_id} className="border-b border-slate-50 last:border-0">
+                              <td className="px-5 py-3.5">
+                                <div className="font-medium text-indigo-950">
+                                  {referral.customer_name}
+                                </div>
+                                <div className="text-xs text-slate-400">
+                                  {referral.customer_email ?? referral.customer_phone ?? "—"}
+                                </div>
+                              </td>
+                              <td className="px-5 py-3.5">
+                                <div className="flex flex-col gap-1">
+                                  <span className="w-fit rounded-full bg-indigo-950/5 px-2.5 py-0.5 text-xs font-medium text-indigo-950">
+                                    {referral.attribution_source === "manual_invitation"
+                                      ? lang === "fr"
+                                        ? "Invitation manuelle"
+                                        : "Manual invitation"
+                                      : referral.referral_medium === "qr"
+                                        ? lang === "fr"
+                                          ? "QR code"
+                                          : "QR code"
+                                        : referral.referral_medium === "share"
+                                          ? lang === "fr"
+                                            ? "Lien partagé"
+                                            : "Shared link"
+                                          : lang === "fr"
+                                            ? "Lien partenaire"
+                                            : "Partner link"}
+                                  </span>
+                                  <span className="text-xs text-slate-400">
+                                    {referral.referral_code ?? "—"}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="px-5 py-3.5 text-slate-500">
+                                {formatShortDate(referral.attributed_at)}
+                              </td>
+                              <td className="px-5 py-3.5 text-slate-500">
+                                {lang === "fr" ? referral.plan_name_fr ?? "—" : referral.plan_name_en ?? "—"}
+                              </td>
+                              <td className="px-5 py-3.5">
+                                <StatusBadge
+                                  status={(referral.subscription_status ?? referral.client_status ?? "pending") as "active" | "pending" | "expired" | "cancelled"}
+                                  label={statusLabels[referral.subscription_status ?? referral.client_status] || referral.subscription_status || referral.client_status}
+                                />
+                              </td>
+                              <td className="px-5 py-3.5">
+                                <StatusBadge
+                                  status={(referral.payment_status ?? "pending") as "completed" | "pending" | "failed" | "cancelled" | "expired" | "refunded"}
+                                  label={statusLabels[referral.payment_status ?? "pending"] || referral.payment_status || "pending"}
+                                />
+                              </td>
+                              <td className="px-5 py-3.5">
+                                {referral.has_generated_commission ? (
+                                  <div>
+                                    <div className="font-medium text-indigo-950">
+                                      {formatXOF(referral.commission_amount_xof ?? 0)}
+                                    </div>
+                                    <div className="text-xs text-slate-400">
+                                      {referral.commission_status === "paid"
+                                        ? lang === "fr"
+                                          ? "Payée"
+                                          : "Paid"
+                                        : lang === "fr"
+                                          ? "En attente"
+                                          : "Pending"}
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <span className="text-xs text-slate-400">
+                                    {lang === "fr" ? "Pas encore générée" : "Not generated yet"}
+                                  </span>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+
+                <div className="mt-6 overflow-hidden rounded-2xl border border-slate-200/80">
+                  <div className="border-b border-slate-100 px-5 py-4">
+                    <h4 className="text-base font-medium text-indigo-950">
+                      {lang === "fr"
+                        ? "Commissions d'acquisition"
+                        : "Acquisition commissions"}
+                    </h4>
+                  </div>
                   {partnerCommissionsLoading ? (
                     <div className="p-6 space-y-3">
                       {[...Array(3)].map((_, i) => (

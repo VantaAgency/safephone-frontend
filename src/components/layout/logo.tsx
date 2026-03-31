@@ -12,7 +12,7 @@ export function Logo({ variant = "full", dark = false, className }: LogoProps) {
     return (
       <div className={cn("flex items-center justify-center", className)}>
         <Image
-          src="/SAFEPHONEfavicon.png"
+          src="/SafePhoneLogoFavIcon2.svg"
           alt="SafePhone logo"
           width={40}
           height={40}
@@ -25,7 +25,7 @@ export function Logo({ variant = "full", dark = false, className }: LogoProps) {
   return (
     <div className={cn("flex items-center gap-2", className)}>
       <Image
-        src="/SAFEPHONEfavicon.png"
+        src="/SafePhoneLogoFavIcon2.svg"
         alt="SafePhone logo"
         width={40}
         height={40}

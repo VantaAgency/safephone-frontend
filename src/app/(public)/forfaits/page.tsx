@@ -19,10 +19,15 @@ export default function PlansPage() {
   };
 
   return (
-    <div className="bg-slate-50 py-10 md:py-14">
-      <div className="mx-auto max-w-400 px-5 md:px-10">
+    <div className="relative isolate overflow-hidden bg-[#FAFAF8] py-10 md:py-14">
+      <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
+        <div className="absolute -top-28 right-0 h-[420px] w-[420px] rounded-full bg-indigo-100/35 blur-3xl" />
+        <div className="absolute top-1/3 -left-24 h-[320px] w-[320px] rounded-full bg-yellow-100/35 blur-3xl" />
+      </div>
+
+      <div className="relative z-10 mx-auto max-w-400 px-5 md:px-10">
         {/* Header */}
-        <div className="mx-auto max-w-2xl text-center mb-14">
+        <div className="mx-auto mb-10 max-w-2xl text-center md:mb-12">
           <div className="mb-4 inline-flex items-center rounded-full border border-slate-200/80 bg-white px-4 py-1.5 text-xs font-medium uppercase tracking-wider text-slate-500">
             {lang === "fr" ? "Nos forfaits" : "Our plans"}
           </div>
@@ -35,7 +40,7 @@ export default function PlansPage() {
         </div>
 
         {/* Billing Toggle */}
-        <div className="mb-14 flex items-center justify-center">
+        <div className="mb-10 flex items-center justify-center md:mb-12">
           <div className="inline-flex items-center gap-1 rounded-full border border-slate-200/80 bg-slate-200/50 p-1">
             <button
               onClick={() => setAnnual(false)}
@@ -77,7 +82,7 @@ export default function PlansPage() {
         )}
 
         {/* Plans Grid */}
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 xl:gap-5">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 xl:gap-4">
           {isLoading
             ? Array.from({ length: 5 }).map((_, i) => <PlanCardSkeleton key={i} />)
             : plans?.map((plan) => (
@@ -87,6 +92,7 @@ export default function PlansPage() {
                   lang={lang}
                   t={t}
                   annual={annual}
+                  compact
                   onSelect={handleSelect}
                 />
               ))}

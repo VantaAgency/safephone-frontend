@@ -31,11 +31,17 @@ import {
 import {
   usePlans,
   useCreatePayment,
+  usePartnerReferral,
   usePaymentCheckout,
   useResumePayment,
 } from "@/lib/api/hooks";
 import { ApiError } from "@/lib/api/client";
 import { isTotalPlan } from "@/lib/plans";
+import {
+  appendPartnerReferralParams,
+  normalizePartnerReferralSourceMedium,
+  readPartnerReferralCookies,
+} from "@/lib/partner-referrals";
 import type {
   CheckoutResult,
   DeviceMetadata,
@@ -159,8 +165,17 @@ function PaiementContent() {
   const paymentId = searchParams.get("payment_id") ?? "";
   const shouldRedirectToCheckout = searchParams.get("redirect") === "checkout";
   const isTrackedMode = paymentId !== "";
+  const storedReferral = readPartnerReferralCookies();
+  const partnerCode =
+    searchParams.get("partner")?.trim() || storedReferral.code || "";
+  const partnerSourceMedium = normalizePartnerReferralSourceMedium(
+    searchParams.get("src") || storedReferral.sourceMedium,
+  );
 
   const { data: plans } = usePlans();
+  const { data: partnerReferral } = usePartnerReferral(partnerCode, {
+    enabled: !!partnerCode,
+  });
   const createPayment = useCreatePayment();
   const resumePayment = useResumePayment();
   const paymentCheckout = usePaymentCheckout(paymentId, {
@@ -385,7 +400,13 @@ function PaiementContent() {
   useEffect(() => {
     if (!isTrackedMode || !paymentId) return;
 
-    const canonicalPath = `/paiement?payment_id=${paymentId}`;
+    const canonicalParams = new URLSearchParams({ payment_id: paymentId });
+    appendPartnerReferralParams(
+      canonicalParams,
+      partnerCode,
+      partnerSourceMedium,
+    );
+    const canonicalPath = `/paiement?${canonicalParams.toString()}`;
 
     if (
       searchParams.get("redirect") &&
@@ -413,6 +434,8 @@ function PaiementContent() {
   }, [
     isTrackedMode,
     paymentCheckout.data,
+    partnerCode,
+    partnerSourceMedium,
     paymentId,
     searchParams,
     shouldRedirectToCheckout,
@@ -450,9 +473,12 @@ function PaiementContent() {
 
       clearStoredCreateFlow();
       if (result.payment?.id) {
-        router.replace(
-          `/paiement?payment_id=${result.payment.id}&redirect=checkout`,
-        );
+        const params = new URLSearchParams({
+          payment_id: result.payment.id,
+          redirect: "checkout",
+        });
+        appendPartnerReferralParams(params, partnerCode, partnerSourceMedium);
+        router.replace(`/paiement?${params.toString()}`);
       }
     } catch (err) {
       console.error("Payment flow error:", err);
@@ -475,9 +501,12 @@ function PaiementContent() {
     try {
       const result = await resumePayment.mutateAsync(paymentId);
       if (result.payment?.id) {
-        router.replace(
-          `/paiement?payment_id=${result.payment.id}&redirect=checkout`,
-        );
+        const params = new URLSearchParams({
+          payment_id: result.payment.id,
+          redirect: "checkout",
+        });
+        appendPartnerReferralParams(params, partnerCode, partnerSourceMedium);
+        router.replace(`/paiement?${params.toString()}`);
       }
     } catch (err) {
       console.error("Payment resume error:", err);
@@ -695,6 +724,21 @@ function PaiementContent() {
           </h1>
           <p className="mt-2 text-slate-500">{headerSubtitle}</p>
         </div>
+
+        {partnerReferral && (
+          <div className="mb-6 rounded-[1.75rem] border border-emerald-200/80 bg-emerald-50 px-5 py-4 shadow-sm">
+            <p className="text-sm font-semibold text-emerald-700">
+              {lang === "fr"
+                ? `Souscription suivie par ${partnerReferral.partner_store_name}`
+                : `Subscription tracked for ${partnerReferral.partner_store_name}`}
+            </p>
+            <p className="mt-1 text-sm text-emerald-900/80">
+              {lang === "fr"
+                ? "Votre attribution partenaire reste associée pendant le paiement et l’activation."
+                : "Your partner attribution stays attached through payment and activation."}
+            </p>
+          </div>
+        )}
 
         <div className="mb-6 rounded-[2rem] border border-yellow-300/40 bg-yellow-50 p-5">
           <div className="mb-1 text-xs font-semibold uppercase tracking-wider text-yellow-600">

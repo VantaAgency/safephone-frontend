@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useLanguage } from "@/lib/language-context";
@@ -13,7 +14,6 @@ import {
   ClockIcon,
   CheckCircleIcon,
   ChevronRightIcon,
-  PhoneIcon,
   ScreenIcon,
   BatteryIcon,
   PlugIcon,
@@ -63,6 +63,56 @@ const TIMES = [
   "17:00",
   "18:00",
 ];
+
+function BrandDeviceArt({ brand }: { brand: string }) {
+  const brandImages: Record<string, Array<{ src: string; alt: string }>> = {
+    iphone: [{ src: "/devices/iphone.png", alt: "iPhone" }],
+    samsung: [{ src: "/devices/samsung.png", alt: "Samsung" }],
+    tecno: [
+      { src: "/devices/techno.png", alt: "Tecno" },
+      { src: "/devices/infinix.png", alt: "Infinix" },
+    ],
+    itel: [
+      { src: "/devices/itel.png", alt: "Itel" },
+      { src: "/devices/wiko.png", alt: "Wiko" },
+    ],
+    huawei: [
+      { src: "/devices/huawei.png", alt: "Huawei" },
+      { src: "/devices/honor.png", alt: "Honor" },
+    ],
+    other: [{ src: "/devices/autreMarque.png", alt: "Other brand" }],
+  };
+
+  const images = brandImages[brand] ?? brandImages.other;
+  const isPair = images.length > 1;
+
+  return (
+    <div className={cn("relative flex h-18 w-full items-center justify-center", isPair ? "gap-2" : "")}>
+      {images.map((image, index) => (
+        <div
+          key={`${brand}-${image.alt}`}
+          className={cn(
+            "relative overflow-hidden rounded-[1rem] border border-slate-200/80 bg-white",
+            isPair
+              ? cn(
+                  "h-16 w-14",
+                  index === 0 ? "-rotate-6" : "rotate-6"
+                )
+              : "h-18 w-20"
+          )}
+        >
+          <Image
+            src={image.src}
+            alt={image.alt}
+            fill
+            sizes={isPair ? "56px" : "80px"}
+            className="object-contain p-1.5"
+          />
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export default function ReparationsPage() {
   const { lang, t } = useLanguage();
@@ -155,8 +205,11 @@ export default function ReparationsPage() {
     t.mobitech.stepConfirm,
   ];
 
+  const pageShellClassName =
+    "relative isolate overflow-hidden bg-[#FAFAF8] py-10 md:py-14";
+
   const trackingSection = (
-    <section className="mt-10 rounded-[2rem] border border-slate-200/80 bg-white p-6 shadow-sm md:p-8">
+    <section className="mt-10 rounded-[2rem] border border-slate-200/80 bg-white/95 p-6 backdrop-blur-sm md:p-8">
       <div className="mb-6">
         <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-slate-200/80 bg-slate-50 px-3 py-1 text-[11px] font-medium uppercase tracking-wider text-slate-500">
           <ClockIcon size={12} className="text-indigo-600" />
@@ -207,7 +260,7 @@ export default function ReparationsPage() {
       )}
 
       {lookupRepair.data && (
-        <div className="mt-6 rounded-[1.75rem] border border-slate-200/80 bg-slate-50/80 p-5 shadow-inner">
+        <div className="mt-6 rounded-[1.75rem] border border-slate-200/80 bg-slate-50/80 p-5">
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div>
               <div className="text-lg font-medium text-indigo-950">
@@ -273,15 +326,20 @@ export default function ReparationsPage() {
 
   if (bookedRef) {
     return (
-      <div className="bg-slate-50 px-5 py-12 md:py-16">
-        <div className="mx-auto max-w-3xl">
+      <div className={pageShellClassName}>
+        <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
+          <div className="absolute -top-28 right-0 h-[420px] w-[420px] rounded-full bg-indigo-100/35 blur-3xl" />
+          <div className="absolute top-1/3 -left-24 h-[320px] w-[320px] rounded-full bg-yellow-100/35 blur-3xl" />
+        </div>
+
+        <div className="relative z-10 mx-auto max-w-3xl px-5">
           <div className="mb-8 text-center">
             <div className="mb-4 inline-flex items-center rounded-full border border-slate-200/80 bg-white px-4 py-1.5 text-xs font-medium uppercase tracking-wider text-slate-500">
               {lang === "fr" ? "Réparation confirmée" : "Repair confirmed"}
             </div>
           </div>
 
-          <div className="rounded-[2rem] border border-slate-200/80 bg-white p-8 text-center shadow-sm md:p-10">
+          <div className="rounded-[2rem] border border-slate-200/80 bg-white/95 p-8 text-center backdrop-blur-sm md:p-10">
             <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-emerald-50">
               <CheckCircleIcon size={40} className="text-emerald-500" />
             </div>
@@ -300,7 +358,7 @@ export default function ReparationsPage() {
                 : "Your request has been recorded. Keep this reference to track its progress."}
             </p>
 
-            <div className="mt-8 rounded-[2rem] border border-slate-200/80 bg-slate-50/80 p-5 text-left shadow-inner">
+            <div className="mt-8 rounded-[2rem] border border-slate-200/80 bg-slate-50/80 p-5 text-left">
               {[
                 [t.mobitech.reference, bookedRef],
                 [
@@ -355,8 +413,13 @@ export default function ReparationsPage() {
   }
 
   return (
-    <div className="bg-slate-50 py-10 md:py-14">
-      <div className="mx-auto max-w-6xl px-5 md:px-10">
+    <div className={pageShellClassName}>
+      <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
+        <div className="absolute -top-28 right-0 h-[420px] w-[420px] rounded-full bg-indigo-100/35 blur-3xl" />
+        <div className="absolute top-1/3 -left-24 h-[320px] w-[320px] rounded-full bg-yellow-100/35 blur-3xl" />
+      </div>
+
+      <div className="relative z-10 mx-auto max-w-6xl px-5 md:px-10">
         <div className="mx-auto mb-14 max-w-2xl text-center">
           <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-slate-200/80 bg-white px-4 py-1.5 text-xs font-medium uppercase tracking-wider text-slate-500">
             <WrenchIcon size={14} className="text-indigo-600" />
@@ -369,45 +432,49 @@ export default function ReparationsPage() {
         </div>
 
         <div className="mx-auto max-w-4xl">
-          <div className="mb-10 rounded-[2rem] border border-slate-200/80 bg-white px-5 py-4 shadow-sm">
-            <div className="flex items-center gap-1 overflow-x-auto">
+          <div className="mb-10 rounded-[2rem] border border-slate-200/80 bg-white/95 px-5 py-4 backdrop-blur-sm">
+            <div className="overflow-x-auto">
+              <div className="mx-auto flex w-max min-w-full items-start justify-center">
               {stepLabels.map((label, i) => (
-                <div key={i} className="flex min-w-0 flex-1 items-center gap-1.5">
-                  <div
-                    className={cn(
-                      "flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-xs font-semibold",
-                      step > i + 1
-                        ? "bg-emerald-500 text-white"
-                        : step === i + 1
-                          ? "bg-indigo-950 text-white"
-                          : "bg-slate-100 text-slate-400",
-                    )}
-                  >
-                    {step > i + 1 ? "✓" : i + 1}
+                <div key={i} className="flex items-start gap-4">
+                  <div className="flex w-[78px] flex-none flex-col items-center gap-2 text-center sm:w-[92px]">
+                    <div
+                      className={cn(
+                        "flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-xs font-semibold",
+                        step > i + 1
+                          ? "bg-emerald-500 text-white"
+                          : step === i + 1
+                            ? "bg-indigo-950 text-white"
+                            : "bg-slate-100 text-slate-400",
+                      )}
+                    >
+                      {step > i + 1 ? "✓" : i + 1}
+                    </div>
+                    <span
+                      className={cn(
+                        "truncate text-[11px] font-medium leading-tight sm:text-xs",
+                        step === i + 1 ? "text-indigo-950" : "text-slate-400",
+                      )}
+                    >
+                      {label}
+                    </span>
                   </div>
-                  <span
-                    className={cn(
-                      "hidden truncate text-xs font-medium sm:block",
-                      step === i + 1 ? "text-indigo-950" : "text-slate-400",
-                    )}
-                  >
-                    {label}
-                  </span>
                   {i < 4 && (
                     <div
                       className={cn(
-                        "h-px min-w-2 flex-1",
+                        "mt-3.5 h-px w-12 flex-none sm:w-16",
                         step > i + 1 ? "bg-emerald-500" : "bg-slate-200",
                       )}
                     />
                   )}
                 </div>
               ))}
+              </div>
             </div>
           </div>
 
           {step === 1 && (
-            <section className="rounded-[2rem] border border-slate-200/80 bg-white p-6 shadow-sm md:p-8">
+            <section className="rounded-[2rem] border border-slate-200/80 bg-white/95 p-6 backdrop-blur-sm md:p-8">
               <div className="mb-6">
                 <h2 className="text-2xl font-medium tracking-tight text-indigo-950">
                   {t.mobitech.selectDevice}
@@ -429,14 +496,14 @@ export default function ReparationsPage() {
                       type="button"
                       onClick={() => setDeviceBrand(d.id)}
                       className={cn(
-                        "flex cursor-pointer flex-col items-center gap-3 rounded-[1.75rem] border p-6 transition-all",
+                        "flex cursor-pointer flex-col items-center gap-3 rounded-[1.75rem] border p-6 transition-all duration-200",
                         selected
-                          ? "border-indigo-950 bg-white shadow-lg"
-                          : "border-slate-200/80 bg-slate-50/70 hover:-translate-y-0.5 hover:border-indigo-950 hover:bg-white hover:shadow-lg",
+                          ? "border-indigo-950 bg-white"
+                          : "border-slate-200/80 bg-slate-50/70 hover:-translate-y-0.5 hover:border-indigo-950 hover:bg-white hover:shadow-[0_12px_30px_rgba(15,23,42,0.08)]",
                       )}
                     >
-                      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white shadow-sm">
-                        <PhoneIcon size={28} className="text-slate-500" />
+                      <div className="flex min-h-20 w-full items-center justify-center rounded-[1.2rem] border border-slate-200/80 bg-white px-3 py-2">
+                        <BrandDeviceArt brand={d.id} />
                       </div>
                       <span className="text-sm font-medium text-indigo-950">
                         {label}
@@ -486,7 +553,7 @@ export default function ReparationsPage() {
           )}
 
           {step === 2 && (
-            <section className="rounded-[2rem] border border-slate-200/80 bg-white p-6 shadow-sm md:p-8">
+            <section className="rounded-[2rem] border border-slate-200/80 bg-white/95 p-6 backdrop-blur-sm md:p-8">
               <div className="mb-6 flex items-start justify-between gap-4">
                 <div>
                   <h2 className="text-2xl font-medium tracking-tight text-indigo-950">
@@ -510,10 +577,10 @@ export default function ReparationsPage() {
                         setRepairType(r.id);
                         setStep(3);
                       }}
-                      className="flex w-full cursor-pointer items-center justify-between rounded-[1.75rem] border border-slate-200/80 bg-slate-50/70 p-4 transition-all hover:-translate-y-0.5 hover:border-indigo-950 hover:bg-white hover:shadow-lg"
+                      className="flex w-full cursor-pointer items-center justify-between rounded-[1.75rem] border border-slate-200/80 bg-slate-50/70 p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-indigo-950 hover:bg-white hover:shadow-[0_12px_30px_rgba(15,23,42,0.08)]"
                     >
                       <div className="flex items-center gap-4">
-                        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white shadow-sm">
+                        <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200/80 bg-white">
                           <Icon size={20} className="text-slate-500" />
                         </div>
                         <div className="text-left">
@@ -545,7 +612,7 @@ export default function ReparationsPage() {
           )}
 
           {step === 3 && (
-            <section className="rounded-[2rem] border border-slate-200/80 bg-white p-6 shadow-sm md:p-8">
+            <section className="rounded-[2rem] border border-slate-200/80 bg-white/95 p-6 backdrop-blur-sm md:p-8">
               <div className="mb-6">
                 <h2 className="text-2xl font-medium tracking-tight text-indigo-950">
                   {t.mobitech.selectLocation}
@@ -564,10 +631,10 @@ export default function ReparationsPage() {
                       setCenterId(loc.id);
                       setStep(4);
                     }}
-                    className="flex w-full cursor-pointer items-center justify-between rounded-[1.75rem] border border-slate-200/80 bg-slate-50/70 p-4 transition-all hover:-translate-y-0.5 hover:border-indigo-950 hover:bg-white hover:shadow-lg"
+                    className="flex w-full cursor-pointer items-center justify-between rounded-[1.75rem] border border-slate-200/80 bg-slate-50/70 p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-indigo-950 hover:bg-white hover:shadow-[0_12px_30px_rgba(15,23,42,0.08)]"
                   >
                     <div className="flex items-center gap-4">
-                      <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white shadow-sm">
+                      <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200/80 bg-white">
                         <MapPinIcon size={20} className="text-indigo-600" />
                       </div>
                       <div className="text-left">
@@ -594,10 +661,10 @@ export default function ReparationsPage() {
                     setCenterId("");
                     setStep(4);
                   }}
-                  className="flex w-full cursor-pointer items-center justify-between rounded-[1.75rem] border-2 border-dashed border-yellow-300/50 bg-yellow-50 p-4 transition-all hover:-translate-y-0.5 hover:border-yellow-400/60"
+                  className="flex w-full cursor-pointer items-center justify-between rounded-[1.75rem] border-2 border-dashed border-yellow-300/50 bg-yellow-50 p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-yellow-400/60 hover:shadow-[0_12px_30px_rgba(250,204,21,0.10)]"
                 >
                   <div className="flex items-center gap-4">
-                    <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-yellow-100">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-yellow-200/80 bg-yellow-100">
                       <WrenchIcon size={20} className="text-yellow-500" />
                     </div>
                     <div className="text-left">
@@ -627,7 +694,7 @@ export default function ReparationsPage() {
           )}
 
           {step === 4 && (
-            <section className="rounded-[2rem] border border-slate-200/80 bg-white p-6 shadow-sm md:p-8">
+            <section className="rounded-[2rem] border border-slate-200/80 bg-white/95 p-6 backdrop-blur-sm md:p-8">
               <div className="mb-6">
                 <h2 className="text-2xl font-medium tracking-tight text-indigo-950">
                   {t.mobitech.selectDateTime}

@@ -29,6 +29,10 @@ export type PaymentStatus =
 export type PlanTier = "entry" | "mid" | "mid-high" | "premium" | "household";
 export type UserRole = "admin" | "employee" | "member" | "partner" | "viewer";
 export type PartnerApplicationStatus = "pending" | "approved" | "rejected";
+export type PartnerAttributionSource =
+  | "manual_invitation"
+  | "partner_referral_link";
+export type PartnerReferralMedium = "qr" | "share" | "unknown";
 export type PartnerClientStatus =
   | "draft"
   | "invited"
@@ -295,6 +299,7 @@ export interface PartnerProfile {
   store_name: string;
   city: string;
   business_location: string;
+  referral_code: string;
   commission_percentage: number;
   status: string;
   total_clients: number;
@@ -305,8 +310,44 @@ export interface PartnerProfile {
   total_commission_paid_xof: number;
 }
 
+export interface PartnerReferralDetails {
+  partner_id: string;
+  partner_store_name: string;
+  partner_city: string;
+  referral_code: string;
+  referral_link?: string;
+  status: string;
+}
+
+export interface PartnerReferralVisitResult {
+  referral?: PartnerReferralDetails;
+  visitor_token: string;
+  source_medium: PartnerReferralMedium;
+  visited_at: string;
+}
+
+export interface PartnerReferralMetrics {
+  total_visits: number;
+  qr_visits: number;
+  share_visits: number;
+  total_signups: number;
+  payment_pending_count: number;
+  active_clients: number;
+  conversion_rate: number;
+}
+
+export interface PartnerPlanBreakdown {
+  plan_id?: string;
+  plan_name_fr?: string;
+  plan_name_en?: string;
+  count: number;
+}
+
 export interface PartnerDashboardOverview {
   profile?: PartnerProfile;
+  referral_link: string;
+  referral_metrics?: PartnerReferralMetrics;
+  plan_breakdown: PartnerPlanBreakdown[];
   recent_clients: PartnerClient[];
 }
 
@@ -469,6 +510,10 @@ export interface PartnerClient {
   client_phone?: string;
   plan_id?: string;
   status: PartnerClientStatus;
+  attribution_source: PartnerAttributionSource;
+  referral_code?: string;
+  referral_medium: PartnerReferralMedium;
+  attributed_at?: string;
   invitation_url?: string;
   invitation_expires_at?: string;
   invitation_claimed_at?: string;
@@ -530,9 +575,15 @@ export interface AdminPartner {
   owner_name: string;
   city: string;
   business_location: string;
+  referral_code: string;
   commission_percentage: number;
   clients_count: number;
   active_clients: number;
+  referral_visits: number;
+  qr_referral_visits: number;
+  referral_signups: number;
+  referral_activations: number;
+  referral_conversion_rate: number;
   total_commission_earned_xof: number;
   total_commission_owed_xof: number;
   total_commission_paid_xof: number;
@@ -555,6 +606,27 @@ export interface AdminPartnerCommission {
   status: string;
   paid_at?: string;
   created_at: string;
+}
+
+export interface AdminPartnerReferral {
+  partner_client_id: string;
+  client_user_id?: string;
+  customer_name: string;
+  customer_email?: string;
+  customer_phone?: string;
+  attribution_source: PartnerAttributionSource;
+  referral_code?: string;
+  referral_medium: PartnerReferralMedium;
+  attributed_at?: string;
+  plan_id?: string;
+  plan_name_fr?: string;
+  plan_name_en?: string;
+  client_status: PartnerClientStatus;
+  subscription_status?: SubscriptionStatus;
+  payment_status?: PaymentStatus;
+  has_generated_commission: boolean;
+  commission_amount_xof?: number;
+  commission_status?: string;
 }
 
 export interface RepairRequest {
@@ -609,6 +681,15 @@ export interface CreatePartnerClientRequest {
   client_name: string;
   client_phone?: string;
   plan_id?: string;
+}
+
+export interface CreatePartnerReferralVisitRequest {
+  visitor_token?: string;
+  source_medium?: PartnerReferralMedium;
+}
+
+export interface ClaimPartnerReferralRequest {
+  source_medium?: PartnerReferralMedium;
 }
 
 export interface UpdatePartnerClientStatusRequest {
@@ -756,6 +837,10 @@ export interface AdminCustomer {
   full_name: string;
   phone?: string;
   email: string;
+  partner_store_name?: string;
+  partner_referral_code?: string;
+  partner_attribution_source?: PartnerAttributionSource;
+  partner_attributed_at?: string;
   device_count: number;
   active_subscription_count: number;
   total_subscription_count: number;

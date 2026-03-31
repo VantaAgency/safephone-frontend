@@ -1,4 +1,5 @@
 import { Hero } from "@/components/sections/hero";
+import { ServicesOverview } from "@/components/sections/services-overview";
 import { PaymentMethods } from "@/components/sections/payment-methods";
 import { WhySafephoneSection } from "@/components/sections/why-safephone-section";
 import { HowItWorks } from "@/components/sections/how-it-works";
@@ -12,6 +13,7 @@ export default function HomePage() {
   return (
     <>
       <Hero />
+      <ServicesOverview />
       <PaymentMethods />
       <WhySafephoneSection />
       <HowItWorks />

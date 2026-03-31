@@ -3,8 +3,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { partner } from "../endpoints";
 import type {
+  ClaimPartnerReferralRequest,
+  CreatePartnerReferralVisitRequest,
   CreatePartnerClientRequest,
   PartnerDashboardOverview,
+  PartnerReferralDetails,
 } from "../types";
 
 interface PartnerQueryOptions {
@@ -75,6 +78,51 @@ export function useClaimPartnerInvitation() {
     mutationFn: (token: string) => partner.claimInvitation(token),
     onSuccess: (_, token) => {
       queryClient.invalidateQueries({ queryKey: ["partner", "invitation", token] });
+      queryClient.invalidateQueries({ queryKey: ["partner", "overview"] });
+      queryClient.invalidateQueries({ queryKey: ["partner", "clients"] });
+      queryClient.invalidateQueries({ queryKey: ["partner", "profile"] });
+    },
+  });
+}
+
+export function usePartnerReferral(
+  code?: string,
+  { enabled = true }: { enabled?: boolean } = {},
+) {
+  return useQuery<PartnerReferralDetails>({
+    queryKey: ["partner", "referral", code],
+    queryFn: () => partner.getReferral(code!),
+    enabled: enabled && !!code,
+    retry: false,
+  });
+}
+
+export function useTrackPartnerReferralVisit() {
+  return useMutation({
+    mutationFn: ({
+      code,
+      data,
+    }: {
+      code: string;
+      data?: CreatePartnerReferralVisitRequest;
+    }) => partner.trackReferralVisit(code, data),
+  });
+}
+
+export function useClaimPartnerReferral() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      code,
+      data,
+    }: {
+      code: string;
+      data?: ClaimPartnerReferralRequest;
+    }) => partner.claimReferral(code, data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["partner", "referral", variables.code],
+      });
       queryClient.invalidateQueries({ queryKey: ["partner", "overview"] });
       queryClient.invalidateQueries({ queryKey: ["partner", "clients"] });
       queryClient.invalidateQueries({ queryKey: ["partner", "profile"] });
