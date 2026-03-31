@@ -138,7 +138,7 @@ export default function PartnerDashboardPage() {
   };
 
   return (
-    <div className="bg-slate-50 py-10 md:py-16">
+    <div className="overflow-x-hidden bg-slate-50 py-8 md:py-16">
       <div className="mx-auto max-w-[1200px] px-5 md:px-8">
         <div className="mb-8">
           <div className="mb-2 flex items-center gap-2">
@@ -248,14 +248,14 @@ export default function PartnerDashboardPage() {
           </div>
         </div>
 
-        <div className="mb-6 flex w-fit gap-1 rounded-full bg-slate-100 p-1">
+        <div className="mb-6 flex w-full gap-1 rounded-full bg-slate-100 p-1 sm:w-fit">
           {(["clients", "performance"] as PartnerTab[]).map((currentTab) => (
             <button
               key={currentTab}
               type="button"
               onClick={() => setTab(currentTab)}
               className={cn(
-                "cursor-pointer rounded-full px-5 py-2.5 text-sm font-medium transition-all",
+                "flex-1 cursor-pointer rounded-full px-4 py-2.5 text-sm font-medium transition-all sm:flex-none sm:px-5",
                 tab === currentTab
                   ? "bg-white text-indigo-950 shadow-sm"
                   : "text-slate-500 hover:text-indigo-950",

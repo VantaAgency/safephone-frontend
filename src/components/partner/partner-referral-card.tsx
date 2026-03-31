@@ -133,11 +133,11 @@ export function PartnerReferralCard({
   return (
     <div
       className={cn(
-        "grid gap-6 rounded-[2rem] border border-slate-200/80 bg-white p-6 shadow-sm lg:grid-cols-[1.35fr_320px]",
+        "grid gap-6 overflow-hidden rounded-[2rem] border border-slate-200/80 bg-white p-4 shadow-sm sm:p-6 lg:grid-cols-[minmax(0,1.35fr)_320px]",
         className,
       )}
     >
-      <div>
+      <div className="min-w-0">
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
           {lang === "fr" ? "Mon lien partenaire" : "My partner link"}
         </p>
@@ -152,7 +152,7 @@ export function PartnerReferralCard({
             : "Share this link directly with customers or display the QR code in-store. SafePhone automatically attaches each signup to your partner account."}
         </p>
 
-        <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+        <div className="mt-5 min-w-0 rounded-2xl border border-slate-200 bg-slate-50 p-4">
           <div className="flex flex-wrap items-center gap-2">
             {referralCode && (
               <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-indigo-950 shadow-sm">
@@ -163,23 +163,24 @@ export function PartnerReferralCard({
               {lang === "fr" ? "Lien réutilisable" : "Reusable link"}
             </span>
           </div>
-          <code className="mt-3 block overflow-hidden text-ellipsis whitespace-nowrap rounded-xl bg-white px-3 py-3 text-sm text-indigo-950 shadow-sm ring-1 ring-slate-200">
+          <code className="mt-3 block max-w-full overflow-x-auto break-all rounded-xl bg-white px-3 py-3 text-sm leading-relaxed text-indigo-950 shadow-sm ring-1 ring-slate-200 [overflow-wrap:anywhere]">
             {shareLink || normalizedReferralLink || referralLink || "—"}
           </code>
-          <div className="mt-4 flex flex-wrap gap-3">
-            <Button variant="primary" size="md" onClick={() => void handleCopy()}>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <Button variant="primary" size="md" fullWidth onClick={() => void handleCopy()}>
               {copied
                 ? lang === "fr"
                   ? "Lien copié"
                   : "Link copied"
                 : actionLabel("unknown")}
             </Button>
-            <Button variant="secondary" size="md" onClick={() => void handleShare()}>
+            <Button variant="secondary" size="md" fullWidth onClick={() => void handleShare()}>
               {actionLabel("share")}
             </Button>
             <Button
               variant="outline"
               size="md"
+              fullWidth
               onClick={() => void handleDownload()}
               disabled={!qrDataUrl}
               loading={downloading}
@@ -195,11 +196,11 @@ export function PartnerReferralCard({
         </div>
       </div>
 
-      <div className="rounded-[1.75rem] border border-slate-200 bg-slate-50 p-5">
+      <div className="min-w-0 rounded-[1.75rem] border border-slate-200 bg-slate-50 p-4 sm:p-5">
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
           {lang === "fr" ? "QR code boutique" : "In-store QR code"}
         </p>
-        <div className="mt-4 flex min-h-[270px] items-center justify-center rounded-[1.5rem] bg-white p-4 shadow-sm ring-1 ring-slate-200">
+        <div className="mt-4 flex min-h-[220px] items-center justify-center rounded-[1.5rem] bg-white p-3 shadow-sm ring-1 ring-slate-200 sm:min-h-[270px] sm:p-4">
           {qrDataUrl ? (
             <Image
               src={qrDataUrl}
@@ -211,7 +212,7 @@ export function PartnerReferralCard({
               width={240}
               height={240}
               unoptimized
-              className="h-[240px] w-[240px] rounded-2xl"
+              className="h-auto w-full max-w-[240px] rounded-2xl"
             />
           ) : (
             <div className="text-center text-sm text-slate-400">
