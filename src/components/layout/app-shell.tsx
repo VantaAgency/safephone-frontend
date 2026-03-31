@@ -15,7 +15,9 @@ export function AppShell({ children }: AppShellProps) {
   const hideFooter =
     pathname === "/forfaits" ||
     pathname === "/reparations" ||
-    pathname === "/partenaires";
+    pathname === "/partenaires" ||
+    pathname === "/inscription-compte" ||
+    pathname === "/connexion";
 
   return (
     <div className="flex min-h-screen flex-col">
