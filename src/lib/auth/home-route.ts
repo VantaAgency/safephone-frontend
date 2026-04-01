@@ -13,12 +13,29 @@ export function getHomeRouteForRole(role?: UserRole | null) {
   }
 }
 
+/**
+ * Sanitize a redirect URL to prevent open redirects.
+ * Only allows relative paths starting with "/". Rejects absolute URLs,
+ * protocol-relative URLs ("//evil.com"), and other schemes.
+ */
+export function sanitizeRedirect(url: string | null | undefined): string | null {
+  if (!url) return null;
+  const trimmed = url.trim();
+  if (!trimmed) return null;
+  // Must start with exactly one "/" and NOT "//" (protocol-relative)
+  if (trimmed.startsWith("/") && !trimmed.startsWith("//")) {
+    return trimmed;
+  }
+  return null;
+}
+
 export function getPostAuthRedirect(
   redirectTo?: string | null,
   role?: UserRole | null,
 ) {
-  if (redirectTo && redirectTo.trim()) {
-    return redirectTo;
+  const safeRedirect = sanitizeRedirect(redirectTo);
+  if (safeRedirect) {
+    return safeRedirect;
   }
 
   return getHomeRouteForRole(role);

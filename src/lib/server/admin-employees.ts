@@ -35,8 +35,6 @@ interface EmployeeAccountRow {
   status: EmployeeAccountStatus;
 }
 
-let betterAuthAdminSchemaEnsured = false;
-
 function authApi() {
   return auth.api as unknown as {
     getSession: (input: { headers: Headers }) => Promise<{
@@ -85,7 +83,7 @@ function authApi() {
 export async function requireAdminSession(
   requestHeaders: Headers,
 ): Promise<AdminSessionContext> {
-  await ensureBetterAuthAdminSchema();
+
 
   const session = await authApi().getSession({ headers: requestHeaders });
   if (!session?.user?.id || session.user.role !== "admin") {
@@ -116,7 +114,7 @@ export async function createEmployeeAccount(
   input: CreateEmployeeInput,
   requestHeaders: Headers,
 ) {
-  await ensureBetterAuthAdminSchema();
+
   const adminSession = await requireAdminSession(requestHeaders);
   const normalizedEmail = input.email.trim().toLowerCase();
   const existingEmployee = await getEmployeeAccountByEmail(normalizedEmail);
@@ -196,7 +194,7 @@ export async function updateEmployeeAccount(
   input: UpdateEmployeeInput,
   requestHeaders: Headers,
 ) {
-  await ensureBetterAuthAdminSchema();
+
   await requireAdminSession(requestHeaders);
 
   const employee = await getEmployeeAccountBySafePhoneId(safePhoneUserId);
@@ -241,7 +239,7 @@ export async function resetEmployeePassword(
   password: string,
   requestHeaders: Headers,
 ) {
-  await ensureBetterAuthAdminSchema();
+
   await requireAdminSession(requestHeaders);
 
   const employee = await getEmployeeAccountBySafePhoneId(safePhoneUserId);
@@ -265,7 +263,7 @@ export async function updateEmployeeAccountStatus(
   input: UpdateEmployeeStatusInput,
   requestHeaders: Headers,
 ) {
-  await ensureBetterAuthAdminSchema();
+
   const adminSession = await requireAdminSession(requestHeaders);
 
   const employee = await getEmployeeAccountBySafePhoneId(safePhoneUserId);
@@ -329,26 +327,6 @@ export function toServerErrorMessage(error: unknown) {
   }
 
   return "An unexpected error occurred";
-}
-
-async function ensureBetterAuthAdminSchema() {
-  if (betterAuthAdminSchemaEnsured) {
-    return;
-  }
-
-  await databasePool.query(`
-    ALTER TABLE "user"
-      ADD COLUMN IF NOT EXISTS banned BOOLEAN NOT NULL DEFAULT FALSE,
-      ADD COLUMN IF NOT EXISTS "banReason" TEXT,
-      ADD COLUMN IF NOT EXISTS "banExpires" TIMESTAMPTZ
-  `);
-
-  await databasePool.query(`
-    ALTER TABLE "session"
-      ADD COLUMN IF NOT EXISTS "impersonatedBy" TEXT
-  `);
-
-  betterAuthAdminSchemaEnsured = true;
 }
 
 async function getEmployeeAccountByBetterAuthId(betterAuthId: string) {

@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 
 export default function ErrorPage({
@@ -9,6 +10,10 @@ export default function ErrorPage({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  useEffect(() => {
+    console.error("Unhandled error:", error);
+  }, [error]);
+
   return (
     <div className="flex min-h-[60vh] items-center justify-center bg-slate-50 px-5">
       <div className="mx-auto max-w-md text-center">
@@ -33,7 +38,7 @@ export default function ErrorPage({
           Une erreur est survenue
         </h2>
         <p className="mt-2 text-sm text-slate-500">
-          {error.message || "Something went wrong. Please try again."}
+          Something went wrong. Please try again.
         </p>
         <Button variant="primary" size="md" className="mt-6" onClick={reset}>
           Réessayer

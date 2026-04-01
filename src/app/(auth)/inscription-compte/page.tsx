@@ -71,11 +71,20 @@ export default function RegisterPage() {
         password: form.password,
       });
       if (result.error) {
-        setError(
-          lang === "fr"
-            ? "Impossible de créer le compte. Vérifiez vos informations."
-            : "Could not create account. Please check your information.",
-        );
+        const code = result.error.code;
+        if (code === "USER_ALREADY_EXISTS" || code === "USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL") {
+          setError(
+            lang === "fr"
+              ? "Un compte existe déjà avec cette adresse email. Essayez de vous connecter."
+              : "An account already exists with this email. Try signing in.",
+          );
+        } else {
+          setError(
+            lang === "fr"
+              ? "Impossible de créer le compte. Vérifiez vos informations."
+              : "Could not create account. Please check your information.",
+          );
+        }
         return;
       }
       try {
