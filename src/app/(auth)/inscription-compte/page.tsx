@@ -126,7 +126,7 @@ export default function RegisterPage() {
 
       {error && (
         <div className="mb-4">
-          <FormErrorAlert message={error} />
+          <FormErrorAlert title={t.auth.formErrorTitle} message={error} />
         </div>
       )}
 

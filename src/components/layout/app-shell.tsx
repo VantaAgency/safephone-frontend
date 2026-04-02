@@ -12,12 +12,15 @@ interface AppShellProps {
 export function AppShell({ children }: AppShellProps) {
   const { lang, setLang, t } = useLanguage();
   const pathname = usePathname();
-  const hideFooter =
-    pathname === "/forfaits" ||
-    pathname === "/reparations" ||
-    pathname === "/partenaires" ||
-    pathname === "/inscription-compte" ||
-    pathname === "/connexion";
+  const hideFooter = [
+    "/forfaits",
+    "/reparations",
+    "/partenaires",
+    "/inscription-compte",
+    "/connexion",
+    "/mot-de-passe-oublie",
+    "/reinitialiser-mot-de-passe",
+  ].includes(pathname);
 
   return (
     <div className="flex min-h-screen flex-col">

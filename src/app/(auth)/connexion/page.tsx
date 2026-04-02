@@ -5,9 +5,16 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useLanguage } from "@/lib/language-context";
 import { Button } from "@/components/ui/button";
-import { FormErrorAlert, FormField, Input, PasswordInput } from "@/components/ui/form-field";
+import {
+  FormErrorAlert,
+  FormField,
+  FormSuccessAlert,
+  Input,
+  PasswordInput,
+} from "@/components/ui/form-field";
 import { authClient } from "@/lib/auth/client";
 import { getPostAuthRedirect } from "@/lib/auth/home-route";
+import { buildForgotPasswordHref } from "@/lib/auth/password-reset";
 import { loginSchema } from "@/lib/validation/schemas";
 import type { UserRole } from "@/lib/api/types";
 
@@ -21,6 +28,7 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const redirect = searchParams.get("redirect");
+  const resetStatus = searchParams.get("reset");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -86,7 +94,16 @@ export default function LoginPage() {
 
       {error && (
         <div className="mb-4">
-          <FormErrorAlert message={error} />
+          <FormErrorAlert title={t.auth.formErrorTitle} message={error} />
+        </div>
+      )}
+
+      {resetStatus === "success" && (
+        <div className="mb-4">
+          <FormSuccessAlert
+            title={t.auth.resetPasswordSuccessTitle}
+            message={t.auth.resetPasswordSuccessMessage}
+          />
         </div>
       )}
 
@@ -115,21 +132,31 @@ export default function LoginPage() {
           label={lang === "fr" ? "Mot de passe" : "Password"}
           error={fieldErrors.password}
         >
-          <PasswordInput
-            value={password}
-            onChange={(e) => {
-              setPassword(e.target.value);
-              if (fieldErrors.password) {
-                setFieldErrors((current) => ({ ...current, password: "" }));
-              }
-            }}
-            placeholder="••••••••"
-            required
-            autoComplete="current-password"
-            error={!!fieldErrors.password}
-            toggleLabel={lang === "fr" ? "Afficher le mot de passe" : "Show password"}
-            hideLabel={lang === "fr" ? "Masquer le mot de passe" : "Hide password"}
-          />
+          <div className="space-y-2">
+            <PasswordInput
+              value={password}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                if (fieldErrors.password) {
+                  setFieldErrors((current) => ({ ...current, password: "" }));
+                }
+              }}
+              placeholder="••••••••"
+              required
+              autoComplete="current-password"
+              error={!!fieldErrors.password}
+              toggleLabel={lang === "fr" ? "Afficher le mot de passe" : "Show password"}
+              hideLabel={lang === "fr" ? "Masquer le mot de passe" : "Hide password"}
+            />
+            <div className="text-right">
+              <Link
+                href={buildForgotPasswordHref(redirect)}
+                className="text-sm font-medium text-indigo-600 hover:underline"
+              >
+                {t.auth.forgotPasswordLink}
+              </Link>
+            </div>
+          </div>
         </FormField>
 
         <Button

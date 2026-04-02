@@ -3,6 +3,7 @@ import { nextCookies } from "better-auth/next-js";
 import { admin as adminPlugin } from "better-auth/plugins";
 import { jwt } from "better-auth/plugins/jwt";
 import { databasePool } from "@/lib/server/db";
+import { sendResetPasswordEmail } from "@/lib/email/send-reset-password";
 
 const DEFAULT_ORG_NAME = "SafePhone";
 const DEFAULT_ORG_SLUG = "safephone";
@@ -57,6 +58,14 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     minPasswordLength: 8,
+    resetPasswordTokenExpiresIn: 60 * 60,
+    revokeSessionsOnPasswordReset: true,
+    sendResetPassword: async ({ user, url }) => {
+      await sendResetPasswordEmail({
+        to: user.email,
+        resetURL: url,
+      });
+    },
   },
   plugins: [
     nextCookies(),

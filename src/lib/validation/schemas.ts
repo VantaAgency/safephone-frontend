@@ -5,6 +5,22 @@ export const loginSchema = z.object({
   password: z.string().min(8, "8 caractères minimum / Minimum 8 characters"),
 });
 
+export const forgotPasswordSchema = z.object({
+  email: z.email("Email invalide / Invalid email"),
+});
+
+export const resetPasswordSchema = z
+  .object({
+    newPassword: z
+      .string()
+      .min(8, "8 caractères minimum / Minimum 8 characters"),
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    message: "Les mots de passe ne correspondent pas / Passwords do not match",
+    path: ["confirmPassword"],
+  });
+
 export const registerSchema = z
   .object({
     fullName: z.string().min(1, "Nom requis / Name required"),

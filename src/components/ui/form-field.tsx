@@ -29,10 +29,31 @@ export function FormField({ label, hint, error, className, children }: FormField
   );
 }
 
-export function FormErrorAlert({ message }: { message: string }) {
+export function FormErrorAlert({
+  title = "Veuillez verifier le formulaire",
+  message,
+}: {
+  title?: string;
+  message: string;
+}) {
   return (
     <div className="rounded-2xl border border-red-200/70 bg-red-50 px-4 py-3 text-sm text-red-700 shadow-sm">
-      <p className="font-semibold">Veuillez verifier le formulaire</p>
+      <p className="font-semibold">{title}</p>
+      <p className="mt-1">{message}</p>
+    </div>
+  );
+}
+
+export function FormSuccessAlert({
+  title,
+  message,
+}: {
+  title: string;
+  message: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-emerald-200/70 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 shadow-sm">
+      <p className="font-semibold">{title}</p>
       <p className="mt-1">{message}</p>
     </div>
   );

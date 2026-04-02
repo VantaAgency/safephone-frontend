@@ -12,6 +12,8 @@ const PUBLIC_ROUTES = [
   "/sinistres",
   "/connexion",
   "/inscription-compte",
+  "/mot-de-passe-oublie",
+  "/reinitialiser-mot-de-passe",
 ];
 
 export default function sitemap(): MetadataRoute.Sitemap {

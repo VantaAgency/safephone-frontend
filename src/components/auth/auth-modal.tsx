@@ -8,11 +8,13 @@ import { useAuth } from "@/lib/auth/auth-provider";
 import { authClient } from "@/lib/auth/client";
 import { users } from "@/lib/api/endpoints";
 import { getPostAuthRedirect } from "@/lib/auth/home-route";
+import { buildForgotPasswordHref } from "@/lib/auth/password-reset";
 import { Button } from "@/components/ui/button";
 import { FormErrorAlert, FormField, Input, PasswordInput } from "@/components/ui/form-field";
 import { XIcon } from "@/components/ui/icons";
 import { loginSchema, registerSchema } from "@/lib/validation/schemas";
 import type { UserRole } from "@/lib/api/types";
+import type { Lang, Translations } from "@/lib/i18n";
 
 export type AuthView = "sign-in" | "sign-up";
 
@@ -70,6 +72,14 @@ export function AuthModal({ view: initialView, onClose, redirectTo }: AuthModalP
     if (e.target === backdropRef.current) handleClose();
   };
 
+  const handleRouteTransition = (href: string) => {
+    setVisible(false);
+    setTimeout(() => {
+      onClose();
+      router.push(href);
+    }, 200);
+  };
+
   const onAuthSuccess = async () => {
     const session = await authClient.getSession();
     const role = (session.data?.user as { role?: UserRole } | undefined)?.role;
@@ -105,6 +115,9 @@ export function AuthModal({ view: initialView, onClose, redirectTo }: AuthModalP
             t={t}
             onSuccess={onAuthSuccess}
             onSwitchToSignUp={() => setView("sign-up")}
+            onForgotPassword={() =>
+              handleRouteTransition(buildForgotPasswordHref(redirectTo))
+            }
           />
         ) : (
           <SignUpForm
@@ -128,11 +141,13 @@ function SignInForm({
   t,
   onSuccess,
   onSwitchToSignUp,
+  onForgotPassword,
 }: {
-  lang: string;
-  t: { nav: { login: string }; common: { close: string } };
+  lang: Lang;
+  t: Translations;
   onSuccess: () => Promise<void> | void;
   onSwitchToSignUp: () => void;
+  onForgotPassword: () => void;
 }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -202,7 +217,7 @@ function SignInForm({
 
       {error && (
         <div className="mb-4">
-          <FormErrorAlert message={error} />
+          <FormErrorAlert title={t.auth.formErrorTitle} message={error} />
         </div>
       )}
 
@@ -231,21 +246,32 @@ function SignInForm({
           label={lang === "fr" ? "Mot de passe" : "Password"}
           error={fieldErrors.password}
         >
-          <PasswordInput
-            value={password}
-            onChange={(e) => {
-              setPassword(e.target.value);
-              if (fieldErrors.password) {
-                setFieldErrors((current) => ({ ...current, password: "" }));
-              }
-            }}
-            placeholder="••••••••"
-            required
-            autoComplete="current-password"
-            error={!!fieldErrors.password}
-            toggleLabel={lang === "fr" ? "Afficher le mot de passe" : "Show password"}
-            hideLabel={lang === "fr" ? "Masquer le mot de passe" : "Hide password"}
-          />
+          <div className="space-y-2">
+            <PasswordInput
+              value={password}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                if (fieldErrors.password) {
+                  setFieldErrors((current) => ({ ...current, password: "" }));
+                }
+              }}
+              placeholder="••••••••"
+              required
+              autoComplete="current-password"
+              error={!!fieldErrors.password}
+              toggleLabel={lang === "fr" ? "Afficher le mot de passe" : "Show password"}
+              hideLabel={lang === "fr" ? "Masquer le mot de passe" : "Hide password"}
+            />
+            <div className="text-right">
+              <button
+                type="button"
+                onClick={onForgotPassword}
+                className="text-sm font-medium text-indigo-600 hover:underline cursor-pointer"
+              >
+                {t.auth.forgotPasswordLink}
+              </button>
+            </div>
+          </div>
         </FormField>
 
         <Button
@@ -281,8 +307,8 @@ function SignUpForm({
   onSuccess,
   onSwitchToSignIn,
 }: {
-  lang: string;
-  t: { nav: { login: string }; common: { close: string } };
+  lang: Lang;
+  t: Translations;
   onSuccess: () => Promise<void> | void;
   onSwitchToSignIn: () => void;
 }) {
@@ -383,7 +409,7 @@ function SignUpForm({
 
       {error && (
         <div className="mb-4">
-          <FormErrorAlert message={error} />
+          <FormErrorAlert title={t.auth.formErrorTitle} message={error} />
         </div>
       )}
 
