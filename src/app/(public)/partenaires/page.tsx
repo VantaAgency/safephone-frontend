@@ -26,6 +26,7 @@ type BusinessData = {
   storeName: string;
   city: string;
   businessLocation: string;
+  phone: string;
 };
 
 const CITIES = ["Dakar", "Thiès", "Saint-Louis", "Kaolack", "Ziguinchor", "Touba", "Rufisque", "Mbour"];
@@ -45,7 +46,7 @@ export default function PartenairesPage() {
     name: "", email: "", phone: "", password: "", confirmPassword: "",
   });
   const [businessData, setBusinessData] = useState<BusinessData>({
-    storeName: "", city: "", businessLocation: "",
+    storeName: "", city: "", businessLocation: "", phone: "",
   });
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState("");
@@ -98,6 +99,8 @@ export default function PartenairesPage() {
       errors.city = tr("Ville requise", "City required");
     if (!businessData.businessLocation.trim())
       errors.businessLocation = tr("Zone commerciale requise", "Business location required");
+    if (isAuthenticated && !user?.phone && !businessData.phone.trim())
+      errors.phone = tr("Numéro de téléphone requis", "Phone number required");
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -142,7 +145,7 @@ export default function PartenairesPage() {
       }
 
       const fullName = isAuthenticated ? (user?.name ?? "") : accountData.name;
-      const phone = isAuthenticated ? (user?.phone ?? "") : accountData.phone;
+      const phone = isAuthenticated ? (user?.phone || businessData.phone.trim()) : accountData.phone;
 
       await submitPartnerApplication.mutateAsync({
         store_name: businessData.storeName.trim(),
@@ -334,6 +337,22 @@ export default function PartenairesPage() {
       )}
 
       <div className="space-y-4">
+        {isAuthenticated && !user?.phone && (
+          <FormField
+            label={tr("Numéro de téléphone", "Phone number")}
+            hint={tr("Exemple : +221 77 000 00 00", "Example: +221 77 000 00 00")}
+            error={fieldErrors.phone}
+          >
+            <Input
+              type="tel"
+              value={businessData.phone}
+              onChange={(e) => { setBusinessData({ ...businessData, phone: e.target.value }); clearFieldError("phone"); }}
+              placeholder="+221 77 000 00 00"
+              error={!!fieldErrors.phone}
+              autoComplete="tel"
+            />
+          </FormField>
+        )}
         <FormField label={t.partners.name} error={fieldErrors.storeName}>
           <Input
             value={businessData.storeName}
