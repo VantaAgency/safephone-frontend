@@ -4,6 +4,12 @@ import type {
   AdminEmployeeDetail,
   AdminEmployeeListItem,
   AdminEmployeeParams,
+  AdminCommercialDetail,
+  AdminCommercialListItem,
+  CommercialActivityReport,
+  CommercialCommission,
+  CommercialDashboardOverview,
+  CommercialPartner,
   CreateOperationalNoteRequest,
   AdminCustomer,
   AdminDashboardOverview,
@@ -136,6 +142,26 @@ export const admin = {
       params as Record<string, string | number>,
     ),
   employee: (id: string) => api.get<AdminEmployeeDetail>(`/admin/employees/${id}`),
+  commercials: (params?: PaginationParams) =>
+    api.get<AdminCommercialListItem[]>(
+      "/admin/commercials",
+      params as Record<string, string | number>,
+    ),
+  commercial: (id: string) =>
+    api.get<AdminCommercialDetail>(`/admin/commercials/${id}`),
+  commercialActivityReports: (
+    params?: PaginationParams & { commercial_id?: string; partner_id?: string },
+  ) =>
+    api.get<CommercialActivityReport[]>(
+      "/admin/commercials/activity-reports",
+      params as Record<string, string | number>,
+    ),
+  updateCommercialStatus: (id: string, status: "active" | "inactive") =>
+    api.patch<unknown>(`/admin/commercials/${id}/status`, { status }),
+  updateCommercialCommission: (id: string, commissionPercentage: number) =>
+    api.patch<unknown>(`/admin/commercials/${id}/commission`, {
+      commission_percentage: commissionPercentage,
+    }),
   partners: (params?: PaginationParams) =>
     api.get<AdminPartner[]>(
       "/admin/partners",
@@ -164,6 +190,27 @@ export const admin = {
       `/admin/partner-applications/${id}/review`,
       data,
     ),
+};
+
+export const commercial = {
+  overview: () => api.get<CommercialDashboardOverview>("/commercial/overview"),
+  partners: (params?: PaginationParams) =>
+    api.get<CommercialPartner[]>(
+      "/commercial/partners",
+      params as Record<string, string | number>,
+    ),
+  commissions: (params?: PaginationParams) =>
+    api.get<CommercialCommission[]>(
+      "/commercial/commissions",
+      params as Record<string, string | number>,
+    ),
+  activityReports: (params?: PaginationParams & { partner_id?: string }) =>
+    api.get<CommercialActivityReport[]>(
+      "/commercial/activity-reports",
+      params as Record<string, string | number>,
+    ),
+  createActivityReport: (data: FormData) =>
+    api.postForm<CommercialActivityReport>("/commercial/activity-reports", data),
 };
 
 export const repairs = {

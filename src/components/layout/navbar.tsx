@@ -85,6 +85,15 @@ export function Navbar({ lang, setLang, t }: NavbarProps) {
     });
   }
 
+  if (user?.role === "commercial") {
+    accountDestinations.push({
+      href: "/espace-commercial",
+      icon: UsersIcon,
+      label: lang === "fr" ? "Espace commercial" : "Commercial dashboard",
+      description: lang === "fr" ? "Partenaires, visites et commissions" : "Partners, visits and commissions",
+    });
+  }
+
   if (user?.role === "admin") {
     accountDestinations.push({
       href: "/admin",

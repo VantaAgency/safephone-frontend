@@ -27,7 +27,7 @@ export type PaymentStatus =
   | "expired"
   | "refunded";
 export type PlanTier = "entry" | "mid" | "mid-high" | "premium" | "household";
-export type UserRole = "admin" | "employee" | "member" | "partner" | "viewer";
+export type UserRole = "admin" | "commercial" | "employee" | "member" | "partner" | "viewer";
 export type PartnerApplicationStatus = "pending" | "approved" | "rejected";
 export type PartnerAttributionSource =
   | "manual_invitation"
@@ -248,6 +248,7 @@ export interface CreatePartnerApplicationRequest {
   phone: string;
   city: string;
   business_location: string;
+  commercial_referral_code?: string;
 }
 
 export interface PartnerApplication {
@@ -261,6 +262,9 @@ export interface PartnerApplication {
   business_location: string;
   status: PartnerApplicationStatus;
   commission_percentage?: number;
+  commercial_id?: string;
+  commercial_name?: string;
+  acquisition_source: string;
   reviewed_by?: string;
   rejection_reason?: string;
   created_at: string;
@@ -279,6 +283,9 @@ export interface AdminPartnerApplication {
   business_location: string;
   status: PartnerApplicationStatus;
   commission_percentage?: number;
+  commercial_id?: string;
+  commercial_name?: string;
+  acquisition_source: string;
   rejection_reason?: string;
   created_at: string;
   reviewed_at?: string;
@@ -308,6 +315,87 @@ export interface PartnerProfile {
   total_commission_earned_xof: number;
   total_commission_owed_xof: number;
   total_commission_paid_xof: number;
+}
+
+export interface CommercialProfile {
+  id: string;
+  org_id: string;
+  user_id: string;
+  referral_code: string;
+  status: "active" | "inactive";
+  commission_percentage: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CommercialPartner {
+  id: string;
+  store_name: string;
+  owner_name: string;
+  owner_email: string;
+  phone?: string;
+  city: string;
+  business_location: string;
+  status: string;
+  application_status?: string;
+  approval_date?: string;
+  partner_commission_percentage: number;
+  clients_count: number;
+  active_clients: number;
+  first_payment_status?: string;
+  created_at: string;
+}
+
+export interface CommercialCommission {
+  id: string;
+  commercial_id: string;
+  commercial_name: string;
+  partner_id: string;
+  partner_store_name: string;
+  partner_client_id?: string;
+  client_user_id?: string;
+  client_name: string;
+  payment_id?: string;
+  plan_id?: string;
+  plan_name_fr?: string;
+  plan_name_en?: string;
+  base_amount_xof: number;
+  commission_percentage: number;
+  commission_amount_xof: number;
+  status: string;
+  paid_at?: string;
+  created_at: string;
+}
+
+export interface CommercialActivityReport {
+  id: string;
+  commercial_id: string;
+  commercial_name: string;
+  partner_id?: string;
+  partner_store_name?: string;
+  partner_status?: string;
+  prospect_name?: string;
+  activity_type: string;
+  photo_url: string;
+  comment: string;
+  city?: string;
+  location?: string;
+  created_at: string;
+}
+
+export interface CommercialDashboardOverview {
+  profile: CommercialProfile;
+  referral_link: string;
+  partners_brought: number;
+  pending_partner_applications: number;
+  approved_partners: number;
+  active_partners: number;
+  first_client_conversions: number;
+  commission_earned_xof: number;
+  commission_pending_xof: number;
+  recent_partners: CommercialPartner[];
+  recent_reports: CommercialActivityReport[];
+  recent_commissions: CommercialCommission[];
 }
 
 export interface PartnerReferralDetails {
@@ -573,12 +661,19 @@ export interface AdminPartner {
   id: string;
   store_name: string;
   owner_name: string;
+  owner_email: string;
+  owner_phone?: string;
   city: string;
   business_location: string;
   referral_code: string;
   commission_percentage: number;
+  commercial_id?: string;
+  commercial_name?: string;
+  commercial_email?: string;
+  acquisition_source: string;
   clients_count: number;
   active_clients: number;
+  first_payment_status?: string;
   referral_visits: number;
   qr_referral_visits: number;
   referral_signups: number;
@@ -589,6 +684,39 @@ export interface AdminPartner {
   total_commission_paid_xof: number;
   status: string;
   joined_at: string;
+}
+
+export interface AdminCommercialListItem {
+  id: string;
+  user_id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  status: "active" | "inactive";
+  referral_code: string;
+  commission_percentage: number;
+  partners_brought: number;
+  approved_partners: number;
+  pending_partners: number;
+  commission_earned_xof: number;
+  last_activity_date?: string;
+  created_at: string;
+}
+
+export interface AdminCommercialDetail {
+  commercial: AdminCommercialListItem;
+  partners: CommercialPartner[];
+  reports: CommercialActivityReport[];
+  commissions: CommercialCommission[];
+}
+
+export interface CreateCommercialRequest {
+  full_name: string;
+  email: string;
+  phone?: string;
+  password: string;
+  status: "active" | "inactive";
+  commission_percentage: number;
 }
 
 export interface AdminPartnerCommission {

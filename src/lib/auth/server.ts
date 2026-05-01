@@ -29,6 +29,7 @@ function readUserRole(user: Record<string, unknown>) {
 
   switch (rawRole) {
     case "admin":
+    case "commercial":
     case "employee":
     case "member":
     case "partner":

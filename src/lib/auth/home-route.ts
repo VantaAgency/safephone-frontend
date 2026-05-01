@@ -4,6 +4,8 @@ export function getHomeRouteForRole(role?: UserRole | null) {
   switch (role) {
     case "admin":
       return "/admin";
+    case "commercial":
+      return "/espace-commercial";
     case "partner":
       return "/espace-partenaire";
     case "employee":

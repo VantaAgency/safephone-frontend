@@ -8,6 +8,11 @@ export {
   useAdminPayments,
   useAdminEmployees,
   useAdminEmployee,
+  useAdminCommercials,
+  useAdminCommercial,
+  useCreateCommercialAccount,
+  useUpdateCommercialStatus,
+  useUpdateCommercialCommission,
   useCreateEmployeeAccount,
   useUpdateEmployeeAccount,
   useResetEmployeePassword,
@@ -50,6 +55,13 @@ export {
   usePartnerSales,
   usePartnerPayouts,
 } from "./use-partner";
+export {
+  useCommercialOverview,
+  useCommercialPartners,
+  useCommercialCommissions,
+  useCommercialActivityReports,
+  useCreateCommercialActivityReport,
+} from "./use-commercial";
 export { usePlans } from "./use-plans";
 export {
   useDevices,
