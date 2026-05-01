@@ -10,6 +10,8 @@ import type { ApiResponse } from "../types";
 import { admin } from "../endpoints";
 import type {
   AdminCustomer,
+  AdminCommercialDetail,
+  AdminCommercialListItem,
   AdminDashboardOverview,
   AdminEmployeeDetail,
   AdminEmployeeListItem,
@@ -21,6 +23,7 @@ import type {
   AdminPayment,
   AdminStats,
   CreateEmployeeRequest,
+  CreateCommercialRequest,
   PartnerApplicationStatus,
   ResetEmployeePasswordRequest,
   ReviewPartnerApplicationRequest,
@@ -111,6 +114,70 @@ export function useAdminEmployee(
     queryKey: ["admin-employee", employeeId],
     queryFn: () => admin.employee(employeeId!),
     enabled: enabled && !!employeeId,
+  });
+}
+
+export function useAdminCommercials({ enabled = true }: AdminQueryOptions = {}) {
+  return useQuery<AdminCommercialListItem[]>({
+    queryKey: ["admin-commercials"],
+    queryFn: () => admin.commercials(),
+    enabled,
+  });
+}
+
+export function useAdminCommercial(
+  commercialId?: string,
+  { enabled = true }: AdminQueryOptions = {},
+) {
+  return useQuery<AdminCommercialDetail>({
+    queryKey: ["admin-commercial", commercialId],
+    queryFn: () => admin.commercial(commercialId!),
+    enabled: enabled && !!commercialId,
+  });
+}
+
+export function useCreateCommercialAccount() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: CreateCommercialRequest) =>
+      fetchAdminAction<{ id: string }>("/api/admin/commercials", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["admin-commercials"] });
+      await queryClient.invalidateQueries({ queryKey: ["admin-overview"] });
+    },
+  });
+}
+
+export function useUpdateCommercialStatus() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, status }: { id: string; status: "active" | "inactive" }) =>
+      admin.updateCommercialStatus(id, status),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["admin-commercials"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-commercial", variables.id] });
+    },
+  });
+}
+
+export function useUpdateCommercialCommission() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      commissionPercentage,
+    }: {
+      id: string;
+      commissionPercentage: number;
+    }) => admin.updateCommercialCommission(id, commissionPercentage),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["admin-commercials"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-commercial", variables.id] });
+    },
   });
 }
 

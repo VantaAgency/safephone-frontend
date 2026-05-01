@@ -9,6 +9,7 @@ const PROTECTED_ROUTES = [
 const ADMIN_ROUTES = ["/admin"];
 const EMPLOYEE_ROUTES = ["/espace-employe"];
 const PARTNER_ROUTES = ["/espace-partenaire"];
+const COMMERCIAL_ROUTES = ["/espace-commercial"];
 
 const ADMIN_API_ROUTES = ["/api/admin"];
 
@@ -37,9 +38,10 @@ export async function middleware(request: NextRequest) {
   const isAdmin = ADMIN_ROUTES.some((r) => pathname.startsWith(r));
   const isEmployee = EMPLOYEE_ROUTES.some((r) => pathname.startsWith(r));
   const isPartner = PARTNER_ROUTES.some((r) => pathname.startsWith(r));
+  const isCommercial = COMMERCIAL_ROUTES.some((r) => pathname.startsWith(r));
 
   // Not authenticated → redirect to homepage with auth modal + redirect param
-  if ((isProtected || isAdmin || isEmployee || isPartner) && !sessionToken) {
+  if ((isProtected || isAdmin || isEmployee || isPartner || isCommercial) && !sessionToken) {
     const url = new URL("/", request.url);
     url.searchParams.set("auth", "sign-in");
     url.searchParams.set("redirect", pathname);
@@ -54,6 +56,7 @@ export const config = {
     "/tableau-de-bord/:path*",
     "/espace-employe/:path*",
     "/espace-partenaire/:path*",
+    "/espace-commercial/:path*",
     "/admin/:path*",
     "/api/admin/:path*",
     "/sinistres/:path*",

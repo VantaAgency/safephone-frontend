@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useLanguage } from "@/lib/language-context";
 import { useAuth } from "@/lib/auth/auth-provider";
 import { Button } from "@/components/ui/button";
@@ -33,8 +34,10 @@ const CITIES = ["Dakar", "Thiès", "Saint-Louis", "Kaolack", "Ziguinchor", "Toub
 
 export default function PartenairesPage() {
   const { lang, t } = useLanguage();
+  const searchParams = useSearchParams();
   const { user, isPending: authPending } = useAuth();
   const isAuthenticated = !!user;
+  const commercialReferralCode = searchParams.get("commercial")?.trim().toUpperCase() || "";
 
   const { data: myApplication, isLoading: appLoading } = useMyPartnerApplication(isAuthenticated);
   const submitPartnerApplication = useSubmitPartnerApplication();
@@ -153,6 +156,7 @@ export default function PartenairesPage() {
         phone: phone.trim(),
         city: businessData.city,
         business_location: businessData.businessLocation.trim(),
+        commercial_referral_code: commercialReferralCode || undefined,
       });
       setSuccess(true);
     } catch (err) {

@@ -2,6 +2,7 @@
 
 import { Fragment, useDeferredValue, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { AdminCommercialsTab } from "@/components/admin/admin-commercials-tab";
 import { AdminEmployeesTab } from "@/components/admin/admin-employees-tab";
 import { RouteGuardLoader } from "@/components/auth/route-guard-loader";
 import { StatCard } from "@/components/cards/stat-card";
@@ -42,7 +43,7 @@ import {
 import { cn } from "@/lib/utils";
 import type { AdminCustomer, AdminCustomerSubscription, ClaimStatus, RepairRequest, RepairRequestStatus } from "@/lib/api/types";
 
-const ADMIN_TABS = ["overview", "claims", "repairs", "customers", "employees", "payments", "applications", "partners"] as const;
+const ADMIN_TABS = ["overview", "claims", "repairs", "customers", "employees", "commercials", "payments", "applications", "partners"] as const;
 type AdminTab = (typeof ADMIN_TABS)[number];
 
 const STATUS_TRANSITIONS: Record<string, ClaimStatus[]> = {
@@ -167,6 +168,7 @@ export default function AdminPage() {
     repairs: lang === "fr" ? "Réparations" : "Repairs",
     customers: lang === "fr" ? "Clients" : "Customers",
     employees: lang === "fr" ? "Employés" : "Employees",
+    commercials: lang === "fr" ? "Commerciaux" : "Commercials",
     payments: lang === "fr" ? "Paiements" : "Payments",
     applications: lang === "fr" ? "Candidatures" : "Applications",
     partners: lang === "fr" ? "Partenaires" : "Partners",
@@ -546,6 +548,9 @@ export default function AdminPage() {
           break;
         case "employees":
           setEmployeesRefreshKey((current) => current + 1);
+          break;
+        case "commercials":
+          await refetchOverview();
           break;
         case "payments":
           await Promise.all([refetchOverview(), refetchPayments()]);
@@ -1461,6 +1466,8 @@ export default function AdminPage() {
             )}
           </div>
         )}
+
+        {tab === "commercials" && <AdminCommercialsTab />}
 
         {/* Partners Tab */}
         {tab === "partners" && (

@@ -58,5 +58,24 @@ export async function requireRouteRole(
     }
   }
 
+  if (role === "commercial" && allowedRoles.includes("commercial")) {
+    const result = await databasePool.query(
+      `SELECT COALESCE(cp.status, 'active') AS status
+       FROM users u
+       LEFT JOIN commercial_profiles cp
+         ON cp.user_id = u.id
+        AND cp.org_id = u.org_id
+       WHERE u.better_auth_id = $1
+         AND u.deleted_at IS NULL
+       LIMIT 1`,
+      [session.user.id],
+    );
+
+    const status = result.rows[0]?.status as string | undefined;
+    if (status !== "active") {
+      redirect(buildUnauthorizedRedirect(pathname, allowedRoles));
+    }
+  }
+
   return session;
 }
