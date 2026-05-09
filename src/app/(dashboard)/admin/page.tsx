@@ -1372,7 +1372,7 @@ export default function AdminPage() {
                             {new Date(app.created_at).toLocaleDateString(lang === "fr" ? "fr-FR" : "en-US")}
                           </td>
                           <td className="px-5 py-3.5">
-                            {app.status === "pending" && (
+                            {(app.status === "pending" || app.status === "approved") && (
                               <div className="flex gap-2">
                                 {rejectingId === app.id ? (
                                   <div className="flex items-center gap-2">
@@ -1410,34 +1410,38 @@ export default function AdminPage() {
                                   </div>
                                 ) : (
                                   <>
-                                    <Button
-                                      variant="primary"
-                                      size="sm"
-                                      loading={reviewApplication.isPending}
-                                      disabled={parseCommissionPercentage(commissionDrafts[app.id] ?? "") === null}
-                                      onClick={async () => {
-                                        await reviewApplication.mutateAsync({
-                                          id: app.id,
-                                          data: {
-                                            decision: "approved",
-                                            commission_percentage: parseCommissionPercentage(commissionDrafts[app.id] ?? "") ?? undefined,
-                                          },
-                                        });
-                                        setCommissionDrafts((current) => {
-                                          const next = { ...current };
-                                          delete next[app.id];
-                                          return next;
-                                        });
-                                      }}
-                                    >
-                                      {lang === "fr" ? "Approuver" : "Approve"}
-                                    </Button>
+                                    {app.status === "pending" && (
+                                      <Button
+                                        variant="primary"
+                                        size="sm"
+                                        loading={reviewApplication.isPending}
+                                        disabled={parseCommissionPercentage(commissionDrafts[app.id] ?? "") === null}
+                                        onClick={async () => {
+                                          await reviewApplication.mutateAsync({
+                                            id: app.id,
+                                            data: {
+                                              decision: "approved",
+                                              commission_percentage: parseCommissionPercentage(commissionDrafts[app.id] ?? "") ?? undefined,
+                                            },
+                                          });
+                                          setCommissionDrafts((current) => {
+                                            const next = { ...current };
+                                            delete next[app.id];
+                                            return next;
+                                          });
+                                        }}
+                                      >
+                                        {lang === "fr" ? "Approuver" : "Approve"}
+                                      </Button>
+                                    )}
                                     <Button
                                       variant="danger"
                                       size="sm"
                                       onClick={() => setRejectingId(app.id)}
                                     >
-                                      {lang === "fr" ? "Refuser" : "Reject"}
+                                      {app.status === "approved"
+                                        ? (lang === "fr" ? "Annuler" : "Cancel")
+                                        : (lang === "fr" ? "Refuser" : "Reject")}
                                     </Button>
                                   </>
                                 )}
