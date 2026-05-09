@@ -30,6 +30,7 @@ import {
 } from "@/lib/api/hooks";
 import { formatXOF } from "@/lib/data";
 import { useAuth } from "@/lib/auth/auth-provider";
+import { hasRole } from "@/lib/auth/roles";
 import { useLanguage } from "@/lib/language-context";
 import {
   ADMIN_REPAIR_TRANSITIONS,
@@ -66,7 +67,7 @@ export default function AdminPage() {
   const [search, setSearch] = useState("");
   const deferredSearch = useDeferredValue(search);
 
-  const isAdmin = user?.role === "admin";
+  const isAdmin = hasRole(user?.roles, "admin");
   const {
     data: overview,
     isLoading: overviewLoading,

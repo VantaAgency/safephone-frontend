@@ -86,7 +86,7 @@ export async function requireAdminSession(
 
 
   const session = await authApi().getSession({ headers: requestHeaders });
-  if (!session?.user?.id || session.user.role !== "admin") {
+  if (!session?.user?.id) {
     throw new Error("Admin authentication required");
   }
 
@@ -119,6 +119,7 @@ export async function createEmployeeAccount(
   const normalizedEmail = input.email.trim().toLowerCase();
   const existingEmployee = await getEmployeeAccountByEmail(normalizedEmail);
   if (existingEmployee) {
+    await markEmployeePrimaryRoleIfBasic(existingEmployee.id);
     await upsertEmployeeProfile({
       userId: existingEmployee.id,
       orgId: existingEmployee.org_id,
@@ -148,6 +149,7 @@ export async function createEmployeeAccount(
   } catch (error) {
     const alreadyCreatedEmployee = await getEmployeeAccountByEmail(normalizedEmail);
     if (alreadyCreatedEmployee) {
+      await markEmployeePrimaryRoleIfBasic(alreadyCreatedEmployee.id);
       await upsertEmployeeProfile({
         userId: alreadyCreatedEmployee.id,
         orgId: alreadyCreatedEmployee.org_id,
@@ -167,6 +169,7 @@ export async function createEmployeeAccount(
     throw new Error("Employee account sync failed");
   }
 
+  await markEmployeePrimaryRoleIfBasic(safePhoneUser.id);
   await upsertEmployeeProfile({
     userId: safePhoneUser.id,
     orgId: safePhoneUser.org_id,
@@ -219,9 +222,12 @@ export async function updateEmployeeAccount(
      SET full_name = $2,
          email = $3,
          phone = $4,
+         role = CASE
+           WHEN role IN ('member', 'viewer') THEN 'employee'
+           ELSE role
+         END,
          updated_at = NOW()
      WHERE id = $1
-       AND role = 'employee'
        AND deleted_at IS NULL`,
     [
       safePhoneUserId,
@@ -341,7 +347,6 @@ async function getEmployeeAccountByBetterAuthId(betterAuthId: string) {
        ON ep.user_id = u.id
       AND ep.org_id = u.org_id
      WHERE u.better_auth_id = $1
-       AND u.role = 'employee'
        AND u.deleted_at IS NULL
      LIMIT 1`,
     [betterAuthId],
@@ -362,7 +367,6 @@ async function getEmployeeAccountByEmail(email: string) {
        ON ep.user_id = u.id
       AND ep.org_id = u.org_id
      WHERE lower(u.email) = lower($1)
-       AND u.role = 'employee'
        AND u.deleted_at IS NULL
      LIMIT 1`,
     [email],
@@ -383,13 +387,27 @@ async function getEmployeeAccountBySafePhoneId(safePhoneUserId: string) {
        ON ep.user_id = u.id
       AND ep.org_id = u.org_id
      WHERE u.id = $1::uuid
-       AND u.role = 'employee'
+       AND (u.role = 'employee' OR ep.user_id IS NOT NULL)
        AND u.deleted_at IS NULL
      LIMIT 1`,
     [safePhoneUserId],
   );
 
   return result.rows[0] ?? null;
+}
+
+async function markEmployeePrimaryRoleIfBasic(userId: string) {
+  await databasePool.query(
+    `UPDATE users
+     SET role = CASE
+       WHEN role IN ('member', 'viewer') THEN 'employee'
+       ELSE role
+     END,
+     updated_at = NOW()
+     WHERE id = $1::uuid
+       AND deleted_at IS NULL`,
+    [userId],
+  );
 }
 
 async function upsertEmployeeProfile({

@@ -4,6 +4,8 @@ import { admin as adminPlugin } from "better-auth/plugins";
 import { jwt } from "better-auth/plugins/jwt";
 import { databasePool } from "@/lib/server/db";
 import { sendResetPasswordEmail } from "@/lib/email/send-reset-password";
+import { getPrimaryRole, normalizeUserRole } from "@/lib/auth/roles";
+import type { UserRole } from "@/lib/api/types";
 
 const DEFAULT_ORG_NAME = "SafePhone";
 const DEFAULT_ORG_SLUG = "safephone";
@@ -21,24 +23,97 @@ async function getSharedOrgId(): Promise<string> {
   return result.rows[0].id;
 }
 
-function readUserRole(user: Record<string, unknown>) {
-  const rawRole =
-    typeof user.role === "string" && user.role.trim()
-      ? user.role.trim()
-      : "member";
+function readUserRole(user: Record<string, unknown>): UserRole {
+  return normalizeUserRole(user.role) ?? "member";
+}
 
-  switch (rawRole) {
-    case "admin":
+async function getEffectiveAuthContext(betterAuthId: string) {
+  const result = await databasePool.query(
+    `SELECT
+       u.id,
+       u.org_id,
+       u.role,
+       (
+         SELECT cp.status
+         FROM commercial_profiles cp
+         WHERE cp.user_id = u.id
+           AND cp.org_id = u.org_id
+         LIMIT 1
+       ) AS commercial_status,
+       (
+         SELECT ep.status
+         FROM employee_profiles ep
+         WHERE ep.user_id = u.id
+           AND ep.org_id = u.org_id
+         LIMIT 1
+       ) AS employee_status,
+       EXISTS (
+         SELECT 1
+         FROM commercial_profiles cp
+         WHERE cp.user_id = u.id
+           AND cp.org_id = u.org_id
+           AND cp.status = 'active'
+       ) AS has_commercial_role,
+       EXISTS (
+         SELECT 1
+         FROM employee_profiles ep
+         WHERE ep.user_id = u.id
+           AND ep.org_id = u.org_id
+           AND ep.status = 'active'
+       ) AS has_employee_role,
+       EXISTS (
+         SELECT 1
+         FROM partners p
+         WHERE p.user_id = u.id
+           AND p.org_id = u.org_id
+           AND p.status = 'active'
+       ) AS has_partner_role
+     FROM users u
+     WHERE u.better_auth_id = $1
+       AND u.deleted_at IS NULL
+     LIMIT 1`,
+    [betterAuthId],
+  );
+
+  const row = result.rows[0];
+  if (!row) return null;
+
+  const roles: UserRole[] = [];
+  const addRole = (role: UserRole | null) => {
+    if (role && !roles.includes(role)) {
+      roles.push(role);
+    }
+  };
+  const primaryRole = normalizeUserRole(row.role);
+  switch (primaryRole) {
     case "commercial":
+      if (!row.commercial_status || row.commercial_status === "active") addRole(primaryRole);
+      break;
     case "employee":
-    case "member":
-    case "partner":
-    case "viewer":
-      return rawRole;
-    case "user":
+      if (!row.employee_status || row.employee_status === "active") addRole(primaryRole);
+      break;
     default:
-      return "member";
+      addRole(primaryRole);
   }
+  if (row.has_commercial_role && !roles.includes("commercial")) {
+    roles.push("commercial");
+  }
+  if (row.has_employee_role && !roles.includes("employee")) {
+    roles.push("employee");
+  }
+  if (row.has_partner_role && !roles.includes("partner")) {
+    roles.push("partner");
+  }
+  if (roles.length === 0) {
+    roles.push("member");
+  }
+
+  return {
+    id: row.id as string,
+    orgId: row.org_id as string,
+    role: getPrimaryRole(roles),
+    roles,
+  };
 }
 
 async function ensureEmployeeProfile(userId: string, orgId: string) {
@@ -122,23 +197,22 @@ export const auth = betterAuth({
           }
         },
         definePayload: async ({ user, session }) => {
-          // Look up org_id and role for custom claims (sub is handled by getSubject)
+          // Look up org_id and all effective roles for custom claims (sub is handled by getSubject).
           try {
-            const result = await databasePool.query(
-              `SELECT org_id, role FROM users WHERE better_auth_id = $1 AND deleted_at IS NULL LIMIT 1`,
-              [user.id]
-            );
-            if (result.rows.length > 0) {
+            const authContext = await getEffectiveAuthContext(user.id);
+            if (authContext) {
               return {
-                org_id: result.rows[0].org_id,
+                org_id: authContext.orgId,
                 email: user.email,
-                role: result.rows[0].role,
+                role: authContext.role,
+                roles: authContext.roles,
                 jti: session.id,
               };
             }
             return {
               email: user.email,
               role: "member",
+              roles: ["member"],
               jti: session.id,
             };
           } finally {
@@ -168,13 +242,10 @@ export const auth = betterAuth({
         // This ensures promotions (member → admin/partner) take effect on next sign-in.
         after: async (session) => {
           try {
-            const result = await databasePool.query(
-              `SELECT role FROM users WHERE better_auth_id = $1 AND deleted_at IS NULL LIMIT 1`,
-              [session.userId]
-            );
-            if (result.rows.length > 0) {
+            const authContext = await getEffectiveAuthContext(session.userId);
+            if (authContext) {
               await databasePool.query(`UPDATE "user" SET role = $1 WHERE id = $2`, [
-                result.rows[0].role,
+                authContext.role,
                 session.userId,
               ]);
             }

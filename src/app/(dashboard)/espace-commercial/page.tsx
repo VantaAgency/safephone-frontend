@@ -23,6 +23,7 @@ import {
   useCreateCommercialActivityReport,
 } from "@/lib/api/hooks";
 import { useAuth } from "@/lib/auth/auth-provider";
+import { hasRole } from "@/lib/auth/roles";
 import { formatXOF } from "@/lib/data";
 import { useLanguage } from "@/lib/language-context";
 import { cn } from "@/lib/utils";
@@ -58,7 +59,7 @@ export default function CommercialDashboardPage() {
   const [photo, setPhoto] = useState<File | null>(null);
   const [formMessage, setFormMessage] = useState("");
 
-  const isCommercial = user?.role === "commercial";
+  const isCommercial = hasRole(user?.roles, "commercial");
   const { data: overview, isLoading: overviewLoading } = useCommercialOverview({
     enabled: isCommercial,
   });

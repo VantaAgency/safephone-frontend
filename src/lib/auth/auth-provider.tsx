@@ -7,11 +7,13 @@ import {
   useMemo,
   useEffect,
   useRef,
+  useState,
   type ReactNode,
 } from "react";
 import { useSession, authClient } from "./client";
 import { setAuthTokenGetter } from "@/lib/api/client";
 import type { UserRole } from "@/lib/api/types";
+import { getPrimaryRole, normalizeUserRole, normalizeUserRoles } from "@/lib/auth/roles";
 
 interface AuthContextValue {
   user: {
@@ -20,6 +22,7 @@ interface AuthContextValue {
     email: string;
     phone?: string;
     role?: UserRole;
+    roles: UserRole[];
   } | null;
   isPending: boolean;
   isAuthenticated: boolean;
@@ -36,18 +39,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     expiresAt: 0,
   });
   const tokenPromiseRef = useRef<Promise<string | null> | null>(null);
-
-  const user = useMemo(() => {
-    if (!session.data?.user) return null;
-    const u = session.data.user as Record<string, unknown>;
-    return {
-      id: session.data.user.id,
-      name: session.data.user.name,
-      email: session.data.user.email,
-      phone: u.phone as string | undefined,
-      role: u.role as UserRole | undefined,
-    };
-  }, [session.data]);
+  const [tokenRoleState, setTokenRoleState] = useState<{
+    userId: string;
+    roles: UserRole[];
+  } | null>(null);
+  const currentUser = session.data?.user ?? null;
+  const currentUserId = currentUser?.id ?? null;
 
   const getToken = useCallback(async (): Promise<string | null> => {
     const cached = tokenCacheRef.current;
@@ -87,9 +84,60 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  useEffect(() => {
+    if (!currentUser || !currentUserId) return;
+    if (tokenRoleState?.userId === currentUserId) return;
+
+    let cancelled = false;
+    const sessionUser = currentUser as Record<string, unknown>;
+    const fallbackRole = normalizeUserRole(sessionUser.role);
+    const userId = currentUserId;
+
+    getToken()
+      .then((token) => {
+        if (cancelled) return;
+        const payload = token ? decodeTokenPayload(token) : null;
+        setTokenRoleState({
+          userId,
+          roles: normalizeUserRoles(payload?.roles, fallbackRole),
+        });
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setTokenRoleState({
+            userId,
+            roles: normalizeUserRoles(undefined, fallbackRole),
+          });
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUser, currentUserId, getToken, tokenRoleState?.userId]);
+
+  const user = useMemo(() => {
+    if (!currentUser || !currentUserId) return null;
+    const u = currentUser as Record<string, unknown>;
+    const fallbackRole = normalizeUserRole(u.role);
+    const roles =
+      tokenRoleState?.userId === currentUserId
+        ? tokenRoleState.roles
+        : normalizeUserRoles(u.roles, fallbackRole);
+    return {
+      id: currentUser.id,
+      name: currentUser.name,
+      email: currentUser.email,
+      phone: u.phone as string | undefined,
+      role: getPrimaryRole(roles),
+      roles,
+    };
+  }, [currentUser, currentUserId, tokenRoleState]);
+
   const handleSignOut = useCallback(async () => {
     tokenCacheRef.current = { token: null, expiresAt: 0 };
     tokenPromiseRef.current = null;
+    setTokenRoleState(null);
     await authClient.signOut();
   }, []);
 
@@ -98,15 +146,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setAuthTokenGetter(getToken);
   }, [getToken]);
 
+  const authIsPending =
+    session.isPending ||
+    (!!currentUserId && tokenRoleState?.userId !== currentUserId);
+  const isAuthenticated = !!currentUserId;
+
   const value = useMemo<AuthContextValue>(
     () => ({
       user,
-      isPending: session.isPending,
-      isAuthenticated: !!session.data?.user,
+      isPending: authIsPending,
+      isAuthenticated,
       getToken,
       signOut: handleSignOut,
     }),
-    [user, session.isPending, session.data?.user, getToken, handleSignOut]
+    [user, authIsPending, isAuthenticated, getToken, handleSignOut]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -119,6 +172,16 @@ function getTokenExpiry(token: string) {
     const decoded = JSON.parse(atob(payload)) as { exp?: number };
     if (!decoded.exp) return null;
     return decoded.exp * 1000 - 5 * 1000;
+  } catch {
+    return null;
+  }
+}
+
+function decodeTokenPayload(token: string) {
+  try {
+    const [, payload] = token.split(".");
+    if (!payload) return null;
+    return JSON.parse(atob(payload)) as { roles?: unknown };
   } catch {
     return null;
   }

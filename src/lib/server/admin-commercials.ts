@@ -18,6 +18,7 @@ interface CommercialAccountRow {
   id: string;
   better_auth_id: string | null;
   org_id: string;
+  role: string;
 }
 
 function authApi() {
@@ -77,16 +78,20 @@ export async function createCommercialAccount(
   }
 
   if (account.better_auth_id) {
+    const updateData: Record<string, unknown> = {
+      name: input.full_name.trim(),
+      email: normalizedEmail,
+      phone: input.phone?.trim() || null,
+    };
+    if (shouldUseCommercialAsPrimaryRole(account.role)) {
+      updateData.role = "commercial";
+    }
+
     await authApi().adminUpdateUser({
       headers: requestHeaders,
       body: {
         userId: account.better_auth_id,
-        data: {
-          name: input.full_name.trim(),
-          email: normalizedEmail,
-          role: "commercial",
-          phone: input.phone?.trim() || null,
-        },
+        data: updateData,
       },
     });
   }
@@ -96,7 +101,10 @@ export async function createCommercialAccount(
      SET full_name = $2,
          email = $3,
          phone = $4,
-         role = 'commercial',
+         role = CASE
+           WHEN role IN ('member', 'viewer') THEN 'commercial'
+           ELSE role
+         END,
          updated_at = NOW()
      WHERE id = $1
        AND deleted_at IS NULL`,
@@ -120,7 +128,7 @@ export async function createCommercialAccount(
 
 async function getCommercialAccountByEmail(email: string): Promise<CommercialAccountRow | null> {
   const result = await databasePool.query(
-    `SELECT id, better_auth_id, org_id
+    `SELECT id, better_auth_id, org_id, role
      FROM users
      WHERE lower(email) = $1
        AND deleted_at IS NULL
@@ -134,7 +142,7 @@ async function getCommercialAccountByBetterAuthId(
   betterAuthId: string,
 ): Promise<CommercialAccountRow | null> {
   const result = await databasePool.query(
-    `SELECT id, better_auth_id, org_id
+    `SELECT id, better_auth_id, org_id, role
      FROM users
      WHERE better_auth_id = $1
        AND deleted_at IS NULL
@@ -194,6 +202,10 @@ function validPercentage(value: number) {
   if (!Number.isFinite(value)) return false;
   if (value <= 0 || value > 100) return false;
   return Math.abs(value * 100 - Math.round(value * 100)) < 1e-9;
+}
+
+function shouldUseCommercialAsPrimaryRole(role: string) {
+  return role === "member" || role === "viewer" || !role;
 }
 
 export function commercialServerErrorMessage(error: unknown) {

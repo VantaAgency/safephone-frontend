@@ -10,6 +10,7 @@ import { ChevronDownIcon, MenuIcon, PhoneIcon, SettingsIcon, ShieldCheckIcon, Us
 import { useAuth } from "@/lib/auth/auth-provider";
 import { useAuthModal } from "@/components/auth/auth-modal-provider";
 import { getHomeRouteForRole } from "@/lib/auth/home-route";
+import { hasRole } from "@/lib/auth/roles";
 import type { Lang, Translations } from "@/lib/i18n";
 
 interface NavbarProps {
@@ -67,7 +68,7 @@ export function Navbar({ lang, setLang, t }: NavbarProps) {
     },
   ];
 
-  if (user?.role === "employee") {
+  if (hasRole(user?.roles, "employee")) {
     accountDestinations.unshift({
       href: "/espace-employe",
       icon: SettingsIcon,
@@ -76,7 +77,7 @@ export function Navbar({ lang, setLang, t }: NavbarProps) {
     });
   }
 
-  if (user?.role === "partner") {
+  if (hasRole(user?.roles, "partner")) {
     accountDestinations.push({
       href: "/espace-partenaire",
       icon: UsersIcon,
@@ -85,7 +86,7 @@ export function Navbar({ lang, setLang, t }: NavbarProps) {
     });
   }
 
-  if (user?.role === "commercial") {
+  if (hasRole(user?.roles, "commercial")) {
     accountDestinations.push({
       href: "/espace-commercial",
       icon: UsersIcon,
@@ -94,7 +95,7 @@ export function Navbar({ lang, setLang, t }: NavbarProps) {
     });
   }
 
-  if (user?.role === "admin") {
+  if (hasRole(user?.roles, "admin")) {
     accountDestinations.push({
       href: "/admin",
       icon: ShieldCheckIcon,

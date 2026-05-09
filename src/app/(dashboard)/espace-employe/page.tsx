@@ -53,6 +53,7 @@ import type {
   UpdateRepairRequestStatus,
 } from "@/lib/api/types";
 import { useAuth } from "@/lib/auth/auth-provider";
+import { hasRole } from "@/lib/auth/roles";
 import { formatXOF } from "@/lib/data";
 import { useLanguage } from "@/lib/language-context";
 import { cn } from "@/lib/utils";
@@ -85,7 +86,7 @@ export default function EmployeeWorkspacePage() {
   const { lang } = useLanguage();
   const { user, isPending } = useAuth();
   const router = useRouter();
-  const isEmployee = user?.role === "employee";
+  const isEmployee = hasRole(user?.roles, "employee");
 
   const [tab, setTab] = useState<EmployeeTab>("overview");
   const [clientSearch, setClientSearch] = useState("");

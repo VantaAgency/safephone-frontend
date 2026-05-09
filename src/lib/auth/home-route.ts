@@ -1,4 +1,5 @@
 import type { UserRole } from "@/lib/api/types";
+import { getPrimaryRole, normalizeUserRoles } from "@/lib/auth/roles";
 
 export function getHomeRouteForRole(role?: UserRole | null) {
   switch (role) {
@@ -33,12 +34,15 @@ export function sanitizeRedirect(url: string | null | undefined): string | null 
 
 export function getPostAuthRedirect(
   redirectTo?: string | null,
-  role?: UserRole | null,
+  roleOrRoles?: UserRole | UserRole[] | null,
 ) {
   const safeRedirect = sanitizeRedirect(redirectTo);
   if (safeRedirect) {
     return safeRedirect;
   }
 
-  return getHomeRouteForRole(role);
+  const roles = Array.isArray(roleOrRoles)
+    ? roleOrRoles
+    : normalizeUserRoles(undefined, roleOrRoles);
+  return getHomeRouteForRole(getPrimaryRole(roles));
 }

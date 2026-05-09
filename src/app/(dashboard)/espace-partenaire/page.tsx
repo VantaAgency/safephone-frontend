@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/icons";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { useAuth } from "@/lib/auth/auth-provider";
+import { hasRole } from "@/lib/auth/roles";
 import { useLanguage } from "@/lib/language-context";
 import {
   usePartnerOverview,
@@ -50,7 +51,7 @@ export default function PartnerDashboardPage() {
   const [tab, setTab] = useState<PartnerTab>("clients");
   const [copiedClientId, setCopiedClientId] = useState<string | null>(null);
 
-  const isPartner = user?.role === "partner";
+  const isPartner = hasRole(user?.roles, "partner");
   const { data: overview, isLoading: overviewLoading } = usePartnerOverview({
     enabled: isPartner,
   });
