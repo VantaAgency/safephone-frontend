@@ -5,12 +5,15 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Logo } from "./logo";
+import { CountrySwitcher } from "./country-switcher";
 import { Button } from "@/components/ui/button";
 import { ChevronDownIcon, MenuIcon, PhoneIcon, SettingsIcon, ShieldCheckIcon, UsersIcon, XIcon } from "@/components/ui/icons";
 import { useAuth } from "@/lib/auth/auth-provider";
 import { useAuthModal } from "@/components/auth/auth-modal-provider";
 import { getHomeRouteForRole } from "@/lib/auth/home-route";
 import { hasRole } from "@/lib/auth/roles";
+import { useMarket } from "@/lib/markets/context";
+import { routesFor } from "@/lib/markets/routes";
 import type { Lang, Translations } from "@/lib/i18n";
 
 interface NavbarProps {
@@ -19,12 +22,8 @@ interface NavbarProps {
   t: Translations;
 }
 
-const NAV_LINKS = [
-  { key: "plans", href: "/forfaits" },
-  { key: "mobitech", href: "/reparations" },
-  { key: "partners", href: "/partenaires" },
-  { key: "contact", href: "/contact" },
-] as const;
+// Nav items mirror the SN structure on both markets. Items resolve to the
+// right per-market URL via routesFor() — components never hardcode the path.
 
 interface AccountDestination {
   href: string;
@@ -40,9 +39,21 @@ export function Navbar({ lang, setLang, t }: NavbarProps) {
   const router = useRouter();
   const { user, isAuthenticated, isPending, signOut } = useAuth();
   const { openAuthModal } = useAuthModal();
+  const { market } = useMarket();
+  const routes = routesFor(market.code);
   const accountMenuRef = useRef<HTMLDivElement | null>(null);
 
   const isActive = (href: string) => pathname === href;
+
+  // Same four nav slots on both markets. Items whose route doesn't apply to
+  // the active market (rare for the public nav, but kept for future flexibility)
+  // could be filtered here.
+  const primaryNavLinks: { key: keyof Translations["nav"]; href: string }[] = [
+    { key: "plans", href: routes.plans },
+    { key: "mobitech", href: routes.repair },
+    { key: "partners", href: routes.partners },
+    { key: "contact", href: routes.contact },
+  ];
 
   const handleSignOut = async () => {
     setAccountMenuOpen(false);
@@ -121,13 +132,13 @@ export function Navbar({ lang, setLang, t }: NavbarProps) {
     <header className="fixed top-0 w-full z-50 glass-panel border-b border-slate-200/50">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Logo */}
-        <Link href="/" className="shrink-0">
+        <Link href={routes.home} className="shrink-0">
           <Logo />
         </Link>
 
         {/* Desktop Nav Links */}
         <nav className="hidden items-center space-x-8 md:flex">
-          {NAV_LINKS.map(({ key, href }) => (
+          {primaryNavLinks.map(({ key, href }) => (
             <Link
               key={key}
               href={href}
@@ -138,19 +149,24 @@ export function Navbar({ lang, setLang, t }: NavbarProps) {
                   : "text-slate-500 hover:text-indigo-950"
               )}
             >
-              {t.nav[key as keyof typeof t.nav]}
+              {t.nav[key]}
             </Link>
           ))}
         </nav>
 
         {/* Desktop Right Section */}
         <div className="hidden items-center space-x-4 md:flex">
-          <button
-            onClick={() => setLang(lang === "fr" ? "en" : "fr")}
-            className="flex h-7 w-7 items-center justify-center rounded-full text-[10px] font-medium text-slate-400 transition-colors hover:text-indigo-950 cursor-pointer"
-          >
-            {lang === "fr" ? "EN" : "FR"}
-          </button>
+          <CountrySwitcher />
+          {/* Language toggle is SN-only — on US the FR fallback would
+              render the untransformed SN-flavoured French copy. */}
+          {market.code === "SN" && (
+            <button
+              onClick={() => setLang(lang === "fr" ? "en" : "fr")}
+              className="flex h-7 w-7 items-center justify-center rounded-full text-[10px] font-medium text-slate-400 transition-colors hover:text-indigo-950 cursor-pointer"
+            >
+              {lang === "fr" ? "EN" : "FR"}
+            </button>
+          )}
 
           {isPending ? (
             <div className="h-8 w-20 animate-pulse rounded-full bg-slate-100" />
@@ -235,7 +251,7 @@ export function Navbar({ lang, setLang, t }: NavbarProps) {
               >
                 {t.nav.login}
               </button>
-              <Link href="/inscription">
+              <Link href={routes.signup}>
                 <Button variant="primary" size="sm">
                   {lang === "fr" ? "M'abonner maintenant" : "Subscribe now"}
                 </Button>
@@ -246,12 +262,15 @@ export function Navbar({ lang, setLang, t }: NavbarProps) {
 
         {/* Mobile Right */}
         <div className="flex items-center gap-2 md:hidden">
-          <button
-            onClick={() => setLang(lang === "fr" ? "en" : "fr")}
-            className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-medium text-slate-400 cursor-pointer"
-          >
-            {lang === "fr" ? "EN" : "FR"}
-          </button>
+          <CountrySwitcher compact />
+          {market.code === "SN" && (
+            <button
+              onClick={() => setLang(lang === "fr" ? "en" : "fr")}
+              className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-medium text-slate-400 cursor-pointer"
+            >
+              {lang === "fr" ? "EN" : "FR"}
+            </button>
+          )}
           <button
             onClick={() => setMobileOpen(!mobileOpen)}
             className="flex h-10 w-10 items-center justify-center rounded-lg text-slate-500 hover:text-indigo-950 cursor-pointer"
@@ -266,7 +285,7 @@ export function Navbar({ lang, setLang, t }: NavbarProps) {
       {mobileOpen && (
         <div className="border-t border-slate-200/50 bg-white px-4 py-4 md:hidden">
           <div className="flex flex-col gap-1">
-            {NAV_LINKS.map(({ key, href }) => (
+            {primaryNavLinks.map(({ key, href }) => (
               <Link
                 key={key}
                 href={href}
@@ -278,7 +297,7 @@ export function Navbar({ lang, setLang, t }: NavbarProps) {
                     : "text-slate-500 hover:bg-slate-50 hover:text-indigo-950"
                 )}
               >
-                {t.nav[key as keyof typeof t.nav]}
+                {t.nav[key]}
               </Link>
             ))}
           </div>
@@ -333,7 +352,7 @@ export function Navbar({ lang, setLang, t }: NavbarProps) {
                 >
                   {t.nav.login}
                 </Button>
-                <Link href="/inscription" onClick={() => setMobileOpen(false)}>
+                <Link href={routes.signup} onClick={() => setMobileOpen(false)}>
                   <Button variant="primary" fullWidth>
                     {lang === "fr" ? "M'abonner maintenant" : "Subscribe now"}
                   </Button>

@@ -6,6 +6,9 @@ import Link from "next/link";
 
 import { usePlans } from "@/lib/api/hooks";
 import { useLanguage } from "@/lib/language-context";
+import { useMarket } from "@/lib/markets/context";
+import { routesFor } from "@/lib/markets/routes";
+import { splitPrice } from "@/lib/markets/format";
 import { isDevelopmentPlan } from "@/lib/plans";
 
 function CheckIcon({ className }: { className?: string }) {
@@ -100,11 +103,17 @@ function PlanCardSkeleton({ featured }: { featured?: boolean }) {
 
 export function PlansPreview() {
   const { lang } = useLanguage();
+  const { market } = useMarket();
+  const routes = routesFor(market.code);
   const [annual, setAnnual] = useState(false);
   const { data: allPlans, isLoading } = usePlans();
 
-  // Show first 3 plans by sort_order (already sorted by API)
-  const plans = allPlans?.slice(0, 3) ?? [];
+  // Filter plans by market. US plan slugs are prefixed with "us_"; everything
+  // else is Senegal-side.
+  const marketPlans = (allPlans ?? []).filter((p) =>
+    market.code === "US" ? p.slug.startsWith("us_") : !p.slug.startsWith("us_"),
+  );
+  const plans = marketPlans.slice(0, 3);
 
   return (
     <section className="relative overflow-hidden bg-slate-50 py-24 md:py-32">
@@ -174,16 +183,17 @@ export function PlansPreview() {
                 lang === "fr" ? plan.features_fr : plan.features_en;
               const notCovered =
                 lang === "fr" ? plan.not_covered_fr : plan.not_covered_en;
-              const price = annual ? plan.price_annual : plan.price_monthly;
+              const rawPrice = annual ? plan.price_annual : plan.price_monthly;
               const isDevPlan = isDevelopmentPlan(plan);
-              const period =
-                lang === "fr"
-                  ? annual
-                    ? "FCFA / an"
-                    : "FCFA / mois"
-                  : annual
-                    ? "FCFA / year"
-                    : "FCFA / month";
+              // Currency formatting is driven by the plan's market: USD
+              // plans (us_*) display as "$X.XX / month", XOF plans keep
+              // the existing "3 500 FCFA / mois" format.
+              const { value: priceDisplay, period } = splitPrice(
+                rawPrice,
+                market,
+                annual ? "annual" : "monthly",
+                lang,
+              );
               const ctaLabel =
                 lang === "fr" ? `Souscrire ${name}` : `Subscribe ${name}`;
 
@@ -219,7 +229,7 @@ export function PlansPreview() {
 
                     <div className="relative z-10 mb-8 flex items-end gap-2">
                       <span className="text-4xl font-normal tracking-tighter text-white lg:text-5xl">
-                        {price.toLocaleString("fr-FR")}
+                        {priceDisplay}
                       </span>
                       <span className="mb-1.5 text-sm font-medium text-indigo-300">
                         {period}
@@ -250,7 +260,7 @@ export function PlansPreview() {
                     </ul>
 
                     <Link
-                      href={`/inscription?plan=${plan.slug}`}
+                      href={`${routes.signup}?plan=${plan.slug}`}
                       className="relative z-10 w-full rounded-xl border border-yellow-300 bg-yellow-400 py-3.5 text-center text-sm font-medium text-indigo-950 transition-all duration-300 hover:bg-yellow-500 hover:shadow-lg hover:shadow-yellow-400/20"
                     >
                       {ctaLabel}
@@ -283,7 +293,7 @@ export function PlansPreview() {
 
                   <div className="mb-8 flex items-end gap-2">
                     <span className="text-4xl font-normal tracking-tighter text-indigo-950 lg:text-5xl">
-                      {price.toLocaleString("fr-FR")}
+                      {priceDisplay}
                     </span>
                     <span className="mb-1.5 text-sm font-medium text-slate-400">
                       {period}
@@ -314,7 +324,7 @@ export function PlansPreview() {
                   </ul>
 
                   <Link
-                    href={`/inscription?plan=${plan.slug}`}
+                    href={`${routes.signup}?plan=${plan.slug}`}
                     className={`w-full rounded-xl py-3.5 text-center text-sm font-medium transition-all duration-200 ${
                       isFirst
                         ? "border border-slate-200 bg-white text-indigo-950 shadow-sm hover:border-slate-300 hover:bg-slate-50"
@@ -331,7 +341,7 @@ export function PlansPreview() {
 
         <div className="mt-10 flex justify-center">
           <Link
-            href="/forfaits"
+            href={routes.plans}
             className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-6 py-3 text-sm font-medium text-indigo-950 shadow-sm transition-all duration-200 hover:border-slate-300 hover:bg-slate-50"
           >
             {lang === "fr" ? "Voir tous les forfaits" : "See all plans"}

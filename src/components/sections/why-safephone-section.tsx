@@ -3,9 +3,13 @@
 import Link from "next/link";
 
 import { useLanguage } from "@/lib/language-context";
+import { useMarket } from "@/lib/markets/context";
+import { routesFor } from "@/lib/markets/routes";
 
 export function WhySafephoneSection() {
   const { t } = useLanguage();
+  const { market } = useMarket();
+  const routes = routesFor(market.code);
 
   return (
     <section className="relative overflow-hidden bg-slate-50 py-20 md:py-32">
@@ -104,7 +108,7 @@ export function WhySafephoneSection() {
 
               <div className="relative z-10 mt-10 border-t border-indigo-800/50 pt-4">
                 <Link
-                  href="/forfaits"
+                  href={routes.plans}
                   className="group/btn inline-flex w-full items-center justify-center gap-2 rounded-xl bg-yellow-400 px-6 py-4 text-base font-medium text-indigo-950 shadow-sm transition-all hover:bg-yellow-500"
                 >
                   {t.home.whyHighlightCta}

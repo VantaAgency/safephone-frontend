@@ -353,3 +353,32 @@ export const payments = {
   checkout: (id: string) => api.get<CheckoutResult>(`/payments/${id}/checkout`),
   resume: (id: string) => api.post<CheckoutResult>(`/payments/${id}/resume`),
 };
+
+export interface StripeCheckoutResponse {
+  checkout_url: string;
+  session_id: string;
+}
+
+export interface StripeRegisterDeviceRequest {
+  brand: string;
+  model: string;
+  imei?: string;
+}
+
+export interface StripeRegisterDeviceResponse {
+  device: Device;
+  subscription: {
+    id: string;
+    status: string;
+    plan_id: string;
+  };
+}
+
+export const stripe = {
+  createCheckout: (planSlug: string) =>
+    api.post<StripeCheckoutResponse>("/payments/stripe/checkout", {
+      plan_slug: planSlug,
+    }),
+  registerDevice: (data: StripeRegisterDeviceRequest) =>
+    api.post<StripeRegisterDeviceResponse>("/us/devices", data),
+};

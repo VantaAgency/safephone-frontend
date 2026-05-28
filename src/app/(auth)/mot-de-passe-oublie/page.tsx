@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useLanguage } from "@/lib/language-context";
+import { useMarket } from "@/lib/markets/context";
 import { Button } from "@/components/ui/button";
 import {
   FormErrorAlert,
@@ -20,6 +21,7 @@ import { forgotPasswordSchema } from "@/lib/validation/schemas";
 
 export default function ForgotPasswordPage() {
   const { lang, t } = useLanguage();
+  const { market } = useMarket();
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
@@ -118,7 +120,7 @@ export default function ForgotPasswordPage() {
                     setFieldErrors((current) => ({ ...current, email: "" }));
                   }
                 }}
-                placeholder="aminata@email.com"
+                placeholder={market.contact.emailPlaceholder}
                 required
                 autoComplete="email"
                 error={!!fieldErrors.email}

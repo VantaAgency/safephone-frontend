@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { useLanguage } from "@/lib/language-context";
+import { useMarket } from "@/lib/markets/context";
 import { useAuth } from "@/lib/auth/auth-provider";
 import { authClient } from "@/lib/auth/client";
 import { users } from "@/lib/api/endpoints";
@@ -26,6 +27,7 @@ interface AuthModalProps {
 
 export function AuthModal({ view: initialView, onClose, redirectTo }: AuthModalProps) {
   const { lang, t } = useLanguage();
+  const { market } = useMarket();
   const router = useRouter();
   const { isAuthenticated } = useAuth();
   const [view, setView] = useState<AuthView>(initialView);
@@ -235,7 +237,7 @@ function SignInForm({
                 setFieldErrors((current) => ({ ...current, email: "" }));
               }
             }}
-            placeholder="aminata@email.com"
+            placeholder={market.contact.emailPlaceholder}
             required
             autoComplete="email"
             error={!!fieldErrors.email}
@@ -426,7 +428,7 @@ function SignUpForm({
                 setFieldErrors((current) => ({ ...current, name: "" }));
               }
             }}
-            placeholder="Aminata Diallo"
+            placeholder={market.contact.namePlaceholder}
             error={!!fieldErrors.name}
             autoComplete="name"
             required
@@ -446,7 +448,7 @@ function SignUpForm({
                 setFieldErrors((current) => ({ ...current, email: "" }));
               }
             }}
-            placeholder="aminata@email.com"
+            placeholder={market.contact.emailPlaceholder}
             error={!!fieldErrors.email}
             autoComplete="email"
             required
@@ -455,7 +457,7 @@ function SignUpForm({
 
         <FormField
           label={lang === "fr" ? "Telephone" : "Phone number"}
-          hint={lang === "fr" ? "Exemple: +221 77 000 00 00" : "Example: +221 77 000 00 00"}
+          hint={lang === "fr" ? `Exemple: ${market.contact.phonePlaceholder}` : `Example: ${market.contact.phonePlaceholder}`}
           error={fieldErrors.phone}
         >
           <Input
@@ -467,7 +469,7 @@ function SignUpForm({
                 setFieldErrors((current) => ({ ...current, phone: "" }));
               }
             }}
-            placeholder="+221 77 000 00 00"
+            placeholder={market.contact.phonePlaceholder}
             autoComplete="tel"
             error={!!fieldErrors.phone}
             required

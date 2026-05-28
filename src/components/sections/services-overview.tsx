@@ -6,6 +6,8 @@ import { useEffect, useRef, useState } from "react";
 import { ClaimAccessModal, CLAIM_DASHBOARD_HREF } from "@/components/claims/claim-access-modal";
 import { useAuth } from "@/lib/auth/auth-provider";
 import { useLanguage } from "@/lib/language-context";
+import { useMarket } from "@/lib/markets/context";
+import { routesFor } from "@/lib/markets/routes";
 import { cn } from "@/lib/utils";
 
 type ServiceCard = {
@@ -20,6 +22,8 @@ export function ServicesOverview() {
   const router = useRouter();
   const { isAuthenticated } = useAuth();
   const { lang, t } = useLanguage();
+  const { market } = useMarket();
+  const routes = routesFor(market.code);
   const [isClaimModalOpen, setIsClaimModalOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const carouselRef = useRef<HTMLDivElement>(null);
@@ -37,7 +41,7 @@ export function ServicesOverview() {
       requiresClaimFlow: true,
     },
     {
-      href: "/inscription",
+      href: routes.signup,
       image: "/home-services/protect-phone.jpg",
       imageAlt:
         lang === "fr"
@@ -47,7 +51,7 @@ export function ServicesOverview() {
       desc: t.home.servicesCard1Desc,
     },
     {
-      href: "/reparations",
+      href: routes.repair,
       image: "/home-services/repair-phone.jpg",
       imageAlt:
         lang === "fr"
@@ -57,7 +61,7 @@ export function ServicesOverview() {
       desc: t.home.servicesCard3Desc,
     },
     {
-      href: "/forfaits",
+      href: routes.plans,
       image: "/home-services/cover-tech.png",
       imageAlt:
         lang === "fr"

@@ -9,6 +9,7 @@ export const REPAIR_TYPES = [
     time: "1–2h",
     priceFr: "À partir de 15 000 XOF",
     priceEn: "From 15,000 XOF",
+    priceUsd: "From $79",
   },
   {
     id: "battery",
@@ -18,6 +19,7 @@ export const REPAIR_TYPES = [
     time: "30–60 min",
     priceFr: "À partir de 8 000 XOF",
     priceEn: "From 8,000 XOF",
+    priceUsd: "From $39",
   },
   {
     id: "charging",
@@ -27,6 +29,7 @@ export const REPAIR_TYPES = [
     time: "1h",
     priceFr: "À partir de 5 000 XOF",
     priceEn: "From 5,000 XOF",
+    priceUsd: "From $29",
   },
   {
     id: "camera",
@@ -36,6 +39,7 @@ export const REPAIR_TYPES = [
     time: "1–2h",
     priceFr: "À partir de 10 000 XOF",
     priceEn: "From 10,000 XOF",
+    priceUsd: "From $59",
   },
   {
     id: "water",
@@ -45,6 +49,7 @@ export const REPAIR_TYPES = [
     time: "2–24h",
     priceFr: "Diagnostic gratuit",
     priceEn: "Free diagnostic",
+    priceUsd: "Free diagnostic",
   },
   {
     id: "software",
@@ -54,6 +59,7 @@ export const REPAIR_TYPES = [
     time: "1h",
     priceFr: "À partir de 3 000 XOF",
     priceEn: "From 3,000 XOF",
+    priceUsd: "From $19",
   },
 ];
 

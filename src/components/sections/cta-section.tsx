@@ -3,9 +3,13 @@
 import Link from "next/link";
 
 import { useLanguage } from "@/lib/language-context";
+import { useMarket } from "@/lib/markets/context";
+import { routesFor } from "@/lib/markets/routes";
 
 export function CTASection() {
   const { t } = useLanguage();
+  const { market } = useMarket();
+  const routes = routesFor(market.code);
 
   return (
     <section
@@ -30,24 +34,33 @@ export function CTASection() {
 
         <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
           <Link
-            href="/forfaits"
+            href={routes.plans}
             className="inline-flex w-full items-center justify-center rounded-full bg-yellow-400 px-8 py-3.5 text-sm font-medium text-indigo-950 shadow-sm transition-colors hover:bg-yellow-500 sm:w-auto"
           >
             {t.home.ctaButton}
           </Link>
-          <a
-            href="https://wa.me/221770000000"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex w-full items-center justify-center gap-2.5 rounded-full border border-slate-200 bg-white px-8 py-3.5 text-sm font-medium text-indigo-950 shadow-card transition-colors hover:bg-slate-50 sm:w-auto"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-indigo-900/70" aria-hidden="true">
-              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
-              <path d="M14.05 2a9 9 0 0 1 8 7.94" />
-              <path d="M14.05 6A5 5 0 0 1 18 10" />
-            </svg>
-            {t.home.ctaWhatsapp}
-          </a>
+          {market.contact.whatsapp ? (
+            <a
+              href={market.contact.whatsapp}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex w-full items-center justify-center gap-2.5 rounded-full border border-slate-200 bg-white px-8 py-3.5 text-sm font-medium text-indigo-950 shadow-card transition-colors hover:bg-slate-50 sm:w-auto"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-indigo-900/70" aria-hidden="true">
+                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+                <path d="M14.05 2a9 9 0 0 1 8 7.94" />
+                <path d="M14.05 6A5 5 0 0 1 18 10" />
+              </svg>
+              {t.home.ctaWhatsapp}
+            </a>
+          ) : (
+            <Link
+              href={routes.contact}
+              className="inline-flex w-full items-center justify-center gap-2.5 rounded-full border border-slate-200 bg-white px-8 py-3.5 text-sm font-medium text-indigo-950 shadow-card transition-colors hover:bg-slate-50 sm:w-auto"
+            >
+              {t.nav.contact}
+            </Link>
+          )}
         </div>
       </div>
     </section>

@@ -6,51 +6,78 @@ import { AuthProvider } from "@/lib/auth/auth-provider";
 import { AuthModalProvider } from "@/components/auth/auth-modal-provider";
 import { QueryProvider } from "@/lib/api/query-provider";
 import { ToastProvider } from "@/components/ui/toast";
+import { MarketProvider } from "@/lib/markets/context";
+import { resolveMarket } from "@/lib/markets/server";
+import { DEFAULT_MARKET, MARKETS } from "@/lib/markets/config";
 import { getSiteURL } from "@/lib/site-url";
 import "./globals.css";
 
 const siteURL = getSiteURL();
 
-export const metadata: Metadata = {
-  title: "SafePhone — La protection smartphone de confiance au Sénégal",
-  description:
-    "Protégez votre smartphone contre la casse. Abonnement mensuel, déclaration en ligne, réparation gratuite chez MobiTech.",
-  metadataBase: new URL(siteURL),
-  icons: {
-    icon: [
-      { url: "/favicon.ico", sizes: "48x48" },
-      { url: "/favicon.svg", type: "image/svg+xml" },
-    ],
-    shortcut: [{ url: "/favicon.ico" }],
-    apple: [
-      {
-        url: "/apple-touch-icon-180x180.png",
-        sizes: "180x180",
-        type: "image/png",
-      },
-    ],
-  },
-  alternates: {
-    canonical: "/",
-  },
-  openGraph: {
-    title: "SafePhone — La protection smartphone de confiance au Sénégal",
-    description:
-      "Protégez votre smartphone contre la casse. Abonnement mensuel, déclaration en ligne, réparation gratuite chez MobiTech.",
-    url: siteURL,
-    siteName: "SafePhone",
-    locale: "fr_SN",
-    type: "website",
-  },
-};
+const SN_TITLE = "SafePhone — La protection smartphone de confiance au Sénégal";
+const SN_DESCRIPTION =
+  "Protégez votre smartphone contre la casse. Abonnement mensuel, déclaration en ligne, réparation gratuite chez MobiTech.";
+const US_TITLE = "SafePhone — Affordable phone repair protection";
+const US_DESCRIPTION =
+  "SafePhone helps you prepare for expensive phone repair surprises with simple monthly plans, clear claim rules, and guided repair support.";
 
-export default function RootLayout({
+export async function generateMetadata(): Promise<Metadata> {
+  const resolution = await resolveMarket();
+  const market =
+    resolution.status === "resolved" ? resolution.market : MARKETS[DEFAULT_MARKET];
+  const isUS = market.code === "US";
+  const title = isUS ? US_TITLE : SN_TITLE;
+  const description = isUS ? US_DESCRIPTION : SN_DESCRIPTION;
+
+  return {
+    title,
+    description,
+    metadataBase: new URL(siteURL),
+    icons: {
+      icon: [
+        { url: "/favicon.ico", sizes: "48x48" },
+        { url: "/favicon.svg", type: "image/svg+xml" },
+      ],
+      shortcut: [{ url: "/favicon.ico" }],
+      apple: [
+        {
+          url: "/apple-touch-icon-180x180.png",
+          sizes: "180x180",
+          type: "image/png",
+        },
+      ],
+    },
+    alternates: {
+      canonical: market.routePrefix,
+      // hreflang alternates so search engines understand the per-market URLs.
+      languages: {
+        "fr-SN": "/sn",
+        "en-US": "/us",
+      },
+    },
+    openGraph: {
+      title,
+      description,
+      url: `${siteURL}${market.routePrefix}`,
+      siteName: "SafePhone",
+      locale: market.ogLocale,
+      type: "website",
+    },
+  };
+}
+
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const resolution = await resolveMarket();
+  const resolved = resolution.status === "resolved";
+  const marketCode = resolved ? resolution.market.code : DEFAULT_MARKET;
+  const htmlLang = resolved ? resolution.market.htmlLang : MARKETS[DEFAULT_MARKET].htmlLang;
+
   return (
-    <html lang="fr" className="scroll-smooth">
+    <html lang={htmlLang} className="scroll-smooth" suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
@@ -62,15 +89,17 @@ export default function RootLayout({
       <body className="antialiased">
         <QueryProvider>
           <AuthProvider>
-            <LanguageProvider>
-              <Suspense>
-                <AuthModalProvider>
-                  <ToastProvider>
-                    <AppShell>{children}</AppShell>
-                  </ToastProvider>
-                </AuthModalProvider>
-              </Suspense>
-            </LanguageProvider>
+            <MarketProvider marketCode={marketCode} resolved={resolved}>
+              <LanguageProvider>
+                <Suspense>
+                  <AuthModalProvider>
+                    <ToastProvider>
+                      <AppShell>{children}</AppShell>
+                    </ToastProvider>
+                  </AuthModalProvider>
+                </Suspense>
+              </LanguageProvider>
+            </MarketProvider>
           </AuthProvider>
         </QueryProvider>
       </body>

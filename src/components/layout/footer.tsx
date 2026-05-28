@@ -1,12 +1,20 @@
+"use client";
+
 import Link from "next/link";
 import { Logo } from "./logo";
 import type { Translations } from "@/lib/i18n";
+import { useLanguage } from "@/lib/language-context";
+import { useMarket } from "@/lib/markets/context";
+import { routesFor } from "@/lib/markets/routes";
 
 interface FooterProps {
   t: Translations;
 }
 
 export function Footer({ t }: FooterProps) {
+  const { lang } = useLanguage();
+  const { market } = useMarket();
+  const routes = routesFor(market.code);
   return (
     <footer className="border-t border-slate-200/60 bg-white pt-16 pb-8">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -52,17 +60,17 @@ export function Footer({ t }: FooterProps) {
             </h4>
             <ul className="space-y-3">
               <li>
-                <Link href="/forfaits" className="text-sm text-slate-500 transition-colors hover:text-indigo-600">
+                <Link href={routes.plans} className="text-sm text-slate-500 transition-colors hover:text-indigo-600">
                   {t.nav.plans}
                 </Link>
               </li>
               <li>
-                <Link href="/sinistres" className="text-sm text-slate-500 transition-colors hover:text-indigo-600">
+                <Link href={routes.claim} className="text-sm text-slate-500 transition-colors hover:text-indigo-600">
                   {t.nav.claims}
                 </Link>
               </li>
               <li>
-                <Link href="/inscription" className="text-sm text-slate-500 transition-colors hover:text-indigo-600">
+                <Link href={routes.signup} className="text-sm text-slate-500 transition-colors hover:text-indigo-600">
                   {t.nav.register}
                 </Link>
               </li>
@@ -76,12 +84,12 @@ export function Footer({ t }: FooterProps) {
             </h4>
             <ul className="space-y-3">
               <li>
-                <Link href="/partenaires" className="text-sm text-slate-500 transition-colors hover:text-indigo-600">
+                <Link href={routes.partners} className="text-sm text-slate-500 transition-colors hover:text-indigo-600">
                   {t.nav.partners}
                 </Link>
               </li>
               <li>
-                <Link href="/reparations" className="text-sm text-slate-500 transition-colors hover:text-indigo-600">
+                <Link href={routes.repair} className="text-sm text-slate-500 transition-colors hover:text-indigo-600">
                   {t.nav.mobitech}
                 </Link>
               </li>
@@ -100,22 +108,22 @@ export function Footer({ t }: FooterProps) {
             </h4>
             <ul className="space-y-3">
               <li>
-                <Link href="/contact" className="text-sm text-slate-500 transition-colors hover:text-indigo-600">
+                <Link href={routes.contact} className="text-sm text-slate-500 transition-colors hover:text-indigo-600">
                   {t.nav.contact}
                 </Link>
               </li>
               <li>
-                <Link href="#" className="text-sm text-slate-500 transition-colors hover:text-indigo-600">
+                <Link href={routes.terms} className="text-sm text-slate-500 transition-colors hover:text-indigo-600">
                   {t.footer.terms}
                 </Link>
               </li>
               <li>
-                <Link href="#" className="text-sm text-slate-500 transition-colors hover:text-indigo-600">
+                <Link href={routes.privacy} className="text-sm text-slate-500 transition-colors hover:text-indigo-600">
                   {t.footer.privacy}
                 </Link>
               </li>
               <li>
-                <Link href="#" className="text-sm text-slate-500 transition-colors hover:text-indigo-600">
+                <Link href={routes.repairProtectionTerms} className="text-sm text-slate-500 transition-colors hover:text-indigo-600">
                   {t.footer.legal}
                 </Link>
               </li>
@@ -134,7 +142,7 @@ export function Footer({ t }: FooterProps) {
               <span className="relative inline-flex h-2 w-2 rounded-full bg-green-500" />
             </span>
             <span className="text-xs font-medium text-slate-500">
-              Tous les systèmes opérationnels
+              {lang === "fr" ? "Tous les systèmes opérationnels" : "All systems operational"}
             </span>
           </div>
         </div>

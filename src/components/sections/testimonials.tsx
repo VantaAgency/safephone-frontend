@@ -3,58 +3,11 @@
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import { useLanguage } from "@/lib/language-context";
+import { useMarket } from "@/lib/markets/context";
 import { cn } from "@/lib/utils";
 
-const TESTIMONIALS = [
-  {
-    name: "Aminata D.",
-    context: "Formule Ecran+",
-    quote: "J'ai declare mon ecran casse en ligne et tout est alle tres vite.",
-    quoteEn: "I reported my broken screen online and everything moved very quickly.",
-    avatar: "/avatars/customer-a.svg",
-    rating: 5,
-  },
-  {
-    name: "Moussa F.",
-    context: "Paiement mensuel via Wave",
-    quote: "3 500 FCFA par mois, et zero surprise le jour ou mon telephone est tombe.",
-    quoteEn: "3,500 FCFA per month, and no surprise the day my phone fell.",
-    avatar: "/avatars/customer-b.svg",
-    rating: 5,
-  },
-  {
-    name: "Ousmane S.",
-    context: "Suivi de dossier en ligne",
-    quote: "Le suivi etait clair. Je savais exactement ou en etait ma reparation.",
-    quoteEn: "The tracking was clear. I always knew where my repair stood.",
-    avatar: "/avatars/customer-c.svg",
-    rating: 5,
-  },
-  {
-    name: "Fatou N.",
-    context: "Protection de smartphone",
-    quote: "L'abonnement est simple, et la prise en charge s'est faite sans frais en plus.",
-    quoteEn: "The subscription is simple, and the service was handled with no extra fees.",
-    avatar: "/avatars/customer-a.svg",
-    rating: 5,
-  },
-  {
-    name: "Cheikh T.",
-    context: "Souscription rapide",
-    quote: "J'ai souscrit depuis mon telephone en quelques minutes seulement.",
-    quoteEn: "I subscribed from my phone in just a few minutes.",
-    avatar: "/avatars/customer-b.svg",
-    rating: 4,
-  },
-  {
-    name: "Marième S.",
-    context: "Assistance SafePhone",
-    quote: "Quand j'ai eu un probleme, j'ai ete orientee vite vers la bonne solution.",
-    quoteEn: "When I had an issue, I was quickly guided to the right solution.",
-    avatar: "/avatars/customer-c.svg",
-    rating: 5,
-  },
-];
+// Testimonial data lives in MARKETS[code].testimonials so the SN/US arrays
+// stay alongside the rest of the per-market config.
 
 function StarFilled() {
   return (
@@ -87,6 +40,10 @@ function getCardsPerPage(width: number) {
 
 export function Testimonials() {
   const { lang, t } = useLanguage();
+  const { market } = useMarket();
+  // Per-market testimonial data lives in MARKETS[code].testimonials so we
+  // never show Senegalese names + Wave/FCFA contexts on the US homepage.
+  const testimonials = market.testimonials;
   const [cardsPerPage, setCardsPerPage] = useState(3);
   const [page, setPage] = useState(0);
 
@@ -102,11 +59,11 @@ export function Testimonials() {
 
   const pages = useMemo(() => {
     const chunks = [];
-    for (let i = 0; i < TESTIMONIALS.length; i += cardsPerPage) {
-      chunks.push(TESTIMONIALS.slice(i, i + cardsPerPage));
+    for (let i = 0; i < testimonials.length; i += cardsPerPage) {
+      chunks.push(testimonials.slice(i, i + cardsPerPage));
     }
     return chunks;
-  }, [cardsPerPage]);
+  }, [cardsPerPage, testimonials]);
 
   const currentPage = Math.min(page, Math.max(0, pages.length - 1));
 

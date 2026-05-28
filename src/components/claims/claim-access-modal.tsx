@@ -4,6 +4,8 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { XIcon } from "@/components/ui/icons";
 import { useLanguage } from "@/lib/language-context";
+import { useMarket } from "@/lib/markets/context";
+import { routesFor } from "@/lib/markets/routes";
 
 export const CLAIM_DASHBOARD_HREF = "/tableau-de-bord?tab=claims&view=new";
 
@@ -15,6 +17,8 @@ export function ClaimAccessModal({
   onClose: () => void;
 }) {
   const { t } = useLanguage();
+  const { market } = useMarket();
+  const routes = routesFor(market.code);
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -100,7 +104,7 @@ export function ClaimAccessModal({
               className="justify-start px-0 text-sm font-medium text-indigo-700 hover:bg-transparent hover:text-indigo-900 sm:px-3"
               onClick={() => {
                 onClose();
-                router.push("/forfaits");
+                router.push(routes.plans);
               }}
             >
               {t.hero.claimGatePlans}

@@ -8,6 +8,8 @@ import { LaptopIcon, PhoneIcon, PlugIcon, TabletIcon, TvIcon } from "@/component
 import type { DeviceType } from "@/lib/api/types";
 import { useAuth } from "@/lib/auth/auth-provider";
 import { useLanguage } from "@/lib/language-context";
+import { useMarket } from "@/lib/markets/context";
+import { routesFor } from "@/lib/markets/routes";
 import { cn } from "@/lib/utils";
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
@@ -72,12 +74,8 @@ type DeviceOption = {
   recommendedPlanSlug: string;
 };
 
-const STEP2_HREFS: Record<string, string> = {
-  opt1: "/inscription",
-  opt2: CLAIM_DASHBOARD_HREF,
-  opt3: "/reparations",
-  opt4: "#comment-ca-marche",
-};
+// Step 2 hrefs are derived at render time from the active market — see
+// step2HrefsFor() below.
 
 // ─── Device image card ────────────────────────────────────────────────────────
 
@@ -131,6 +129,14 @@ export function Hero() {
   const router = useRouter();
   const { isAuthenticated } = useAuth();
   const { t } = useLanguage();
+  const { market } = useMarket();
+  const routes = routesFor(market.code);
+  const step2Hrefs: Record<string, string> = {
+    opt1: routes.signup,
+    opt2: CLAIM_DASHBOARD_HREF,
+    opt3: routes.repair,
+    opt4: routes.howItWorks,
+  };
   const h = t.hero;
 
   const [selectedDeviceType, setSelectedDeviceType] =
@@ -210,17 +216,17 @@ export function Hero() {
     step1Options[0];
 
   const ctaHref = (() => {
-    if (!step2Key) return "/forfaits";
+    if (!step2Key) return routes.plans;
 
     if (step2Key === "opt1") {
       const params = new URLSearchParams({
         plan: selectedDeviceOption.recommendedPlanSlug,
         device_type: selectedDeviceOption.id,
       });
-      return `/inscription?${params.toString()}`;
+      return `${routes.signup}?${params.toString()}`;
     }
 
-    return STEP2_HREFS[step2Key] ?? "/forfaits";
+    return step2Hrefs[step2Key] ?? routes.plans;
   })();
 
   const step2Options = [
@@ -232,7 +238,7 @@ export function Hero() {
 
   function handleContinue() {
     if (!step2Key) {
-      router.push("/forfaits");
+      router.push(routes.plans);
       return;
     }
 

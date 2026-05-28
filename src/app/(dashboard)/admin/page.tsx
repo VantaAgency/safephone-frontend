@@ -11,6 +11,7 @@ import { Input, Select } from "@/components/ui/form-field";
 import { ChevronDownIcon, ChevronRightIcon, CreditCardIcon, ShieldCheckIcon, UsersIcon, WrenchIcon } from "@/components/ui/icons";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { CardSkeleton } from "@/components/ui/skeleton";
+import { logger } from "@/lib/logger";
 import {
   useAcceptRepairRequest,
   useAdminClaims,
@@ -467,7 +468,7 @@ export default function AdminPage() {
         data: { status: newStatus as "review" | "approved" | "rejected" | "settled" },
       });
     } catch (err) {
-      console.error("Failed to update claim status:", err);
+      logger.error("admin: update claim status failed", { error: err });
     }
   };
 
@@ -487,7 +488,7 @@ export default function AdminPage() {
         data: { repair_amount_xof: Number(amountValue) },
       });
     } catch (err) {
-      console.error("Failed to update repair amount:", err);
+      logger.error("admin: update repair amount failed", { error: err });
     }
   };
 
@@ -526,7 +527,7 @@ export default function AdminPage() {
         },
       });
     } catch (err) {
-      console.error("Failed to update repair status:", err);
+      logger.error("admin: update repair status failed", { error: err });
     }
   };
 

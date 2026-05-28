@@ -89,6 +89,7 @@ export {
   useRenewSubscriptionPayment,
   useResumePayment,
 } from "./use-payments";
+export { useStripeCheckout, useRegisterUSDevice } from "./use-stripe";
 export {
   useCreateRepairRequest,
   useLookupRepairRequest,

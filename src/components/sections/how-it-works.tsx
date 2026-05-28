@@ -1,6 +1,7 @@
 "use client";
 
 import { useLanguage } from "@/lib/language-context";
+import { useMarket } from "@/lib/markets/context";
 
 export function HowItWorks() {
   const { t } = useLanguage();
@@ -215,6 +216,7 @@ function Step3Illustration() {
 }
 
 function Step4Illustration() {
+  const { market } = useMarket();
   return (
     <div className="relative flex w-full flex-col gap-2 px-3 transition-transform duration-500 group-hover:-translate-y-1">
       {/* Claim submitted */}
@@ -251,7 +253,7 @@ function Step4Illustration() {
           <div className="h-1 w-10 rounded-full bg-green-200" />
         </div>
         <div className="rounded-full bg-green-200 px-1.5 py-0.5">
-          <span className="text-[7px] font-semibold text-green-800">MobiTech 48h</span>
+          <span className="text-[7px] font-semibold text-green-800">{market.copy.repairBadge}</span>
         </div>
       </div>
     </div>

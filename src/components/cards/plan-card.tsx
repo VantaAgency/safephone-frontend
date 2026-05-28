@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import type { Plan } from "@/lib/api/types";
 import type { Lang, Translations } from "@/lib/i18n";
 import { isDevelopmentPlan } from "@/lib/plans";
+import { MARKETS } from "@/lib/markets/config";
+import { splitPrice } from "@/lib/markets/format";
 
 interface PlanCardProps {
   plan: Plan;
@@ -76,8 +78,19 @@ export function PlanCard({
   onSelect,
   compact = false,
 }: PlanCardProps) {
-  const price = annual ? plan.price_annual : plan.price_monthly;
-  const period = annual ? t.plans.perYear : t.plans.perMonth;
+  const rawPrice = annual ? plan.price_annual : plan.price_monthly;
+  // Currency is a property of the PLAN, not of the visitor's market. SN
+  // plans always render as XOF (no division), US plans always render as
+  // USD (cents → dollars). This way a US visitor browsing /sn/forfaits
+  // still sees the SN plans in FCFA, not in dollars.
+  const isUSPlan = plan.slug.startsWith("us_");
+  const planMarket = isUSPlan ? MARKETS.US : MARKETS.SN;
+  const { value: price, period } = splitPrice(
+    rawPrice,
+    planMarket,
+    annual ? "annual" : "monthly",
+    lang,
+  );
   const name = lang === "fr" ? plan.name_fr : plan.name_en;
   const features = lang === "fr" ? plan.features_fr : plan.features_en;
   const notCovered = lang === "fr" ? plan.not_covered_fr : plan.not_covered_en;
@@ -133,7 +146,7 @@ export function PlanCard({
 
         <div className={cn("relative z-10 flex items-end gap-2", compact ? "mb-4" : "mb-8")}>
           <span className={cn("font-normal tracking-tighter text-white", compact ? "text-3xl" : "text-4xl lg:text-5xl")}>
-            {price.toLocaleString("fr-FR")}
+            {price}
           </span>
           <span className={cn("font-medium text-indigo-300", compact ? "mb-1 text-xs" : "mb-1.5 text-sm")}>
             {period}
@@ -235,7 +248,7 @@ export function PlanCard({
             compact ? "text-2xl" : "text-4xl lg:text-5xl",
           )}
         >
-          {price.toLocaleString("fr-FR")}
+          {price}
         </span>
         <span className="mb-1.5 text-sm font-medium text-slate-400">
           {period}
