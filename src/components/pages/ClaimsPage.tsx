@@ -22,6 +22,8 @@ import {
 } from "@/lib/api/hooks";
 import { CardSkeleton } from "@/components/ui/skeleton";
 import { formatXOF } from "@/lib/data";
+import { formatPrice } from "@/lib/markets/format";
+import { currencyForMarket } from "@/lib/markets/currency";
 import {
   formatDeviceDisplayName,
   getDeviceIdentifierSummary,
@@ -284,9 +286,9 @@ export default function SinistresPage() {
                           status={claim.status}
                           label={statusLabels[claim.status] || claim.status}
                         />
-                        {claim.amount_xof && (
+                        {claim.amount_minor && (
                           <span className="text-sm font-medium text-emerald-500">
-                            {formatXOF(claim.amount_xof)}
+                            {formatPrice(claim.amount_minor, currencyForMarket(claim.market))}
                           </span>
                         )}
                       </div>

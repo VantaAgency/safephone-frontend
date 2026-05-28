@@ -38,6 +38,8 @@ import {
 } from "@/lib/api/hooks";
 import { useAuth } from "@/lib/auth/auth-provider";
 import { formatXOF } from "@/lib/data";
+import { formatPrice } from "@/lib/markets/format";
+import { currencyForMarket } from "@/lib/markets/currency";
 import { useLanguage } from "@/lib/language-context";
 import { logger } from "@/lib/logger";
 import { useMarket } from "@/lib/markets/context";
@@ -888,9 +890,9 @@ export default function DashboardPage() {
                               status={c.status}
                               label={statusLabels[c.status] || c.status}
                             />
-                            {c.amount_xof && (
+                            {c.amount_minor && (
                               <span className="text-sm font-medium text-emerald-600">
-                                {formatXOF(c.amount_xof)}
+                                {formatPrice(c.amount_minor, currencyForMarket(c.market))}
                               </span>
                             )}
                           </div>
@@ -1030,7 +1032,7 @@ export default function DashboardPage() {
                           </div>
                         </div>
                         <span className="text-sm font-medium text-emerald-600">
-                          {formatXOF(p.amount_xof)}
+                          {formatPrice(p.amount_minor, currencyForMarket(p.market))}
                         </span>
                       </div>
                     ))}
@@ -1230,9 +1232,9 @@ export default function DashboardPage() {
                               status={claim.status}
                               label={statusLabels[claim.status] || claim.status}
                             />
-                            {claim.amount_xof && (
+                            {claim.amount_minor && (
                               <span className="text-sm font-medium text-emerald-600">
-                                {formatXOF(claim.amount_xof)}
+                                {formatPrice(claim.amount_minor, currencyForMarket(claim.market))}
                               </span>
                             )}
                           </div>
@@ -1350,8 +1352,8 @@ export default function DashboardPage() {
                             : "Repair amount"}
                         </div>
                         <div className="mt-1 text-sm font-medium text-indigo-950">
-                          {repair.repair_amount_xof
-                            ? formatXOF(repair.repair_amount_xof)
+                          {repair.repair_amount_minor
+                            ? formatPrice(repair.repair_amount_minor, currencyForMarket(repair.market))
                             : lang === "fr"
                               ? "Devis en attente"
                               : "Quote pending"}
@@ -1810,7 +1812,7 @@ export default function DashboardPage() {
                           className="border-b border-slate-50 last:border-0 hover:bg-slate-50/30"
                         >
                           <td className="px-5 py-4 font-medium text-emerald-600">
-                            {formatXOF(p.amount_xof)}
+                            {formatPrice(p.amount_minor, currencyForMarket(p.market))}
                           </td>
                           <td className="px-5 py-4 text-slate-500">
                             {getPaymentDisplayLabel(p)}

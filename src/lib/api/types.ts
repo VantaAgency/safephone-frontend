@@ -158,6 +158,8 @@ export interface Subscription {
   updated_at: string;
 }
 
+export type MarketCode = "SN" | "US";
+
 export interface Claim {
   id: string;
   org_id: string;
@@ -167,7 +169,10 @@ export interface Claim {
   claim_type: ClaimType;
   description?: string;
   status: ClaimStatus;
+  amount_minor?: number;
+  /** @deprecated Use amount_minor. Kept for migration compatibility. */
   amount_xof?: number;
+  market: MarketCode;
   filed_at: string;
   reviewed_at?: string;
   settled_at?: string;
@@ -181,7 +186,8 @@ export interface Payment {
   user_id: string;
   plan_id: string;
   subscription_id: string;
-  amount_xof: number;
+  amount_minor: number;
+  market: MarketCode;
   currency: string;
   provider: PaymentProvider;
   payment_method?: PaymentMethod;
@@ -772,7 +778,10 @@ export interface RepairRequest {
   customer_name: string;
   customer_phone: string;
   status: RepairRequestStatus;
+  repair_amount_minor?: number;
+  /** @deprecated Use repair_amount_minor. */
   repair_amount_xof?: number;
+  market: MarketCode;
   request_source: RepairRequestSource;
   created_at: string;
   updated_at: string;
@@ -802,7 +811,7 @@ export interface UpdateRepairRequestStatus {
 }
 
 export interface UpdateRepairRequestAmount {
-  repair_amount_xof: number;
+  repair_amount_minor: number;
 }
 
 export interface CreatePartnerClientRequest {
@@ -856,7 +865,7 @@ export interface CreateClaimRequest {
 
 export interface UpdateClaimStatusRequest {
   status: "review" | "approved" | "rejected" | "settled";
-  amount_xof?: number;
+  amount_minor?: number;
 }
 
 export interface EmployeeUpdateClaimStatusRequest {
@@ -980,7 +989,8 @@ export interface AdminPayment {
   customer_name: string;
   plan_name_fr?: string;
   plan_name_en?: string;
-  amount_xof: number;
+  amount_minor: number;
+  market: MarketCode;
   provider: PaymentProvider;
   payment_method?: PaymentMethod;
   status: PaymentStatus;

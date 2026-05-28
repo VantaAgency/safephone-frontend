@@ -245,7 +245,7 @@ export default function EmployeeWorkspacePage() {
     await updateRepairAmount.mutateAsync({
       id: activeRepairId,
       data: {
-        repair_amount_xof: Number.parseInt(amount, 10),
+        repair_amount_minor: Number.parseInt(amount, 10),
       },
     });
   }
@@ -1547,8 +1547,8 @@ function ClaimDetailPanel({
           {
             label: lang === "fr" ? "Montant" : "Amount",
             value:
-              item.claim.amount_xof !== undefined
-                ? formatXOF(item.claim.amount_xof)
+              item.claim.amount_minor !== undefined
+                ? formatXOF(item.claim.amount_minor)
                 : "—",
           },
         ]}
@@ -1664,8 +1664,8 @@ function RepairDetailPanel({
           {
             label: lang === "fr" ? "Montant" : "Amount",
             value:
-              item.repair.repair_amount_xof !== undefined
-                ? formatXOF(item.repair.repair_amount_xof)
+              item.repair.repair_amount_minor !== undefined
+                ? formatXOF(item.repair.repair_amount_minor)
                 : "—",
           },
         ]}
@@ -1739,8 +1739,8 @@ function RepairUpdateControls({
     item.repair.scheduled_time ?? "",
   );
   const [repairAmount, setRepairAmount] = useState(
-    item.repair.repair_amount_xof
-      ? String(item.repair.repair_amount_xof)
+    item.repair.repair_amount_minor
+      ? String(item.repair.repair_amount_minor)
       : "",
   );
 
@@ -2004,8 +2004,8 @@ function RepairCard({
         <MetaItem
           label={lang === "fr" ? "Montant" : "Amount"}
           value={
-            item.repair.repair_amount_xof !== undefined
-              ? formatXOF(item.repair.repair_amount_xof)
+            item.repair.repair_amount_minor !== undefined
+              ? formatXOF(item.repair.repair_amount_minor)
               : "—"
           }
         />

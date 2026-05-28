@@ -370,7 +370,7 @@ function PaiementContent() {
     ? trackedBillingCycle === "annual"
       ? trackedPlan.price_annual
       : trackedPlan.price_monthly
-    : (paymentCheckout.data?.payment.amount_xof ?? 0);
+    : (paymentCheckout.data?.payment.amount_minor ?? 0);
   const trackedPlanName = trackedPlan
     ? lang === "fr"
       ? trackedPlan.name_fr

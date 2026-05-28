@@ -151,6 +151,7 @@ function SignInForm({
   onSwitchToSignUp: () => void;
   onForgotPassword: () => void;
 }) {
+  const { market } = useMarket();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -314,6 +315,7 @@ function SignUpForm({
   onSuccess: () => Promise<void> | void;
   onSwitchToSignIn: () => void;
 }) {
+  const { market } = useMarket();
   const [form, setForm] = useState({
     name: "",
     email: "",

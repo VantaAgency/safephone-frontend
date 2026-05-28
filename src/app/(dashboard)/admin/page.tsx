@@ -30,6 +30,8 @@ import {
   useReviewPartnerApplication,
 } from "@/lib/api/hooks";
 import { formatXOF } from "@/lib/data";
+import { formatPrice } from "@/lib/markets/format";
+import { currencyForMarket } from "@/lib/markets/currency";
 import { useAuth } from "@/lib/auth/auth-provider";
 import { hasRole } from "@/lib/auth/roles";
 import { useLanguage } from "@/lib/language-context";
@@ -476,7 +478,7 @@ export default function AdminPage() {
     repairStatusDrafts[repair.id] ?? repair.status;
 
   const getRepairDraftAmount = (repair: RepairRequest): string =>
-    repairAmountDrafts[repair.id] ?? String(repair.repair_amount_xof ?? "");
+    repairAmountDrafts[repair.id] ?? String(repair.repair_amount_minor ?? "");
 
   const handleRepairAmountSave = async (repair: RepairRequest) => {
     const amountValue = getRepairDraftAmount(repair).trim();
@@ -485,7 +487,7 @@ export default function AdminPage() {
     try {
       await updateRepairAmount.mutateAsync({
         id: repair.id,
-        data: { repair_amount_xof: Number(amountValue) },
+        data: { repair_amount_minor: Number(amountValue) },
       });
     } catch (err) {
       logger.error("admin: update repair amount failed", { error: err });
@@ -729,8 +731,10 @@ export default function AdminPage() {
                           {c.description && (
                             <p className="mt-1 text-xs text-slate-400 line-clamp-2">{c.description}</p>
                           )}
-                          {c.amount_xof && (
-                            <p className="mt-1 text-sm font-medium text-emerald-600">{formatXOF(c.amount_xof)}</p>
+                          {c.amount_minor && (
+                            <p className="mt-1 text-sm font-medium text-emerald-600">
+                              {formatPrice(c.amount_minor, currencyForMarket(c.market))}
+                            </p>
                           )}
                         </div>
                         <div className="flex items-center gap-3">
@@ -999,8 +1003,8 @@ export default function AdminPage() {
                             </Button>
                           </div>
                           <p className="mt-3 text-xs text-slate-500">
-                            {repair.repair_amount_xof
-                              ? `${formatXOF(repair.repair_amount_xof)}`
+                            {repair.repair_amount_minor
+                              ? formatPrice(repair.repair_amount_minor, currencyForMarket(repair.market))
                               : lang === "fr"
                                 ? "Aucun montant défini pour le moment."
                                 : "No amount set yet."}
@@ -1242,6 +1246,7 @@ export default function AdminPage() {
                           "Client",
                           lang === "fr" ? "Forfait" : "Plan",
                           lang === "fr" ? "Montant" : "Amount",
+                          lang === "fr" ? "Marché" : "Market",
                           lang === "fr" ? "Prestataire" : "Provider",
                           lang === "fr" ? "Méthode finale" : "Final method",
                           lang === "fr" ? "Statut" : "Status",
@@ -1261,7 +1266,15 @@ export default function AdminPage() {
                             <td className="px-5 py-3.5 font-mono text-xs text-slate-400">{p.id.slice(0, 8)}</td>
                             <td className="px-5 py-3.5 font-medium text-indigo-950">{p.customer_name}</td>
                             <td className="px-5 py-3.5 text-slate-500">{planName || "—"}</td>
-                            <td className="px-5 py-3.5 font-medium text-emerald-600">{p.amount_xof.toLocaleString("fr-FR")} XOF</td>
+                            <td className="px-5 py-3.5 font-medium text-emerald-600">
+                              {formatPrice(p.amount_minor, currencyForMarket(p.market))}
+                            </td>
+                            <td className="px-5 py-3.5">
+                              <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-600">
+                                <span aria-hidden>{p.market === "US" ? "🇺🇸" : "🇸🇳"}</span>
+                                {p.market}
+                              </span>
+                            </td>
                             <td className="px-5 py-3.5">
                               <span className="rounded-md px-2 py-0.5 text-xs font-medium text-white" style={{ backgroundColor: providerDisplay.color }}>
                                 {providerDisplay.label}

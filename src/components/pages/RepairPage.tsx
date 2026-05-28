@@ -315,9 +315,9 @@ export default function ReparationsPage() {
                 {lang === "fr" ? "Montant réparation" : "Repair amount"}
               </div>
               <div className="mt-1 text-sm font-medium text-indigo-950">
-                {lookupRepair.data.repair_amount_xof
+                {lookupRepair.data.repair_amount_minor
                   ? formatPrice(
-                      lookupRepair.data.repair_amount_xof,
+                      lookupRepair.data.repair_amount_minor,
                       market.currency,
                     )
                   : lang === "fr"
