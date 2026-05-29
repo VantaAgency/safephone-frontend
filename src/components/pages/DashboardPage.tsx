@@ -256,6 +256,7 @@ export default function DashboardPage() {
   // IMEI form state
   const [imeiFormDevice, setImeiFormDevice] = useState<string | null>(null);
   const [imeiValue, setImeiValue] = useState("");
+  const [imeiError, setImeiError] = useState("");
   const [paymentActionError, setPaymentActionError] = useState("");
   const [renewalFormSubscriptionId, setRenewalFormSubscriptionId] = useState<string | null>(null);
   const [renewalPlanId, setRenewalPlanId] = useState("");
@@ -424,7 +425,15 @@ export default function DashboardPage() {
   };
 
   const handleImeiSubmit = async (deviceId: string) => {
-    if (imeiValue.length < 10) return;
+    setImeiError("");
+    if (imeiValue.length !== 15) {
+      setImeiError(
+        lang === "fr"
+          ? "L'IMEI doit contenir exactement 15 chiffres."
+          : "IMEI must be exactly 15 digits.",
+      );
+      return;
+    }
     const device = devices?.find((d) => d.id === deviceId);
     if (!device) return;
 
@@ -442,6 +451,16 @@ export default function DashboardPage() {
       setImeiFormDevice(null);
       setImeiValue("");
     } catch (err) {
+      // Surface the backend message (typically "invalid IMEI" / Luhn) so the
+      // user understands why the submit failed instead of seeing it only in
+      // the console.
+      const message =
+        err instanceof Error
+          ? err.message
+          : lang === "fr"
+            ? "Impossible d'enregistrer l'IMEI. Vérifiez le numéro."
+            : "Could not save the IMEI. Please check the number.";
+      setImeiError(message);
       logger.error("dashboard: update device failed", { error: err });
     }
   };
@@ -1479,21 +1498,22 @@ export default function DashboardPage() {
                               <div className="flex gap-2">
                                 <Input
                                   value={imeiValue}
-                                  onChange={(e) =>
+                                  onChange={(e) => {
+                                    setImeiError("");
                                     setImeiValue(
                                       e.target.value
                                         .replace(/\D/g, "")
                                         .slice(0, 15),
-                                    )
-                                  }
-                                  placeholder="357841092648301"
+                                    );
+                                  }}
+                                  placeholder="490154203237518"
                                   className="font-mono text-sm tracking-wider"
                                 />
                                 <Button
                                   variant="primary"
                                   size="sm"
                                   onClick={() => handleImeiSubmit(d.id)}
-                                  disabled={imeiValue.length < 10}
+                                  disabled={imeiValue.length !== 15}
                                   loading={updateDevice.isPending}
                                 >
                                   {lang === "fr" ? "Valider" : "Submit"}
@@ -1504,11 +1524,17 @@ export default function DashboardPage() {
                                   onClick={() => {
                                     setImeiFormDevice(null);
                                     setImeiValue("");
+                                    setImeiError("");
                                   }}
                                 >
                                   {lang === "fr" ? "Annuler" : "Cancel"}
                                 </Button>
                               </div>
+                              {imeiError && (
+                                <p className="text-xs font-medium text-red-600">
+                                  {imeiError}
+                                </p>
+                              )}
                             </div>
                           ) : (
                             <div className="flex items-center justify-between">
