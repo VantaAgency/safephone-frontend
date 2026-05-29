@@ -37,6 +37,7 @@ import {
   useUpdateDevice,
 } from "@/lib/api/hooks";
 import { useAuth } from "@/lib/auth/auth-provider";
+import { ApiError } from "@/lib/api/client";
 import { formatXOF } from "@/lib/data";
 import { formatPrice } from "@/lib/markets/format";
 import { currencyForMarket } from "@/lib/markets/currency";
@@ -451,16 +452,18 @@ export default function DashboardPage() {
       setImeiFormDevice(null);
       setImeiValue("");
     } catch (err) {
-      // Surface the backend message (typically "invalid IMEI" / Luhn) so the
-      // user understands why the submit failed instead of seeing it only in
-      // the console.
-      const message =
-        err instanceof Error
-          ? err.message
-          : lang === "fr"
-            ? "Impossible d'enregistrer l'IMEI. Vérifiez le numéro."
-            : "Could not save the IMEI. Please check the number.";
-      setImeiError(message);
+      // ValidationFailed responses carry a `fields` map with the field-level
+      // reason (e.g. "IMEI is not valid (must be 15 digits with a valid
+      // checksum)"). Prefer that over the generic "validation failed" top-
+      // level message so the user sees something actionable.
+      const fieldsError =
+        err instanceof ApiError ? err.fields?.imei : undefined;
+      const generic = err instanceof Error ? err.message : undefined;
+      const fallback =
+        lang === "fr"
+          ? "IMEI invalide. Vérifiez le numéro (15 chiffres avec le bon checksum)."
+          : "Invalid IMEI. Check the number (15 digits with a valid checksum).";
+      setImeiError(fieldsError || generic || fallback);
       logger.error("dashboard: update device failed", { error: err });
     }
   };
