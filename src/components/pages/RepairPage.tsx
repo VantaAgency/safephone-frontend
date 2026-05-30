@@ -123,6 +123,10 @@ export default function ReparationsPage() {
   const { isAuthenticated } = useAuth();
   const router = useRouter();
 
+  // Top-level tab: book a new repair vs. track an existing one. Splitting
+  // these two flows into separate tabs keeps the page shorter and matches
+  // the user's mental model (booking and tracking are distinct intents).
+  const [repairTab, setRepairTab] = useState<"new" | "track">("new");
   const [step, setStep] = useState(1);
   const [deviceBrand, setDeviceBrand] = useState("");
   const [deviceModel, setDeviceModel] = useState("");
@@ -427,7 +431,7 @@ export default function ReparationsPage() {
       </div>
 
       <div className="relative z-10 mx-auto max-w-6xl px-5 md:px-10">
-        <div className="mx-auto mb-14 max-w-2xl text-center">
+        <div className="mx-auto mb-10 max-w-2xl text-center">
           <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-slate-200/80 bg-white px-4 py-1.5 text-xs font-medium uppercase tracking-wider text-slate-500">
             <WrenchIcon size={14} className="text-indigo-600" />
             <span>{lang === "fr" ? `Réseau ${repairBrand}` : `${repairBrand} network`}</span>
@@ -438,7 +442,37 @@ export default function ReparationsPage() {
           <p className="mt-4 text-lg text-slate-500">{t.mobitech.sub}</p>
         </div>
 
+        <div className="mx-auto mb-10 flex max-w-md justify-center">
+          <div className="inline-flex items-center gap-1 rounded-full border border-slate-200/80 bg-white p-1 shadow-sm">
+            <button
+              type="button"
+              onClick={() => setRepairTab("new")}
+              className={cn(
+                "rounded-full px-5 py-2 text-sm font-medium transition-all cursor-pointer",
+                repairTab === "new"
+                  ? "bg-indigo-950 text-white shadow-sm"
+                  : "text-slate-500 hover:text-indigo-950",
+              )}
+            >
+              {lang === "fr" ? "Nouvelle réparation" : "New repair"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setRepairTab("track")}
+              className={cn(
+                "rounded-full px-5 py-2 text-sm font-medium transition-all cursor-pointer",
+                repairTab === "track"
+                  ? "bg-indigo-950 text-white shadow-sm"
+                  : "text-slate-500 hover:text-indigo-950",
+              )}
+            >
+              {lang === "fr" ? "Suivre une demande" : "Track a request"}
+            </button>
+          </div>
+        </div>
+
         <div className="mx-auto max-w-4xl">
+          {repairTab === "new" && (
           <div className="mb-10 rounded-[2rem] border border-slate-200/80 bg-white/95 px-5 py-4 backdrop-blur-sm">
             <div className="overflow-x-auto">
               <div className="mx-auto flex w-max min-w-full items-start justify-center">
@@ -479,8 +513,9 @@ export default function ReparationsPage() {
               </div>
             </div>
           </div>
+          )}
 
-          {step === 1 && (
+          {repairTab === "new" && step === 1 && (
             <section className="rounded-[2rem] border border-slate-200/80 bg-white/95 p-6 backdrop-blur-sm md:p-8">
               <div className="mb-6">
                 <h2 className="text-2xl font-medium tracking-tight text-indigo-950">
@@ -559,7 +594,7 @@ export default function ReparationsPage() {
             </section>
           )}
 
-          {step === 2 && (
+          {repairTab === "new" && step === 2 && (
             <section className="rounded-[2rem] border border-slate-200/80 bg-white/95 p-6 backdrop-blur-sm md:p-8">
               <div className="mb-6 flex items-start justify-between gap-4">
                 <div>
@@ -623,7 +658,7 @@ export default function ReparationsPage() {
             </section>
           )}
 
-          {step === 3 && (
+          {repairTab === "new" && step === 3 && (
             <section className="rounded-[2rem] border border-slate-200/80 bg-white/95 p-6 backdrop-blur-sm md:p-8">
               <div className="mb-6">
                 <h2 className="text-2xl font-medium tracking-tight text-indigo-950">
@@ -708,7 +743,7 @@ export default function ReparationsPage() {
             </section>
           )}
 
-          {step === 4 && (
+          {repairTab === "new" && step === 4 && (
             <section className="rounded-[2rem] border border-slate-200/80 bg-white/95 p-6 backdrop-blur-sm md:p-8">
               <div className="mb-6">
                 <h2 className="text-2xl font-medium tracking-tight text-indigo-950">
@@ -809,7 +844,7 @@ export default function ReparationsPage() {
             </section>
           )}
 
-          {trackingSection}
+          {repairTab === "track" && trackingSection}
         </div>
       </div>
     </div>
