@@ -32,6 +32,7 @@ import {
 import { formatXOF } from "@/lib/data";
 import { formatPrice } from "@/lib/markets/format";
 import { currencyForMarket } from "@/lib/markets/currency";
+import { Pagination } from "@/components/ui/pagination";
 import { useAuth } from "@/lib/auth/auth-provider";
 import { hasRole } from "@/lib/auth/roles";
 import { useLanguage } from "@/lib/language-context";
@@ -70,6 +71,28 @@ export default function AdminPage() {
   const [search, setSearch] = useState("");
   const deferredSearch = useDeferredValue(search);
 
+  // Per-tab pagination state. 1-indexed; PAGE_SIZE matches the backend's
+  // default limit when the param is omitted. Tabs without their own state
+  // here render only the first page (e.g. claims/repairs which usually
+  // have shorter lists and are filtered by status).
+  const PAGE_SIZE = 20;
+  const [customersPage, setCustomersPage] = useState(1);
+  const [paymentsPage, setPaymentsPage] = useState(1);
+  const [partnersPage, setPartnersPage] = useState(1);
+  const [claimsPage, setClaimsPage] = useState(1);
+  const [repairsPage, setRepairsPage] = useState(1);
+  const pageToOffset = (page: number) => (page - 1) * PAGE_SIZE;
+  const paginationFor = (page: number) => ({
+    limit: PAGE_SIZE,
+    offset: pageToOffset(page),
+  });
+
+  // Reset to page 1 when the search query changes — otherwise a fresh
+  // search on page 3 of the previous list would return zero results.
+  useEffect(() => {
+    setCustomersPage(1);
+  }, [deferredSearch]);
+
   const isAdmin = hasRole(user?.roles, "admin");
   const {
     data: overview,
@@ -82,7 +105,7 @@ export default function AdminPage() {
     data: adminClaims,
     isLoading: claimsLoading,
     refetch: refetchClaims,
-  } = useAdminClaims(undefined, {
+  } = useAdminClaims(paginationFor(claimsPage), {
     enabled: isAdmin && tab === "claims",
   });
   const {
@@ -90,7 +113,7 @@ export default function AdminPage() {
     isLoading: repairsLoading,
     refetch: refetchRepairs,
   } = useAdminRepairRequests(
-    { search: deferredSearch },
+    { search: deferredSearch, ...paginationFor(repairsPage) },
     { enabled: isAdmin && tab === "repairs" },
   );
   const updateClaimStatus = useUpdateClaimStatus();
@@ -104,20 +127,21 @@ export default function AdminPage() {
     refetch: refetchCustomers,
   } = useAdminCustomers(
     deferredSearch,
+    paginationFor(customersPage),
     { enabled: isAdmin && tab === "customers" },
   );
   const {
     data: adminPayments,
     isLoading: paymentsLoading,
     refetch: refetchPayments,
-  } = useAdminPayments({
+  } = useAdminPayments(paginationFor(paymentsPage), {
     enabled: isAdmin && tab === "payments",
   });
   const {
     data: adminPartners = [],
     isLoading: partnersLoading,
     refetch: refetchPartners,
-  } = useAdminPartners({
+  } = useAdminPartners(paginationFor(partnersPage), {
     enabled: isAdmin && tab === "partners",
   });
   const {
@@ -768,6 +792,14 @@ export default function AdminPage() {
                 })}
               </div>
             )}
+            <Pagination
+              page={claimsPage}
+              pageSize={PAGE_SIZE}
+              currentCount={(adminClaims ?? []).length}
+              isLoading={claimsLoading}
+              onPageChange={setClaimsPage}
+              lang={lang}
+            />
           </div>
         )}
 
@@ -1023,6 +1055,14 @@ export default function AdminPage() {
                 })}
               </div>
             )}
+            <Pagination
+              page={repairsPage}
+              pageSize={PAGE_SIZE}
+              currentCount={adminRepairs.length}
+              isLoading={repairsLoading}
+              onPageChange={setRepairsPage}
+              lang={lang}
+            />
           </div>
         )}
 
@@ -1210,6 +1250,14 @@ export default function AdminPage() {
                 </div>
               </div>
             )}
+            <Pagination
+              page={customersPage}
+              pageSize={PAGE_SIZE}
+              currentCount={(customers ?? []).length}
+              isLoading={customersLoading}
+              onPageChange={setCustomersPage}
+              lang={lang}
+            />
           </div>
         )}
 
@@ -1311,6 +1359,14 @@ export default function AdminPage() {
                 </div>
               </div>
             )}
+            <Pagination
+              page={paymentsPage}
+              pageSize={PAGE_SIZE}
+              currentCount={(adminPayments ?? []).length}
+              isLoading={paymentsLoading}
+              onPageChange={setPaymentsPage}
+              lang={lang}
+            />
           </div>
         )}
 
@@ -1616,6 +1672,14 @@ export default function AdminPage() {
               </div>
               )}
             </div>
+            <Pagination
+              page={partnersPage}
+              pageSize={PAGE_SIZE}
+              currentCount={adminPartners.length}
+              isLoading={partnersLoading}
+              onPageChange={setPartnersPage}
+              lang={lang}
+            />
 
             {selectedPartner && (
               <div className="mt-6 rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">

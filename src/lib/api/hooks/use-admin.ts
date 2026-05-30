@@ -35,6 +35,12 @@ interface AdminQueryOptions {
   enabled?: boolean;
 }
 
+/** Standard pagination shape — mirrors PaginationParams on endpoints.ts. */
+export interface AdminPaginationParams {
+  limit?: number;
+  offset?: number;
+}
+
 async function fetchAdminAction<T>(path: string, init: RequestInit): Promise<T> {
   const response = await fetch(path, {
     ...init,
@@ -77,20 +83,28 @@ export function useAdminStats({ enabled = true }: AdminQueryOptions = {}) {
   });
 }
 
-export function useAdminCustomers(search?: string, { enabled = true }: AdminQueryOptions = {}) {
+export function useAdminCustomers(
+  search?: string,
+  pagination?: AdminPaginationParams,
+  { enabled = true }: AdminQueryOptions = {},
+) {
   return useQuery<AdminCustomer[]>({
-    queryKey: ["admin-customers", search],
-    queryFn: () => admin.customers({ search }),
+    queryKey: ["admin-customers", search, pagination?.limit, pagination?.offset],
+    queryFn: () => admin.customers({ search, ...pagination }),
     enabled,
     placeholderData: keepPreviousData,
   });
 }
 
-export function useAdminPayments({ enabled = true }: AdminQueryOptions = {}) {
+export function useAdminPayments(
+  pagination?: AdminPaginationParams,
+  { enabled = true }: AdminQueryOptions = {},
+) {
   return useQuery<AdminPayment[]>({
-    queryKey: ["admin-payments"],
-    queryFn: () => admin.payments(),
+    queryKey: ["admin-payments", pagination?.limit, pagination?.offset],
+    queryFn: () => admin.payments(pagination),
     enabled,
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -117,11 +131,15 @@ export function useAdminEmployee(
   });
 }
 
-export function useAdminCommercials({ enabled = true }: AdminQueryOptions = {}) {
+export function useAdminCommercials(
+  pagination?: AdminPaginationParams,
+  { enabled = true }: AdminQueryOptions = {},
+) {
   return useQuery<AdminCommercialListItem[]>({
-    queryKey: ["admin-commercials"],
-    queryFn: () => admin.commercials(),
+    queryKey: ["admin-commercials", pagination?.limit, pagination?.offset],
+    queryFn: () => admin.commercials(pagination),
     enabled,
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -181,11 +199,15 @@ export function useUpdateCommercialCommission() {
   });
 }
 
-export function useAdminPartners({ enabled = true }: AdminQueryOptions = {}) {
+export function useAdminPartners(
+  pagination?: AdminPaginationParams,
+  { enabled = true }: AdminQueryOptions = {},
+) {
   return useQuery<AdminPartner[]>({
-    queryKey: ["admin-partners"],
-    queryFn: () => admin.partners(),
+    queryKey: ["admin-partners", pagination?.limit, pagination?.offset],
+    queryFn: () => admin.partners(pagination),
     enabled,
+    placeholderData: keepPreviousData,
   });
 }
 
