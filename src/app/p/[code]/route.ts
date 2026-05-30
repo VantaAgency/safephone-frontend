@@ -8,6 +8,33 @@ import {
   normalizePartnerReferralSourceMedium,
 } from "@/lib/partner-referrals";
 
+// Build the public-facing base URL for the redirect. `request.url` echoes
+// Next.js's bind host (e.g. `http://0.0.0.0:3001` when `next dev -H
+// 0.0.0.0` is used), so when someone follows a ngrok-tunneled link
+// `https://....ngrok-free.dev/p/CODE` they would be sent to 0.0.0.0:3001
+// — unreachable on their machine. Trust X-Forwarded-Host / Host before
+// falling back to the runtime env, then to request.url as a last resort.
+function publicBaseURL(request: NextRequest): string {
+  const forwardedHost = request.headers.get("x-forwarded-host");
+  const forwardedProto = request.headers.get("x-forwarded-proto");
+  if (forwardedHost) {
+    const proto = forwardedProto?.split(",")[0]?.trim() || "https";
+    return `${proto}://${forwardedHost.split(",")[0].trim()}`;
+  }
+  const host = request.headers.get("host");
+  if (host && !/^0\.0\.0\.0\b/.test(host)) {
+    const proto =
+      request.nextUrl.protocol.replace(":", "") || "http";
+    return `${proto}://${host}`;
+  }
+  const configured =
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    "";
+  if (configured) return configured.replace(/\/+$/, "");
+  return new URL(request.url).origin;
+}
+
 export async function GET(
   request: NextRequest,
   context: { params: Promise<{ code: string }> },
@@ -17,7 +44,7 @@ export async function GET(
   const sourceMedium = normalizePartnerReferralSourceMedium(
     request.nextUrl.searchParams.get("src"),
   );
-  const redirectURL = new URL("/inscription", request.url);
+  const redirectURL = new URL("/inscription", publicBaseURL(request));
 
   if (normalizedCode) {
     redirectURL.searchParams.set("partner", normalizedCode);
