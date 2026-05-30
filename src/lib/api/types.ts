@@ -937,11 +937,17 @@ export interface ApiErrorResponse {
 
 // --- Admin types ---
 
+export interface ProviderRevenue {
+  provider: string;
+  market: MarketCode;
+  amount_minor: number;
+}
+
 export interface AdminStats {
   active_subscribers: number;
   monthly_revenue_xof: number;
   open_claims: number;
-  revenue_by_provider: Record<string, number>;
+  revenue_by_provider: ProviderRevenue[];
   total_customers: number;
   total_devices: number;
 }

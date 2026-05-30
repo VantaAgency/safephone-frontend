@@ -207,9 +207,14 @@ export default function AdminPage() {
 
   const stats = overview?.stats;
   const overviewClaims = overview?.recent_claims ?? [];
-  const revenueByProviderEntries = Object.entries(stats?.revenue_by_provider ?? {});
-  const providerCards: Array<[string, number]> =
-    revenueByProviderEntries.length > 0 ? revenueByProviderEntries : [["dexpay", 0]];
+  // Each card is keyed by (provider, market) so currencies are never summed
+  // and each amount renders in its native currency. The backend already
+  // returns one row per (provider × market) pair; we just default to a
+  // single empty DEXPAY/SN card when there's no data yet.
+  const providerCards =
+    stats?.revenue_by_provider && stats.revenue_by_provider.length > 0
+      ? stats.revenue_by_provider
+      : [{ provider: "dexpay", market: "SN" as const, amount_minor: 0 }];
 
   const getProviderDisplay = (provider?: string) => {
     if (!provider) {
@@ -660,18 +665,20 @@ export default function AdminPage() {
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 gap-3">
-                    {providerCards.map(([provider, amount]) => {
-                      const display = getProviderDisplay(provider);
+                    {providerCards.map((row) => {
+                      const display = getProviderDisplay(row.provider);
+                      const currency = currencyForMarket(row.market);
                       return (
-                        <div key={provider} className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm">
+                        <div key={`${row.provider}:${row.market}`} className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm">
                           <div className="flex items-center gap-2">
                             <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: display.color }} />
-                            <span className="text-xs font-medium text-slate-500">{display.label}</span>
+                            <span className="text-xs font-medium text-slate-500">
+                              {display.label} · {row.market}
+                            </span>
                           </div>
                           <div className="mt-2 text-lg font-medium text-indigo-950">
-                            {amount.toLocaleString("fr-FR")}
+                            {formatPrice(row.amount_minor, currency)}
                           </div>
-                          <div className="text-xs text-slate-400">XOF</div>
                         </div>
                       );
                     })}
@@ -1218,15 +1225,17 @@ export default function AdminPage() {
 
             {!paymentsLoading && stats && (
               <div className="mb-6 grid grid-cols-1 gap-3 md:grid-cols-2">
-                {providerCards.map(([provider, amount]) => {
-                  const display = getProviderDisplay(provider);
+                {providerCards.map((row) => {
+                  const display = getProviderDisplay(row.provider);
+                  const currency = currencyForMarket(row.market);
                   return (
-                    <div key={provider} className="rounded-xl border border-slate-200/80 bg-white p-4 text-center shadow-sm">
-                      <div className="text-xs font-medium text-slate-500">{display.label}</div>
-                      <div className="mt-1 text-lg font-medium" style={{ color: display.color }}>
-                        {amount.toLocaleString("fr-FR")}
+                    <div key={`${row.provider}:${row.market}`} className="rounded-xl border border-slate-200/80 bg-white p-4 text-center shadow-sm">
+                      <div className="text-xs font-medium text-slate-500">
+                        {display.label} · {row.market}
                       </div>
-                      <div className="text-[10px] text-slate-400">XOF</div>
+                      <div className="mt-1 text-lg font-medium" style={{ color: display.color }}>
+                        {formatPrice(row.amount_minor, currency)}
+                      </div>
                     </div>
                   );
                 })}
