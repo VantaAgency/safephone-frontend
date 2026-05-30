@@ -755,7 +755,13 @@ export default function AdminPage() {
                     <div key={c.id} className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
                       <div className="flex items-center justify-between">
                         <div>
-                          <div className="font-medium text-indigo-950">{CLAIM_TYPE_LABELS[c.claim_type] || c.claim_type}</div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <div className="font-medium text-indigo-950">{CLAIM_TYPE_LABELS[c.claim_type] || c.claim_type}</div>
+                            <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-600">
+                              <span aria-hidden>{c.market === "US" ? "🇺🇸" : "🇸🇳"}</span>
+                              {c.market}
+                            </span>
+                          </div>
                           <div className="mt-0.5 text-sm text-slate-500">
                             {c.id.slice(0, 8)} &middot; {new Date(c.filed_at).toLocaleDateString(lang === "fr" ? "fr-FR" : "en-US")}
                           </div>
@@ -855,6 +861,10 @@ export default function AdminPage() {
                               status={repair.status}
                               label={getRepairStatusLabel(repair.status, lang)}
                             />
+                            <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-600">
+                              <span aria-hidden>{repair.market === "US" ? "🇺🇸" : "🇸🇳"}</span>
+                              {repair.market}
+                            </span>
                           </div>
                           <div className="mt-1 text-sm text-slate-500">
                             {repair.customer_name} • {repair.customer_phone}
@@ -1016,8 +1026,13 @@ export default function AdminPage() {
                         </div>
 
                         <div className="rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4">
-                          <div className="mb-3 text-sm font-medium text-indigo-950">
-                            {lang === "fr" ? "Devis réparation" : "Repair quote"}
+                          <div className="mb-3 flex items-center justify-between text-sm font-medium text-indigo-950">
+                            <span>{lang === "fr" ? "Devis réparation" : "Repair quote"}</span>
+                            <span className="text-xs font-normal text-slate-500">
+                              {repair.market === "US"
+                                ? lang === "fr" ? "en cents USD" : "in USD cents"
+                                : "FCFA"}
+                            </span>
                           </div>
                           <div className="flex gap-2">
                             <Input
@@ -1030,7 +1045,7 @@ export default function AdminPage() {
                                   [repair.id]: e.target.value,
                                 }))
                               }
-                              placeholder="25000"
+                              placeholder={repair.market === "US" ? "7900 (= $79.00)" : "25000"}
                             />
                             <Button
                               variant="outline"
