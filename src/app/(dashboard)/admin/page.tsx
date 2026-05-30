@@ -506,17 +506,38 @@ export default function AdminPage() {
   const getRepairDraftStatus = (repair: RepairRequest): RepairRequestStatus =>
     repairStatusDrafts[repair.id] ?? repair.status;
 
+  // Display units differ from storage units on US: the admin types dollars
+  // (79.00) but the column holds cents (7900). On SN, FCFA has no minor
+  // unit so display and storage are the same whole-number value.
+  const repairAmountDisplayUnits = (repair: RepairRequest): string => {
+    if (repair.repair_amount_minor == null) return "";
+    if (repair.market === "US") {
+      // 7900 → "79" if even dollars, "79.99" otherwise. trimming trailing
+      // zeros avoids "79.00" in the input which is visually noisy.
+      const dollars = repair.repair_amount_minor / 100;
+      return Number.isInteger(dollars) ? String(dollars) : dollars.toFixed(2);
+    }
+    return String(repair.repair_amount_minor);
+  };
+
   const getRepairDraftAmount = (repair: RepairRequest): string =>
-    repairAmountDrafts[repair.id] ?? String(repair.repair_amount_minor ?? "");
+    repairAmountDrafts[repair.id] ?? repairAmountDisplayUnits(repair);
 
   const handleRepairAmountSave = async (repair: RepairRequest) => {
     const amountValue = getRepairDraftAmount(repair).trim();
     if (amountValue === "") return;
 
+    // Convert display units → storage units before hitting the API.
+    // Round to avoid floating-point drift (79.99 * 100 = 7999.0000000001).
+    const parsed = Number(amountValue);
+    if (!Number.isFinite(parsed) || parsed < 0) return;
+    const amountMinor =
+      repair.market === "US" ? Math.round(parsed * 100) : Math.round(parsed);
+
     try {
       await updateRepairAmount.mutateAsync({
         id: repair.id,
-        data: { repair_amount_minor: Number(amountValue) },
+        data: { repair_amount_minor: amountMinor },
       });
     } catch (err) {
       logger.error("admin: update repair amount failed", { error: err });
@@ -1029,15 +1050,14 @@ export default function AdminPage() {
                           <div className="mb-3 flex items-center justify-between text-sm font-medium text-indigo-950">
                             <span>{lang === "fr" ? "Devis réparation" : "Repair quote"}</span>
                             <span className="text-xs font-normal text-slate-500">
-                              {repair.market === "US"
-                                ? lang === "fr" ? "en cents USD" : "in USD cents"
-                                : "FCFA"}
+                              {repair.market === "US" ? "USD ($)" : "FCFA"}
                             </span>
                           </div>
                           <div className="flex gap-2">
                             <Input
                               type="number"
                               min={0}
+                              step={repair.market === "US" ? "0.01" : "1"}
                               value={getRepairDraftAmount(repair)}
                               onChange={(e) =>
                                 setRepairAmountDrafts((current) => ({
@@ -1045,7 +1065,7 @@ export default function AdminPage() {
                                   [repair.id]: e.target.value,
                                 }))
                               }
-                              placeholder={repair.market === "US" ? "7900 (= $79.00)" : "25000"}
+                              placeholder={repair.market === "US" ? "79 or 79.99" : "25000"}
                             />
                             <Button
                               variant="outline"
