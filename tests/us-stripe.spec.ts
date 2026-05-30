@@ -163,5 +163,17 @@ test.describe("US Stripe checkout flow", () => {
       );
     }
     await expect(page).toHaveURL(/\/us\/dashboard/);
+
+    // ─── Payments tab shows the Stripe transaction in USD ────────────────
+    // The invoice.paid handler now records a payment row (closes the bug
+    // where USD purchases were invisible in /us/dashboard + /admin).
+    // Webhook timing varies — give it up to ~15s to land.
+    const paymentsTab = page
+      .getByRole("button", { name: /^payments$|^paiements$/i })
+      .first();
+    await paymentsTab.click();
+    await expect(
+      page.getByText(/\$\d+(\.\d{2})?/).first(),
+    ).toBeVisible({ timeout: 15_000 });
   });
 });
