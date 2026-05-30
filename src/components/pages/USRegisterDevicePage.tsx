@@ -52,10 +52,17 @@ export default function USRegisterDevicePage() {
           router.push(routes.dashboard);
         },
         onError: (err) => {
+          // Surface the field-level "IMEI is not valid …" message when the
+          // backend returns ValidationFailed with a fields map. Otherwise
+          // fall through to err.message (e.g. "device with this IMEI
+          // already exists") or a generic copy.
+          const fieldErr =
+            err instanceof ApiError ? err.fields?.imei : undefined;
           setErrorMessage(
-            err instanceof ApiError
-              ? err.message
-              : "We couldn't save your phone. Please try again.",
+            fieldErr ??
+              (err instanceof ApiError
+                ? err.message
+                : "We couldn't save your phone. Please try again."),
           );
         },
       },
