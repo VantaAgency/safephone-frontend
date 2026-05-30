@@ -10,28 +10,75 @@ import {
 
 // Build the public-facing base URL for the redirect. `request.url` echoes
 // Next.js's bind host (e.g. `http://0.0.0.0:3001` when `next dev -H
-// 0.0.0.0` is used), so when someone follows a ngrok-tunneled link
-// `https://....ngrok-free.dev/p/CODE` they would be sent to 0.0.0.0:3001
-// — unreachable on their machine. Trust X-Forwarded-Host / Host before
-// falling back to the runtime env, then to request.url as a last resort.
-function publicBaseURL(request: NextRequest): string {
-  const forwardedHost = request.headers.get("x-forwarded-host");
-  const forwardedProto = request.headers.get("x-forwarded-proto");
-  if (forwardedHost) {
-    const proto = forwardedProto?.split(",")[0]?.trim() || "https";
-    return `${proto}://${forwardedHost.split(",")[0].trim()}`;
-  }
-  const host = request.headers.get("host");
-  if (host && !/^0\.0\.0\.0\b/.test(host)) {
-    const proto =
-      request.nextUrl.protocol.replace(":", "") || "http";
-    return `${proto}://${host}`;
-  }
-  const configured =
+// 0.0.0.0` is used), so following a ngrok-tunneled link without consulting
+// forwarded headers would 307 to 0.0.0.0:3001 — unreachable on the
+// visitor's machine.
+//
+// Trusting X-Forwarded-Host blindly is a classic open-redirect / phishing
+// vector: anyone POSTing to /p/CODE with `X-Forwarded-Host: evil.com`
+// would receive a 307 to evil.com. We mitigate by allowlisting
+// forwarded values against a comma-separated set sourced from the same
+// TRUSTED_ORIGINS env Better Auth already enforces, plus the canonical
+// NEXT_PUBLIC_SITE_URL / NEXT_PUBLIC_APP_URL.
+function buildAllowedHosts(): Set<string> {
+  const hosts = new Set<string>();
+  const add = (raw: string) => {
+    const value = raw.trim();
+    if (!value) return;
+    try {
+      hosts.add(new URL(value).host.toLowerCase());
+    } catch {
+      // Treat as a bare host:port literal.
+      hosts.add(value.toLowerCase());
+    }
+  };
+
+  (process.env.TRUSTED_ORIGINS ?? "").split(",").forEach(add);
+  add(process.env.NEXT_PUBLIC_SITE_URL ?? "");
+  add(process.env.NEXT_PUBLIC_APP_URL ?? "");
+  return hosts;
+}
+
+function configuredFallback(): string {
+  return (
     process.env.NEXT_PUBLIC_SITE_URL ||
     process.env.NEXT_PUBLIC_APP_URL ||
-    "";
-  if (configured) return configured.replace(/\/+$/, "");
+    ""
+  ).replace(/\/+$/, "");
+}
+
+function publicBaseURL(request: NextRequest): string {
+  const allowed = buildAllowedHosts();
+  const tryForwarded = () => {
+    const raw = request.headers.get("x-forwarded-host");
+    if (!raw) return null;
+    const host = raw.split(",")[0].trim().toLowerCase();
+    if (!host || !allowed.has(host)) return null;
+    const proto =
+      (request.headers.get("x-forwarded-proto") ?? "").split(",")[0]?.trim() ||
+      "https";
+    return `${proto}://${host}`;
+  };
+
+  const fromForwarded = tryForwarded();
+  if (fromForwarded) return fromForwarded;
+
+  // Fall back to the actual Host header only when it's already in the
+  // allowlist (covers the localhost:3001 dev case). Never trust a Host
+  // that didn't make the explicit list.
+  const host = request.headers.get("host")?.toLowerCase();
+  if (host && allowed.has(host)) {
+    const proto = request.nextUrl.protocol.replace(":", "") || "http";
+    return `${proto}://${host}`;
+  }
+
+  const configured = configuredFallback();
+  if (configured) return configured;
+
+  // Last-ditch: request.url's origin. May still be the bind host but at
+  // this point the deploy is mis-configured (no TRUSTED_ORIGINS, no
+  // NEXT_PUBLIC_SITE_URL), so a broken redirect is the lesser evil
+  // compared to silently honoring an attacker-supplied host.
   return new URL(request.url).origin;
 }
 
