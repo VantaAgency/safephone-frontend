@@ -32,6 +32,7 @@ import {
 import {
   useCreateRepairRequest,
   useLookupRepairRequest,
+  useMyRepairRequests,
 } from "@/lib/api/hooks";
 import { cn } from "@/lib/utils";
 import {
@@ -143,6 +144,10 @@ export default function ReparationsPage() {
 
   const createRepair = useCreateRepairRequest();
   const lookupRepair = useLookupRepairRequest();
+  // Authenticated users get a clickable history list on the Track tab so
+  // they don't have to remember/copy reference codes. Anonymous users
+  // (no JWT) just see the manual reference+phone form.
+  const { data: myRepairs } = useMyRepairRequests({ enabled: isAuthenticated });
 
   const modelSuggestions =
     DEVICE_MODEL_SUGGESTIONS[
@@ -216,6 +221,48 @@ export default function ReparationsPage() {
   const pageShellClassName =
     "relative isolate overflow-hidden bg-[#FAFAF8] py-10 md:py-14";
 
+  // Switching to "track" from any other state should also prefill the
+  // lookup form with the fresh booking when one exists — saves the user
+  // typing/pasting the reference + phone they just submitted.
+  const goToTrackTab = () => {
+    if (bookedRef) {
+      setLookupReference(bookedRef);
+      setLookupPhone(phone.trim() || lookupPhone);
+    }
+    setRepairTab("track");
+  };
+
+  const tabSwitcher = (
+    <div className="mx-auto mb-10 flex max-w-md justify-center">
+      <div className="inline-flex items-center gap-1 rounded-full border border-slate-200/80 bg-white p-1 shadow-sm">
+        <button
+          type="button"
+          onClick={() => setRepairTab("new")}
+          className={cn(
+            "rounded-full px-5 py-2 text-sm font-medium transition-all cursor-pointer",
+            repairTab === "new"
+              ? "bg-indigo-950 text-white shadow-sm"
+              : "text-slate-500 hover:text-indigo-950",
+          )}
+        >
+          {lang === "fr" ? "Nouvelle réparation" : "New repair"}
+        </button>
+        <button
+          type="button"
+          onClick={goToTrackTab}
+          className={cn(
+            "rounded-full px-5 py-2 text-sm font-medium transition-all cursor-pointer",
+            repairTab === "track"
+              ? "bg-indigo-950 text-white shadow-sm"
+              : "text-slate-500 hover:text-indigo-950",
+          )}
+        >
+          {lang === "fr" ? "Suivre une demande" : "Track a request"}
+        </button>
+      </div>
+    </div>
+  );
+
   const trackingSection = (
     <section className="mt-10 rounded-[2rem] border border-slate-200/80 bg-white/95 p-6 backdrop-blur-sm md:p-8">
       <div className="mb-6">
@@ -258,6 +305,50 @@ export default function ReparationsPage() {
           {lang === "fr" ? "Voir le suivi" : "View progress"}
         </Button>
       </div>
+
+      {/* Authenticated users see a clickable history. Each entry prefills
+          and loads the lookup in one click — no need to memorise codes. */}
+      {isAuthenticated && (myRepairs?.length ?? 0) > 0 && (
+        <div className="mt-6">
+          <div className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+            {lang === "fr" ? "Mes demandes récentes" : "My recent requests"}
+          </div>
+          <div className="space-y-2">
+            {(myRepairs ?? []).slice(0, 5).map((r) => (
+              <button
+                key={r.id}
+                type="button"
+                onClick={() => {
+                  setLookupReference(r.reference);
+                  setLookupPhone(r.customer_phone);
+                  lookupRepair.mutate({
+                    reference: r.reference,
+                    customer_phone: r.customer_phone,
+                  });
+                }}
+                className="flex w-full cursor-pointer items-center justify-between gap-4 rounded-xl border border-slate-200/80 bg-white px-4 py-3 text-left transition-all hover:-translate-y-0.5 hover:border-indigo-950 hover:shadow-[0_12px_30px_rgba(15,23,42,0.06)]"
+              >
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 text-sm font-medium text-indigo-950">
+                    <span className="font-mono text-xs text-slate-500">{r.reference}</span>
+                    <StatusBadge
+                      status={r.status}
+                      label={getRepairStatusLabel(r.status, lang)}
+                    />
+                  </div>
+                  <div className="mt-1 truncate text-xs text-slate-500">
+                    {formatRepairDeviceLabel(r, lang)} ·{" "}
+                    {getRepairTypeLabel(r.repair_type, lang)}
+                  </div>
+                </div>
+                <span className="shrink-0 text-xs font-medium text-indigo-600">
+                  {lang === "fr" ? "Voir" : "View"} →
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {lookupRepair.isError && (
         <div className="mt-5 rounded-xl border border-red-200/60 bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
@@ -350,6 +441,11 @@ export default function ReparationsPage() {
             </div>
           </div>
 
+          {tabSwitcher}
+
+          {repairTab === "track" && trackingSection}
+
+          {repairTab === "new" && (
           <div className="rounded-[2rem] border border-slate-200/80 bg-white/95 p-8 text-center backdrop-blur-sm md:p-10">
             <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-emerald-50">
               <CheckCircleIcon size={40} className="text-emerald-500" />
@@ -395,20 +491,18 @@ export default function ReparationsPage() {
             </div>
 
             <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
-              {isAuthenticated ? (
+              <Button
+                variant="primary"
+                onClick={goToTrackTab}
+              >
+                {lang === "fr" ? "Suivre ma demande" : "Track my request"}
+              </Button>
+              {isAuthenticated && (
                 <Button
-                  variant="primary"
+                  variant="outline"
                   onClick={() => router.push("/tableau-de-bord")}
                 >
                   {lang === "fr" ? "Mon tableau de bord" : "My dashboard"}
-                </Button>
-              ) : (
-                <Button
-                  variant="primary"
-                  onClick={handleLookup}
-                  loading={lookupRepair.isPending}
-                >
-                  {lang === "fr" ? "Suivre ma demande" : "Track my request"}
                 </Button>
               )}
               <Button variant="outline" onClick={reset}>
@@ -416,8 +510,7 @@ export default function ReparationsPage() {
               </Button>
             </div>
           </div>
-
-          {trackingSection}
+          )}
         </div>
       </div>
     );
@@ -442,34 +535,7 @@ export default function ReparationsPage() {
           <p className="mt-4 text-lg text-slate-500">{t.mobitech.sub}</p>
         </div>
 
-        <div className="mx-auto mb-10 flex max-w-md justify-center">
-          <div className="inline-flex items-center gap-1 rounded-full border border-slate-200/80 bg-white p-1 shadow-sm">
-            <button
-              type="button"
-              onClick={() => setRepairTab("new")}
-              className={cn(
-                "rounded-full px-5 py-2 text-sm font-medium transition-all cursor-pointer",
-                repairTab === "new"
-                  ? "bg-indigo-950 text-white shadow-sm"
-                  : "text-slate-500 hover:text-indigo-950",
-              )}
-            >
-              {lang === "fr" ? "Nouvelle réparation" : "New repair"}
-            </button>
-            <button
-              type="button"
-              onClick={() => setRepairTab("track")}
-              className={cn(
-                "rounded-full px-5 py-2 text-sm font-medium transition-all cursor-pointer",
-                repairTab === "track"
-                  ? "bg-indigo-950 text-white shadow-sm"
-                  : "text-slate-500 hover:text-indigo-950",
-              )}
-            >
-              {lang === "fr" ? "Suivre une demande" : "Track a request"}
-            </button>
-          </div>
-        </div>
+        {tabSwitcher}
 
         <div className="mx-auto max-w-4xl">
           {repairTab === "new" && (
