@@ -4,7 +4,7 @@ import { useLanguage } from "@/lib/language-context";
 import { useMarket } from "@/lib/markets/context";
 
 export function HowItWorks() {
-  const { t } = useLanguage();
+  const { lang, t } = useLanguage();
 
   const steps = [
     {
@@ -13,7 +13,7 @@ export function HowItWorks() {
       desc: t.home.step1,
       hoverBg: "group-hover:bg-indigo-50/40",
       blurBg: "bg-indigo-100/50 group-hover:bg-indigo-200/50",
-      illustration: <Step1Illustration />,
+      illustration: <Step1Illustration lang={lang} />,
     },
     {
       num: "02",
@@ -37,7 +37,7 @@ export function HowItWorks() {
       desc: t.home.step4,
       hoverBg: "group-hover:bg-indigo-50/40",
       blurBg: "bg-indigo-200/30 group-hover:bg-indigo-300/40",
-      illustration: <Step4Illustration />,
+      illustration: <Step4Illustration lang={lang} />,
     },
   ];
 
@@ -77,7 +77,7 @@ export function HowItWorks() {
               {/* Step label */}
               <div className="mb-5 flex items-center gap-2 text-[10px] font-medium uppercase tracking-widest text-slate-400">
                 <span className="h-px w-4 bg-slate-200" />
-                {`Étape ${step.num}`}
+                {`${lang === "fr" ? "Étape" : "Step"} ${step.num}`}
               </div>
 
               {/* Illustration */}
@@ -101,7 +101,7 @@ export function HowItWorks() {
   );
 }
 
-function Step1Illustration() {
+function Step1Illustration({ lang }: { lang: "fr" | "en" }) {
   return (
     <div className="relative flex w-full items-center justify-center gap-2 px-4 transition-transform duration-500 group-hover:-translate-y-1">
       {/* Essentiel card */}
@@ -117,7 +117,9 @@ function Step1Illustration() {
       {/* Écran+ card — highlighted */}
       <div className="relative flex w-[80px] flex-col rounded-xl border-2 border-yellow-400 bg-indigo-950 p-2.5 shadow-md">
         <div className="absolute -top-2 left-1/2 -translate-x-1/2 rounded-full bg-yellow-400 px-1.5 py-0.5">
-          <span className="text-[7px] font-bold text-indigo-950">POPULAIRE</span>
+          <span className="text-[7px] font-bold text-indigo-950">
+            {lang === "fr" ? "POPULAIRE" : "POPULAR"}
+          </span>
         </div>
         <div className="mb-2 h-1.5 w-8 rounded-full bg-indigo-700" />
         <div className="mb-3 h-4 w-10 rounded bg-yellow-400/20" />
@@ -215,7 +217,7 @@ function Step3Illustration() {
   );
 }
 
-function Step4Illustration() {
+function Step4Illustration({ lang }: { lang: "fr" | "en" }) {
   const { market } = useMarket();
   return (
     <div className="relative flex w-full flex-col gap-2 px-3 transition-transform duration-500 group-hover:-translate-y-1">
@@ -232,7 +234,9 @@ function Step4Illustration() {
           <div className="h-1 w-10 rounded-full bg-slate-100" />
         </div>
         <div className="rounded-full bg-yellow-100 px-1.5 py-0.5">
-          <span className="text-[7px] font-semibold text-yellow-700">En attente</span>
+          <span className="text-[7px] font-semibold text-yellow-700">
+            {lang === "fr" ? "En attente" : "Pending"}
+          </span>
         </div>
       </div>
       {/* Arrow */}
