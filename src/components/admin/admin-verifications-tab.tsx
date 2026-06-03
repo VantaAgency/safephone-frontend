@@ -8,6 +8,19 @@ import { api } from "@/lib/api/client";
 import { useLanguage } from "@/lib/language-context";
 import type { Device } from "@/lib/api/types";
 
+// Verification URLs come from end-user input. Refuse anything that isn't
+// http(s) so a hostile user can't smuggle `javascript:` / `data:` into an
+// admin's click. Returns "#" for anything unparseable or off-scheme — the
+// admin sees a dead link instead of triggering arbitrary code.
+function safeHttpUrl(u?: string | null): string {
+  try {
+    const p = new URL(u ?? "");
+    return p.protocol === "https:" || p.protocol === "http:" ? p.toString() : "#";
+  } catch {
+    return "#";
+  }
+}
+
 // Hits /api/v1/admin/verifications which returns the queue of devices
 // whose verification_status is 'pending'. The same Device type covers the
 // full row since the backend includes verification_photos / verification_video
@@ -112,22 +125,25 @@ export function AdminVerificationsTab() {
           {/* Photos */}
           {d.verification_photos && d.verification_photos.length > 0 && (
             <div className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-5">
-              {d.verification_photos.map((url, idx) => (
-                <a
-                  key={idx}
-                  href={url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block overflow-hidden rounded-xl border border-slate-200 bg-slate-50 transition hover:border-indigo-400"
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={url}
-                    alt={`Verification ${idx + 1}`}
-                    className="h-24 w-full object-cover"
-                  />
-                </a>
-              ))}
+              {d.verification_photos.map((url, idx) => {
+                const safe = safeHttpUrl(url);
+                return (
+                  <a
+                    key={idx}
+                    href={safe}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block overflow-hidden rounded-xl border border-slate-200 bg-slate-50 transition hover:border-indigo-400"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={safe}
+                      alt={`Verification ${idx + 1}`}
+                      className="h-24 w-full object-cover"
+                    />
+                  </a>
+                );
+              })}
             </div>
           )}
 
@@ -135,7 +151,7 @@ export function AdminVerificationsTab() {
           {d.verification_video && (
             <div className="mt-3">
               <a
-                href={d.verification_video}
+                href={safeHttpUrl(d.verification_video)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-sm font-medium text-indigo-600 hover:underline"
