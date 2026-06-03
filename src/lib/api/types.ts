@@ -902,6 +902,8 @@ export interface CreatePaymentRequest {
   model: string;
   metadata?: DeviceMetadata;
   imei?: string;
+  photos?: string[];
+  video?: string;
   plan_id: string;
   billing_cycle: "monthly" | "annual";
   idempotency_key?: string;

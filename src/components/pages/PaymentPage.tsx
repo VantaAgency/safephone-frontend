@@ -199,7 +199,21 @@ function PaiementContent() {
   const [screenSize, setScreenSize] = useState("");
   const [computerCategory, setComputerCategory] = useState("");
   const [productSubtype, setProductSubtype] = useState("");
+  // Plans v2 verification proof — 5 photo URLs + 1 video URL. Same
+  // approach as USRegisterDevicePage; S3 upload pipeline lands later.
+  const [photoUrls, setPhotoUrls] = useState<string[]>([
+    "",
+    "",
+    "",
+    "",
+    "",
+  ]);
+  const [videoUrl, setVideoUrl] = useState("");
   const [error, setError] = useState("");
+
+  const filledPhotos = photoUrls.filter((u) => u.trim() !== "");
+  const photosReady = filledPhotos.length === 5;
+  const videoReady = videoUrl.trim() !== "";
 
   const autoRedirectedRef = useRef(false);
 
@@ -471,6 +485,8 @@ function PaiementContent() {
         model: trimmedModel,
         metadata: deviceMetadata,
         imei: "",
+        photos: filledPhotos,
+        video: videoUrl.trim(),
         plan_id: selectedPlan.id,
         billing_cycle: annual ? "annual" : "monthly",
         idempotency_key: idempotencyKey,
@@ -712,6 +728,8 @@ function PaiementContent() {
   const summaryPrice = isTrackedMode ? trackedPrice : createPrice;
   const canSubmitPayment =
     !!selectedPlan &&
+    photosReady &&
+    videoReady &&
     (effectiveDeviceType === "smartphone"
       ? !!selectedBrandSlug && !!trimmedModel
       : effectiveDeviceType === "computer"
@@ -1163,6 +1181,64 @@ function PaiementContent() {
                   </p>
                 </>
               )}
+            </div>
+
+            {/* Plans v2 verification proof — same as US wizard. */}
+            <div className="mb-6 rounded-[2rem] border border-slate-200/80 bg-white p-6 shadow-sm">
+              <h3 className="text-sm font-semibold text-indigo-950">
+                {lang === "fr"
+                  ? "Photos de verification (5 obligatoires)"
+                  : "Verification photos (5 required)"}
+              </h3>
+              <p className="mt-1 text-xs text-slate-500">
+                {lang === "fr"
+                  ? "Capturez l'avant, l'arriere et toute serigraphie visible pour que l'on confirme l'etat de l'appareil avant activation."
+                  : "Capture the front, back, and any visible serial so we can confirm the device condition before activation."}
+              </p>
+              <div className="mt-3 space-y-2">
+                {photoUrls.map((url, idx) => (
+                  <input
+                    key={idx}
+                    type="url"
+                    value={url}
+                    onChange={(e) => {
+                      const next = [...photoUrls];
+                      next[idx] = e.target.value;
+                      setPhotoUrls(next);
+                    }}
+                    placeholder={
+                      lang === "fr"
+                        ? `Photo ${idx + 1} (URL)`
+                        : `Photo ${idx + 1} URL`
+                    }
+                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-indigo-950 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                  />
+                ))}
+              </div>
+
+              <h3 className="mt-5 text-sm font-semibold text-indigo-950">
+                {lang === "fr"
+                  ? "Video de verification (1 obligatoire)"
+                  : "Verification video (1 required)"}
+              </h3>
+              <p className="mt-1 text-xs text-slate-500">
+                {lang === "fr"
+                  ? "Clip de 10 a 60 secondes montrant l'appareil sous tension. Hebergez-le (Drive, Dropbox, etc.) et collez le lien."
+                  : "10–60 second clip showing the device powered on. Host it (Drive, Dropbox, etc.) and paste the link."}
+              </p>
+              <input
+                type="url"
+                value={videoUrl}
+                onChange={(e) => setVideoUrl(e.target.value)}
+                placeholder="https://…"
+                className="mt-3 w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-indigo-950 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+              />
+
+              <p className="mt-3 text-xs text-slate-500">
+                {lang === "fr"
+                  ? "Votre couverture s'active apres validation par notre equipe. Premier sinistre eligible 30 jours apres l'activation."
+                  : "Your coverage activates after our team's review. First claim eligible 30 days after activation."}
+              </p>
             </div>
 
             <div className="mb-6 rounded-[2rem] border border-slate-200/80 bg-white p-6 shadow-sm">
