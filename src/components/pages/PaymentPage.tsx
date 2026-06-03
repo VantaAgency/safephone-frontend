@@ -202,18 +202,12 @@ function PaiementContent() {
   const [productSubtype, setProductSubtype] = useState("");
   // Plans v2 verification proof — 5 photo URLs + 1 video URL. Same
   // approach as USRegisterDevicePage; S3 upload pipeline lands later.
-  const [photoUrls, setPhotoUrls] = useState<string[]>([
-    "",
-    "",
-    "",
-    "",
-    "",
-  ]);
+  const [photoUrls, setPhotoUrls] = useState<string[]>(["", ""]);
   const [videoUrl, setVideoUrl] = useState("");
   const [error, setError] = useState("");
 
   const filledPhotos = photoUrls.filter((u) => u.trim() !== "");
-  const photosReady = filledPhotos.length === 5;
+  const photosReady = filledPhotos.length === 2;
   const videoReady = videoUrl.trim() !== "";
 
   const autoRedirectedRef = useRef(false);
@@ -1188,13 +1182,13 @@ function PaiementContent() {
             <div className="mb-6 rounded-[2rem] border border-slate-200/80 bg-white p-6 shadow-sm">
               <h3 className="text-sm font-semibold text-indigo-950">
                 {lang === "fr"
-                  ? "Photos de verification (5 obligatoires)"
-                  : "Verification photos (5 required)"}
+                  ? "Photos de verification (2 obligatoires)"
+                  : "Verification photos (2 required)"}
               </h3>
               <p className="mt-1 text-xs text-slate-500">
                 {lang === "fr"
-                  ? "Capturez l'avant, l'arriere et toute serigraphie visible. JPG / PNG / WEBP / HEIC, jusqu'a 12 Mo par photo."
-                  : "Capture the front, back, and any visible serial. JPG / PNG / WEBP / HEIC, up to 12 MB each."}
+                  ? "Une photo de l'avant (ecran) et une de l'arriere. JPG / PNG / WEBP / HEIC, jusqu'a 12 Mo par photo."
+                  : "One photo of the front (screen) and one of the back. JPG / PNG / WEBP / HEIC, up to 12 MB each."}
               </p>
               <div className="mt-3 space-y-2">
                 {photoUrls.map((url, idx) => (
@@ -1202,6 +1196,11 @@ function PaiementContent() {
                     key={idx}
                     kind="photo"
                     index={idx + 1}
+                    label={
+                      lang === "fr"
+                        ? ["Avant (ecran)", "Arriere"][idx]
+                        : ["Front (screen)", "Back"][idx]
+                    }
                     value={url}
                     onChange={(next) => {
                       const arr = [...photoUrls];
@@ -1219,8 +1218,8 @@ function PaiementContent() {
               </h3>
               <p className="mt-1 text-xs text-slate-500">
                 {lang === "fr"
-                  ? "Clip de 10 a 60 secondes montrant l'appareil sous tension. MP4 / MOV / WEBM, jusqu'a 75 Mo."
-                  : "10–60 second clip showing the device powered on. MP4 / MOV / WEBM, up to 75 MB."}
+                  ? "Un court clip montrant l'appareil sous tension. MP4 / MOV / WEBM, jusqu'a 75 Mo."
+                  : "A short clip showing the device powered on. MP4 / MOV / WEBM, up to 75 MB."}
               </p>
               <div className="mt-3">
                 <VerificationMediaUpload

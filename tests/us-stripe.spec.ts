@@ -136,9 +136,9 @@ test.describe("US Stripe checkout flow", () => {
     await brandButton.click();
     await page.locator("#model").fill("iPhone 15 Pro");
 
-    // Verification proof — 5 photos + 1 video uploaded via multipart
-    // (the URL inputs were replaced by VerificationMediaUpload). Use a
-    // tiny 1x1 PNG and a near-empty MP4 stub; the backend doesn't
+    // Verification proof — 2 photos (front/back) + 1 video uploaded via
+    // multipart (the URL inputs were replaced by VerificationMediaUpload).
+    // Use a tiny 1x1 PNG and a near-empty MP4 stub; the backend doesn't
     // decode the bytes, it only checks content-type + size.
     const pngBytes = Buffer.from(
       "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=",
@@ -149,7 +149,7 @@ test.describe("US Stripe checkout flow", () => {
       0x00, 0x00, 0x00, 0x00, 0x6d, 0x70, 0x34, 0x32, 0x69, 0x73, 0x6f, 0x6d,
     ]);
     const fileInputs = page.locator('input[type="file"]');
-    const photoSlotCount = 5;
+    const photoSlotCount = 2;
     for (let i = 0; i < photoSlotCount; i++) {
       await fileInputs.nth(i).setInputFiles({
         name: `photo-${i + 1}.png`,

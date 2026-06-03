@@ -28,6 +28,8 @@ async function uploadVerificationMedia(
 interface VerificationMediaUploadProps {
   kind: Kind;
   index?: number;
+  /** Overrides the default "Photo N" / "Video" slot label. */
+  label?: string;
   value: string;
   onChange: (next: string) => void;
 }
@@ -41,6 +43,7 @@ interface VerificationMediaUploadProps {
 export function VerificationMediaUpload({
   kind,
   index,
+  label: labelProp,
   value,
   onChange,
 }: VerificationMediaUploadProps) {
@@ -84,13 +87,12 @@ export function VerificationMediaUpload({
   }
 
   const label =
-    kind === "photo"
-      ? lang === "fr"
-        ? `Photo ${index ?? ""}`.trim()
-        : `Photo ${index ?? ""}`.trim()
+    labelProp ??
+    (kind === "photo"
+      ? `Photo ${index ?? ""}`.trim()
       : lang === "fr"
         ? "Vidéo"
-        : "Video";
+        : "Video");
 
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-3">

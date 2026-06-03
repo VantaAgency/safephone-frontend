@@ -30,13 +30,13 @@ export default function USRegisterDevicePage() {
   // lands in a follow-up PR; for now the user pastes URLs of media they
   // already host elsewhere. The backend stores whatever lands here and
   // the admin reviews via /admin → Verifications.
-  const [photoUrls, setPhotoUrls] = useState<string[]>(["", "", "", "", ""]);
+  const [photoUrls, setPhotoUrls] = useState<string[]>(["", ""]);
   const [videoUrl, setVideoUrl] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const isSmartphone = deviceType === "smartphone";
   const filledPhotos = photoUrls.filter((u) => u.trim() !== "");
-  const photosReady = filledPhotos.length === 5;
+  const photosReady = filledPhotos.length === 2;
   const videoReady = videoUrl.trim() !== "";
 
   useEffect(() => {
@@ -263,12 +263,12 @@ export default function USRegisterDevicePage() {
           <div className="mb-6 rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4">
             <div className="mb-3">
               <h3 className="text-sm font-semibold text-indigo-950">
-                Verification photos (5 required)
+                Verification photos (2 required)
               </h3>
               <p className="mt-1 text-xs text-slate-500">
-                Capture the device front, back, and any visible serial/IMEI
-                screen so we can confirm its condition before activating your
-                membership. JPG / PNG / WEBP / HEIC, up to 12 MB each.
+                One photo of the front (screen) and one of the back so we can
+                confirm the device condition before activating your membership.
+                JPG / PNG / WEBP / HEIC, up to 12 MB each.
               </p>
             </div>
             <div className="space-y-2">
@@ -277,6 +277,7 @@ export default function USRegisterDevicePage() {
                   key={idx}
                   kind="photo"
                   index={idx + 1}
+                  label={["Front (screen)", "Back"][idx]}
                   value={url}
                   onChange={(next) => {
                     const arr = [...photoUrls];
@@ -294,8 +295,8 @@ export default function USRegisterDevicePage() {
                 Verification video (1 required)
               </h3>
               <p className="mt-1 text-xs text-slate-500">
-                10–60 second clip showing the device powering on and your
-                surroundings. MP4 / MOV / WEBM, up to 75 MB.
+                A short clip showing the device powering on.
+                MP4 / MOV / WEBM, up to 75 MB.
               </p>
             </div>
             <VerificationMediaUpload
