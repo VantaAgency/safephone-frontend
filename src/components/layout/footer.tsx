@@ -134,7 +134,7 @@ export function Footer({ t }: FooterProps) {
         {/* Copyright Line */}
         <div className="flex flex-col items-center justify-between gap-4 border-t border-slate-100 pt-8 md:flex-row">
           <p className="text-sm text-slate-400">
-            &copy; 2025 {t.footer.copyright}
+            &copy; {new Date().getFullYear()} {t.footer.copyright}
           </p>
           <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5">
             <span className="relative flex h-2 w-2">
