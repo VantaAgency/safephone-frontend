@@ -9,7 +9,12 @@ export type DeviceType =
   | "tv"
   | "computer"
   | "home_electronics";
-export type SubscriptionStatus = "pending" | "active" | "cancelled" | "expired";
+export type SubscriptionStatus =
+  | "pending"
+  | "pending_verification"
+  | "active"
+  | "cancelled"
+  | "expired";
 export type ClaimType = "screen" | "water" | "theft" | "breakdown";
 export type ClaimStatus =
   | "pending"
@@ -169,6 +174,7 @@ export interface Subscription {
   plan_id: string;
   status: SubscriptionStatus;
   billing_cycle: "monthly" | "annual";
+  activated_at?: string | null;
   current_period_start?: string;
   current_period_end?: string;
   cancelled_at?: string;

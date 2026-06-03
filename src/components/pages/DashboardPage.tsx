@@ -66,6 +66,7 @@ import type {
   ClaimType,
   Device,
   Payment,
+  Plan,
   RepairRequestStatus,
   Subscription,
 } from "@/lib/api/types";
@@ -648,6 +649,43 @@ export default function DashboardPage() {
   const overviewActiveSubscriptions =
     dashboardSummary?.active_subscriptions ?? [];
 
+  // Plans v2: surface a banner when one of the user's subscriptions is
+  // awaiting admin verification, and gate the claim CTA when no sub is
+  // both active AND past its claim_waiting_period_days window.
+  const pendingVerificationSubs =
+    subscriptions?.filter((s) => s.status === "pending_verification") ?? [];
+  const planById = useMemo(() => {
+    const map = new Map<string, Plan>();
+    plans?.forEach((p) => map.set(p.id, p));
+    return map;
+  }, [plans]);
+  const claimableSubsCount = (subscriptions ?? []).reduce((count, s) => {
+    if (s.status !== "active") return count;
+    if (!s.activated_at) return count + 1; // legacy sub: no waiting window
+    const plan = planById.get(s.plan_id);
+    const waitDays = plan?.claim_waiting_period_days ?? 30;
+    if (waitDays <= 0) return count + 1;
+    const eligibleAt =
+      new Date(s.activated_at).getTime() + waitDays * 24 * 60 * 60 * 1000;
+    return Date.now() >= eligibleAt ? count + 1 : count;
+  }, 0);
+  const earliestClaimableInDays = (subscriptions ?? []).reduce<number | null>(
+    (best, s) => {
+      if (s.status !== "active" || !s.activated_at) return best;
+      const plan = planById.get(s.plan_id);
+      const waitDays = plan?.claim_waiting_period_days ?? 30;
+      if (waitDays <= 0) return best;
+      const remainingMs =
+        new Date(s.activated_at).getTime() +
+        waitDays * 24 * 60 * 60 * 1000 -
+        Date.now();
+      if (remainingMs <= 0) return best;
+      const remainingDays = Math.ceil(remainingMs / (24 * 60 * 60 * 1000));
+      return best === null || remainingDays < best ? remainingDays : best;
+    },
+    null,
+  );
+
   const userName = user?.name || "Utilisateur";
 
   return (
@@ -673,6 +711,28 @@ export default function DashboardPage() {
         {paymentActionError && (
           <div className="mb-6 rounded-2xl border border-red-200/80 bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
             {paymentActionError}
+          </div>
+        )}
+
+        {/* Plans v2 — verification awaiting admin review */}
+        {pendingVerificationSubs.length > 0 && (
+          <div className="mb-6 flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+            <ClockIcon
+              size={20}
+              className="mt-0.5 shrink-0 text-amber-600"
+            />
+            <div>
+              <p className="text-sm font-medium text-amber-800">
+                {lang === "fr"
+                  ? "Vérification en cours"
+                  : "Verification in review"}
+              </p>
+              <p className="mt-0.5 text-xs text-amber-700">
+                {lang === "fr"
+                  ? "Notre équipe examine vos photos et votre vidéo. Votre couverture s'active après validation (sous 24 h)."
+                  : "Our team is reviewing your photos and video. Your coverage activates after approval (within 24 h)."}
+              </p>
+            </div>
           </div>
         )}
 
@@ -1078,6 +1138,7 @@ export default function DashboardPage() {
               <Button
                 variant={claimView === "new" ? "outline" : "primary"}
                 size="sm"
+                disabled={claimView !== "new" && claimableSubsCount === 0}
                 onClick={() =>
                   setClaimView(claimView === "new" ? "history" : "new")
                 }
@@ -1085,6 +1146,21 @@ export default function DashboardPage() {
                 {claimView === "new" ? t.claims.history : t.claims.new}
               </Button>
             </div>
+            {claimView !== "new" && claimableSubsCount === 0 && (
+              <div className="mb-6 rounded-2xl border border-slate-200/80 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                {pendingVerificationSubs.length > 0
+                  ? lang === "fr"
+                    ? "Votre couverture s'active après la vérification — vous pourrez déclarer un sinistre 30 jours après l'activation."
+                    : "Your coverage activates after verification — you can submit a claim 30 days after activation."
+                  : earliestClaimableInDays !== null
+                    ? lang === "fr"
+                      ? `Premier sinistre disponible dans ${earliestClaimableInDays} jour(s).`
+                      : `First claim available in ${earliestClaimableInDays} day(s).`
+                    : lang === "fr"
+                      ? "Aucune souscription active pour le moment."
+                      : "No active subscription yet."}
+              </div>
+            )}
 
             {createClaim.isSuccess && (
               <div className="mb-6 rounded-2xl border border-emerald-200/60 bg-emerald-50 p-5">
