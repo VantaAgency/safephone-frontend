@@ -127,11 +127,26 @@ test.describe("US Stripe checkout flow", () => {
     await page.goto("/us/register-device");
     await page.waitForURL(/\/us\/register-device/, { timeout: 10_000 });
 
+    // Plans v2: pick device type (smartphone is the default but click
+    // explicitly so the test exercises the selector). Then brand + model.
+    await page.getByRole("button", { name: /smartphone/i }).first().click();
     const brandButton = page
       .getByRole("button", { name: /apple|samsung|google/i })
       .first();
     await brandButton.click();
     await page.locator("#model").fill("iPhone 15 Pro");
+
+    // Verification proof — 5 photo URLs + 1 video URL are mandatory.
+    // Use harmless https:// placeholders; the backend stores them as-is
+    // and the admin Verifications tab is what gates activation.
+    for (let i = 0; i < 5; i++) {
+      await page
+        .getByPlaceholder(`Photo ${i + 1} URL`)
+        .fill(`https://example.com/photo-${i + 1}.jpg`);
+    }
+    await page
+      .getByPlaceholder("https://…")
+      .fill("https://example.com/video.mp4");
 
     // Retry the submit a few times — the backend rejects with
     // "US subscription awaiting device registration not found" until the
