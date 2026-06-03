@@ -17,57 +17,80 @@ interface PlanCardProps {
   compact?: boolean;
 }
 
+// Plans v2 dropped the per-slug "progressive content" switch — every plan
+// in v2 ships the same 5 standard services and the differentiation is the
+// device coverage matrix. Compact view bullets now come straight from the
+// (identical-across-plans) feature list and the kicker is just the plan
+// name, which keeps the homepage preview row visually consistent.
 function getProgressiveContent(plan: Plan, lang: Lang) {
   const isFr = lang === "fr";
+  const name = isFr ? plan.name_fr : plan.name_en;
+  return {
+    kicker: isFr ? `Forfait ${name}` : `${name} plan`,
+    bullets: (isFr ? plan.features_fr : plan.features_en).slice(0, 3),
+    exclusion: "",
+  };
+}
 
-  switch (plan.slug) {
-    case "essentiel":
-      return {
-        kicker: isFr ? "Forfait Essentiel" : "Essential plan",
-        bullets: isFr
-          ? ["Écran après chute", "Panne simple", "Suivi standard"]
-          : ["Screen after a drop", "Basic malfunction", "Standard tracking"],
-        exclusion: isFr ? "Hors liquides et vol" : "Excludes liquid damage and theft",
-      };
-    case "ecran-plus":
-      return {
-        kicker: isFr ? "Forfait Écran+" : "Screen+ plan",
-        bullets: isFr
-          ? ["Écran avant et arrière", "Petits dommages du quotidien", "Contact liquide léger", "Suivi prioritaire"]
-          : ["Front and back screen", "Minor daily damage", "Light liquid contact", "Priority tracking"],
-        exclusion: isFr ? "Hors immersion complète et vol" : "Excludes full immersion and theft",
-      };
-    case "plus":
-      return {
-        kicker: isFr ? "Forfait Plus · Écran+ inclus" : "Plus plan · Screen+ included",
-        bullets: isFr
-          ? ["Liquides et immersion", "Dommages accidentels étendus", "Panne matérielle", "Traitement accéléré"]
-          : ["Liquid damage and immersion", "Extended accidental damage", "Hardware failure", "Faster handling"],
-        exclusion: isFr ? "Hors vol et perte" : "Excludes theft and loss",
-      };
-    case "haute":
-      return {
-        kicker: isFr ? "Forfait Haute · Plus inclus" : "Haute plan · Plus included",
-        bullets: isFr
-          ? ["Vol et perte", "Dommages importants", "Support express", "Solution de remplacement si disponible"]
-          : ["Theft and loss", "Major damage", "Express support", "Replacement solution when available"],
-        exclusion: isFr ? "Appareil enregistré requis" : "Registered device required",
-      };
-    case "totale":
-      return {
-        kicker: isFr ? "Forfait Totale · Haute incluse" : "Totale plan · Haute included",
-        bullets: isFr
-          ? ["Appareils du foyer déclarés", "Casse, panne, liquides", "Vol et perte", "Accompagnement premium"]
-          : ["Declared household devices", "Breakage, malfunction, liquids", "Theft and loss", "Premium assistance"],
-        exclusion: isFr ? "Hors matériel non déclaré" : "Excludes undeclared equipment",
-      };
-    default:
-      return {
-        kicker: isFr ? "Protection" : "Protection",
-        bullets: (lang === "fr" ? plan.features_fr : plan.features_en).slice(0, 4),
-        exclusion: (lang === "fr" ? plan.not_covered_fr : plan.not_covered_en)[0],
-      };
-  }
+// DeviceCoverageBlock renders the per-plan device-type caps as icons +
+// counts. Skipped silently when every cap is 0 (legacy plans that
+// pre-date plans v2 still render but without the block).
+function DeviceCoverageBlock({ plan, lang }: { plan: Plan; lang: Lang }) {
+  const items: Array<{ icon: string; count: number; label: string }> = [
+    {
+      icon: "📱",
+      count: plan.max_smartphones,
+      label: lang === "fr" ? "smartphones" : "phones",
+    },
+    {
+      icon: "📋",
+      count: plan.max_tablets,
+      label: lang === "fr" ? "tablettes" : "tablets",
+    },
+    {
+      icon: "💻",
+      count: plan.max_computers,
+      label: lang === "fr" ? "ordinateurs" : "computers",
+    },
+    {
+      icon: "🎮",
+      count: plan.max_game_consoles,
+      label: lang === "fr" ? "consoles" : "consoles",
+    },
+    { icon: "📺", count: plan.max_tvs, label: "TV" },
+  ].filter((item) => item.count > 0);
+
+  if (items.length === 0) return null;
+
+  return (
+    <div className="mb-5 rounded-xl border border-slate-200/80 bg-slate-50/70 px-3 py-2.5">
+      <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+        {lang === "fr" ? "Couvre" : "Covers"}
+      </div>
+      <div className="mt-1.5 flex flex-wrap items-center gap-2 text-sm font-medium text-indigo-950">
+        {items.map((item) => (
+          <span key={item.label} className="inline-flex items-center gap-1">
+            <span aria-hidden>{item.icon}</span>
+            <span>{item.count}</span>
+            <span className="text-xs font-normal text-slate-500">{item.label}</span>
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// WaitingPeriodNotice renders the universal 30-day-first-claim callout
+// beneath the CTA. Hidden when claim_waiting_period_days is 0 (dev plan).
+function WaitingPeriodNotice({ days, lang }: { days: number; lang: Lang }) {
+  if (!days) return null;
+  return (
+    <p className="mt-3 text-[11px] text-slate-400">
+      {lang === "fr"
+        ? `Premier sinistre éligible ${days} jours après activation.`
+        : `First claim eligible ${days} days after activation.`}
+    </p>
+  );
 }
 
 export function PlanCard({
@@ -155,6 +178,31 @@ export function PlanCard({
 
         {!compact && <div className="relative z-10 mb-8 h-px w-full bg-indigo-800/60" />}
 
+        {!compact && (
+          <div className="relative z-10 mb-6 rounded-xl border border-indigo-700/60 bg-indigo-900/40 px-3 py-2.5">
+            <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-indigo-300">
+              {lang === "fr" ? "Couvre" : "Covers"}
+            </div>
+            <div className="mt-1.5 flex flex-wrap items-center gap-2 text-sm font-medium text-white">
+              {[
+                { icon: "📱", count: plan.max_smartphones, label: lang === "fr" ? "smartphones" : "phones" },
+                { icon: "📋", count: plan.max_tablets, label: lang === "fr" ? "tablettes" : "tablets" },
+                { icon: "💻", count: plan.max_computers, label: lang === "fr" ? "ordinateurs" : "computers" },
+                { icon: "🎮", count: plan.max_game_consoles, label: lang === "fr" ? "consoles" : "consoles" },
+                { icon: "📺", count: plan.max_tvs, label: "TV" },
+              ]
+                .filter((it) => it.count > 0)
+                .map((it) => (
+                  <span key={it.label} className="inline-flex items-center gap-1">
+                    <span aria-hidden>{it.icon}</span>
+                    <span>{it.count}</span>
+                    <span className="text-xs font-normal text-indigo-200">{it.label}</span>
+                  </span>
+                ))}
+            </div>
+          </div>
+        )}
+
         <ul className={cn("relative z-10 flex-grow", compact ? "mb-5 space-y-2.5" : "mb-10 space-y-4")}>
           {(compact ? progressive.bullets : features).map((feature) => (
             <li
@@ -209,6 +257,13 @@ export function PlanCard({
         >
           {ctaLabel}
         </Button>
+        {!compact && (
+          <p className="relative z-10 mt-3 text-[11px] text-indigo-300">
+            {lang === "fr"
+              ? `Premier sinistre éligible ${plan.claim_waiting_period_days} jours après activation.`
+              : `First claim eligible ${plan.claim_waiting_period_days} days after activation.`}
+          </p>
+        )}
       </div>
     );
   }
@@ -255,7 +310,9 @@ export function PlanCard({
         </span>
       </div>
 
-      {!compact && <div className="mb-8 h-px w-full bg-slate-100" />}
+      {!compact && <div className="mb-6 h-px w-full bg-slate-100" />}
+
+      {!compact && <DeviceCoverageBlock plan={plan} lang={lang} />}
 
       <ul className={cn("flex-grow", compact ? "mb-5 space-y-2.5" : "mb-10 space-y-4")}>
         {(compact ? progressive.bullets : features).map((feature) => (
@@ -311,6 +368,7 @@ export function PlanCard({
       >
         {ctaLabel}
       </Button>
+      {!compact && <WaitingPeriodNotice days={plan.claim_waiting_period_days} lang={lang} />}
     </div>
   );
 }

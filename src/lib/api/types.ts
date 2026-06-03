@@ -117,6 +117,15 @@ export interface Plan {
   service_time: string;
   is_popular: boolean;
   sort_order: number;
+  // Plans v2 — per-type device coverage caps.
+  max_smartphones: number;
+  max_tablets: number;
+  max_computers: number;
+  max_game_consoles: number;
+  max_tvs: number;
+  // Days a member must wait between activation and the first eligible
+  // claim. 30 on production plans, 0 on the dev test plan.
+  claim_waiting_period_days: number;
   created_at: string;
   updated_at: string;
 }
@@ -131,6 +140,15 @@ export interface Device {
   metadata: DeviceMetadata;
   imei: string;
   status: DeviceStatus;
+  market?: MarketCode;
+  // Plans v2 verification fields. Populated when the row is fetched via
+  // /api/v1/admin/verifications or other paths that need them.
+  verification_photos?: string[];
+  verification_video?: string | null;
+  verification_status?: "pending" | "approved" | "rejected";
+  verified_at?: string | null;
+  verified_by?: string | null;
+  verification_rejected_reason?: string | null;
   created_at: string;
   updated_at: string;
   deleted_at?: string;

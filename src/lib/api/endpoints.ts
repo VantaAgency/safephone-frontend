@@ -363,6 +363,11 @@ export interface StripeRegisterDeviceRequest {
   brand: string;
   model: string;
   imei?: string;
+  // Plans v2 extra fields.
+  device_type?: "smartphone" | "tablet" | "computer" | "game_console" | "tv";
+  serial_number?: string;
+  photos?: string[];
+  video?: string;
 }
 
 export interface StripeRegisterDeviceResponse {

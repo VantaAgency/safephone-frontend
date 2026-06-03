@@ -18,10 +18,25 @@ export default function USRegisterDevicePage() {
   const routes = routesFor("US");
   const registerDevice = useRegisterUSDevice();
 
+  const [deviceType, setDeviceType] = useState<
+    "smartphone" | "tablet" | "computer" | "game_console" | "tv"
+  >("smartphone");
   const [brand, setBrand] = useState("");
   const [model, setModel] = useState("");
   const [imei, setImei] = useState("");
+  const [serialNumber, setSerialNumber] = useState("");
+  // Plans v2 verification — 5 photo URLs + 1 video URL. Direct S3 upload
+  // lands in a follow-up PR; for now the user pastes URLs of media they
+  // already host elsewhere. The backend stores whatever lands here and
+  // the admin reviews via /admin → Verifications.
+  const [photoUrls, setPhotoUrls] = useState<string[]>(["", "", "", "", ""]);
+  const [videoUrl, setVideoUrl] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const isSmartphone = deviceType === "smartphone";
+  const filledPhotos = photoUrls.filter((u) => u.trim() !== "");
+  const photosReady = filledPhotos.length === 5;
+  const videoReady = videoUrl.trim() !== "";
 
   useEffect(() => {
     if (authPending) return;
@@ -31,9 +46,14 @@ export default function USRegisterDevicePage() {
     }
   }, [authPending, isAuthenticated, router, routes.login]);
 
-  const isImeiValid = imei === "" || /^\d{15}$/.test(imei);
+  const isImeiValid = !isSmartphone || imei === "" || /^\d{15}$/.test(imei);
   const canSubmit =
-    !!brand.trim() && !!model.trim() && isImeiValid && !registerDevice.isPending;
+    !!brand.trim() &&
+    !!model.trim() &&
+    isImeiValid &&
+    photosReady &&
+    videoReady &&
+    !registerDevice.isPending;
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -45,7 +65,11 @@ export default function USRegisterDevicePage() {
       {
         brand: brandLabel,
         model: model.trim(),
-        imei: imei.trim() || undefined,
+        imei: isSmartphone ? imei.trim() || undefined : undefined,
+        device_type: deviceType,
+        serial_number: serialNumber.trim() || undefined,
+        photos: filledPhotos,
+        video: videoUrl.trim(),
       },
       {
         onSuccess: () => {
@@ -103,6 +127,37 @@ export default function USRegisterDevicePage() {
           className="rounded-[2rem] border border-slate-200/80 bg-white p-6 shadow-sm md:p-10"
         >
           <div className="mb-6">
+            <label className="mb-2 block text-sm font-medium text-indigo-950">
+              Device type
+            </label>
+            <div className="grid grid-cols-2 gap-2 md:grid-cols-5">
+              {(
+                [
+                  { id: "smartphone", label: "📱 Smartphone" },
+                  { id: "tablet", label: "📋 Tablet" },
+                  { id: "computer", label: "💻 Computer" },
+                  { id: "game_console", label: "🎮 Console" },
+                  { id: "tv", label: "📺 TV" },
+                ] as const
+              ).map((t) => (
+                <button
+                  type="button"
+                  key={t.id}
+                  onClick={() => setDeviceType(t.id)}
+                  className={cn(
+                    "rounded-xl border px-3 py-2.5 text-sm font-medium transition cursor-pointer",
+                    deviceType === t.id
+                      ? "border-indigo-600 bg-indigo-50 text-indigo-700"
+                      : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50",
+                  )}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="mb-6">
             <label
               htmlFor="brand"
               className="mb-2 block text-sm font-medium text-indigo-950"
@@ -146,40 +201,116 @@ export default function USRegisterDevicePage() {
             />
           </div>
 
-          <div className="mb-2">
-            <label
-              htmlFor="imei"
-              className="mb-2 block text-sm font-medium text-indigo-950"
-            >
-              IMEI{" "}
-              <span className="font-normal text-slate-400">(optional)</span>
-            </label>
-            <input
-              id="imei"
-              type="text"
-              inputMode="numeric"
-              value={imei}
-              onChange={(e) =>
-                setImei(e.target.value.replace(/\D/g, "").slice(0, 15))
-              }
-              placeholder="15 digits"
-              className={cn(
-                "w-full rounded-xl border bg-white px-4 py-3 text-sm text-indigo-950 outline-none transition focus:ring-2 focus:ring-indigo-100",
-                isImeiValid
-                  ? "border-slate-200 focus:border-indigo-500"
-                  : "border-red-300 focus:border-red-500",
-              )}
-            />
-            <p className="mt-2 text-xs text-slate-400">
-              Find it by dialing <span className="font-medium">*#06#</span> on
-              your phone.
-            </p>
-            {!isImeiValid && (
-              <p className="mt-1 text-xs text-red-600">
-                IMEI must be exactly 15 digits.
+          {isSmartphone && (
+            <div className="mb-6">
+              <label
+                htmlFor="imei"
+                className="mb-2 block text-sm font-medium text-indigo-950"
+              >
+                IMEI{" "}
+                <span className="font-normal text-slate-400">(optional)</span>
+              </label>
+              <input
+                id="imei"
+                type="text"
+                inputMode="numeric"
+                value={imei}
+                onChange={(e) =>
+                  setImei(e.target.value.replace(/\D/g, "").slice(0, 15))
+                }
+                placeholder="15 digits"
+                className={cn(
+                  "w-full rounded-xl border bg-white px-4 py-3 text-sm text-indigo-950 outline-none transition focus:ring-2 focus:ring-indigo-100",
+                  isImeiValid
+                    ? "border-slate-200 focus:border-indigo-500"
+                    : "border-red-300 focus:border-red-500",
+                )}
+              />
+              <p className="mt-2 text-xs text-slate-400">
+                Find it by dialing <span className="font-medium">*#06#</span> on
+                your phone.
               </p>
-            )}
+              {!isImeiValid && (
+                <p className="mt-1 text-xs text-red-600">
+                  IMEI must be exactly 15 digits.
+                </p>
+              )}
+            </div>
+          )}
+
+          {!isSmartphone && (
+            <div className="mb-6">
+              <label
+                htmlFor="serial"
+                className="mb-2 block text-sm font-medium text-indigo-950"
+              >
+                Serial number{" "}
+                <span className="font-normal text-slate-400">(optional)</span>
+              </label>
+              <input
+                id="serial"
+                type="text"
+                value={serialNumber}
+                onChange={(e) => setSerialNumber(e.target.value)}
+                placeholder="As printed on the device"
+                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-indigo-950 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+              />
+            </div>
+          )}
+
+          {/* Verification proof — plans v2 mandatory. */}
+          <div className="mb-6 rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4">
+            <div className="mb-3">
+              <h3 className="text-sm font-semibold text-indigo-950">
+                Verification photos (5 required)
+              </h3>
+              <p className="mt-1 text-xs text-slate-500">
+                Capture the device front, back, and any visible serial/IMEI
+                screen so we can confirm its condition before activating your
+                membership.
+              </p>
+            </div>
+            <div className="space-y-2">
+              {photoUrls.map((url, idx) => (
+                <input
+                  key={idx}
+                  type="url"
+                  value={url}
+                  onChange={(e) => {
+                    const next = [...photoUrls];
+                    next[idx] = e.target.value;
+                    setPhotoUrls(next);
+                  }}
+                  placeholder={`Photo ${idx + 1} URL`}
+                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-indigo-950 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                />
+              ))}
+            </div>
           </div>
+
+          <div className="mb-6 rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4">
+            <div className="mb-3">
+              <h3 className="text-sm font-semibold text-indigo-950">
+                Verification video (1 required)
+              </h3>
+              <p className="mt-1 text-xs text-slate-500">
+                10–60 second clip showing the device powering on and your
+                surroundings — host on Drive/Dropbox/etc and paste the link.
+              </p>
+            </div>
+            <input
+              type="url"
+              value={videoUrl}
+              onChange={(e) => setVideoUrl(e.target.value)}
+              placeholder="https://…"
+              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-indigo-950 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+            />
+          </div>
+
+          <p className="mb-6 text-xs text-slate-500">
+            Your membership activates after our team reviews the photos and
+            video. First claim is eligible 30 days after activation.
+          </p>
 
           {errorMessage && (
             <div className="mt-6 rounded-xl border border-red-200/80 bg-red-50 px-4 py-3 text-sm text-red-600">
