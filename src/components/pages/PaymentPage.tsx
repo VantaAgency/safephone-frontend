@@ -38,6 +38,7 @@ import {
   usePaymentCheckout,
   useResumePayment,
 } from "@/lib/api/hooks";
+import { VerificationMediaUpload } from "@/components/forms/verification-media-upload";
 import { ApiError } from "@/lib/api/client";
 import { isTotalPlan } from "@/lib/plans";
 import {
@@ -1192,26 +1193,21 @@ function PaiementContent() {
               </h3>
               <p className="mt-1 text-xs text-slate-500">
                 {lang === "fr"
-                  ? "Capturez l'avant, l'arriere et toute serigraphie visible pour que l'on confirme l'etat de l'appareil avant activation."
-                  : "Capture the front, back, and any visible serial so we can confirm the device condition before activation."}
+                  ? "Capturez l'avant, l'arriere et toute serigraphie visible. JPG / PNG / WEBP / HEIC, jusqu'a 12 Mo par photo."
+                  : "Capture the front, back, and any visible serial. JPG / PNG / WEBP / HEIC, up to 12 MB each."}
               </p>
               <div className="mt-3 space-y-2">
                 {photoUrls.map((url, idx) => (
-                  <input
+                  <VerificationMediaUpload
                     key={idx}
-                    type="url"
+                    kind="photo"
+                    index={idx + 1}
                     value={url}
-                    onChange={(e) => {
-                      const next = [...photoUrls];
-                      next[idx] = e.target.value;
-                      setPhotoUrls(next);
+                    onChange={(next) => {
+                      const arr = [...photoUrls];
+                      arr[idx] = next;
+                      setPhotoUrls(arr);
                     }}
-                    placeholder={
-                      lang === "fr"
-                        ? `Photo ${idx + 1} (URL)`
-                        : `Photo ${idx + 1} URL`
-                    }
-                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-indigo-950 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
                   />
                 ))}
               </div>
@@ -1223,16 +1219,16 @@ function PaiementContent() {
               </h3>
               <p className="mt-1 text-xs text-slate-500">
                 {lang === "fr"
-                  ? "Clip de 10 a 60 secondes montrant l'appareil sous tension. Hebergez-le (Drive, Dropbox, etc.) et collez le lien."
-                  : "10–60 second clip showing the device powered on. Host it (Drive, Dropbox, etc.) and paste the link."}
+                  ? "Clip de 10 a 60 secondes montrant l'appareil sous tension. MP4 / MOV / WEBM, jusqu'a 75 Mo."
+                  : "10–60 second clip showing the device powered on. MP4 / MOV / WEBM, up to 75 MB."}
               </p>
-              <input
-                type="url"
-                value={videoUrl}
-                onChange={(e) => setVideoUrl(e.target.value)}
-                placeholder="https://…"
-                className="mt-3 w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-indigo-950 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
-              />
+              <div className="mt-3">
+                <VerificationMediaUpload
+                  kind="video"
+                  value={videoUrl}
+                  onChange={setVideoUrl}
+                />
+              </div>
 
               <p className="mt-3 text-xs text-slate-500">
                 {lang === "fr"

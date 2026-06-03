@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
+import { VerificationMediaUpload } from "@/components/forms/verification-media-upload";
 import { ApiError } from "@/lib/api/client";
 import { useRegisterUSDevice } from "@/lib/api/hooks";
 import { useAuth } from "@/lib/auth/auth-provider";
@@ -267,22 +268,21 @@ export default function USRegisterDevicePage() {
               <p className="mt-1 text-xs text-slate-500">
                 Capture the device front, back, and any visible serial/IMEI
                 screen so we can confirm its condition before activating your
-                membership.
+                membership. JPG / PNG / WEBP / HEIC, up to 12 MB each.
               </p>
             </div>
             <div className="space-y-2">
               {photoUrls.map((url, idx) => (
-                <input
+                <VerificationMediaUpload
                   key={idx}
-                  type="url"
+                  kind="photo"
+                  index={idx + 1}
                   value={url}
-                  onChange={(e) => {
-                    const next = [...photoUrls];
-                    next[idx] = e.target.value;
-                    setPhotoUrls(next);
+                  onChange={(next) => {
+                    const arr = [...photoUrls];
+                    arr[idx] = next;
+                    setPhotoUrls(arr);
                   }}
-                  placeholder={`Photo ${idx + 1} URL`}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-indigo-950 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
                 />
               ))}
             </div>
@@ -295,15 +295,13 @@ export default function USRegisterDevicePage() {
               </h3>
               <p className="mt-1 text-xs text-slate-500">
                 10–60 second clip showing the device powering on and your
-                surroundings — host on Drive/Dropbox/etc and paste the link.
+                surroundings. MP4 / MOV / WEBM, up to 75 MB.
               </p>
             </div>
-            <input
-              type="url"
+            <VerificationMediaUpload
+              kind="video"
               value={videoUrl}
-              onChange={(e) => setVideoUrl(e.target.value)}
-              placeholder="https://…"
-              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-indigo-950 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+              onChange={setVideoUrl}
             />
           </div>
 

@@ -136,17 +136,43 @@ test.describe("US Stripe checkout flow", () => {
     await brandButton.click();
     await page.locator("#model").fill("iPhone 15 Pro");
 
-    // Verification proof — 5 photo URLs + 1 video URL are mandatory.
-    // Use harmless https:// placeholders; the backend stores them as-is
-    // and the admin Verifications tab is what gates activation.
-    for (let i = 0; i < 5; i++) {
+    // Verification proof — 5 photos + 1 video uploaded via multipart
+    // (the URL inputs were replaced by VerificationMediaUpload). Use a
+    // tiny 1x1 PNG and a near-empty MP4 stub; the backend doesn't
+    // decode the bytes, it only checks content-type + size.
+    const pngBytes = Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=",
+      "base64",
+    );
+    const mp4Stub = Buffer.from([
+      0x00, 0x00, 0x00, 0x18, 0x66, 0x74, 0x79, 0x70, 0x6d, 0x70, 0x34, 0x32,
+      0x00, 0x00, 0x00, 0x00, 0x6d, 0x70, 0x34, 0x32, 0x69, 0x73, 0x6f, 0x6d,
+    ]);
+    const fileInputs = page.locator('input[type="file"]');
+    const photoSlotCount = 5;
+    for (let i = 0; i < photoSlotCount; i++) {
+      await fileInputs.nth(i).setInputFiles({
+        name: `photo-${i + 1}.png`,
+        mimeType: "image/png",
+        buffer: pngBytes,
+      });
+      // Wait for the upload's "View uploaded file" link to appear before
+      // attaching the next file — otherwise the slot's still uploading
+      // when we try to fire the next setInputFiles.
       await page
-        .getByPlaceholder(`Photo ${i + 1} URL`)
-        .fill(`https://example.com/photo-${i + 1}.jpg`);
+        .getByRole("link", { name: /view uploaded file/i })
+        .nth(i)
+        .waitFor({ state: "visible", timeout: 15_000 });
     }
+    await fileInputs.nth(photoSlotCount).setInputFiles({
+      name: "video.mp4",
+      mimeType: "video/mp4",
+      buffer: mp4Stub,
+    });
     await page
-      .getByPlaceholder("https://…")
-      .fill("https://example.com/video.mp4");
+      .getByRole("link", { name: /view uploaded file/i })
+      .nth(photoSlotCount)
+      .waitFor({ state: "visible", timeout: 15_000 });
 
     // Retry the submit a few times — the backend rejects with
     // "US subscription awaiting device registration not found" until the
