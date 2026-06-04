@@ -18,11 +18,7 @@ import {
   LaptopIcon,
   PlugIcon,
 } from "@/components/ui/icons";
-import {
-  DEVICE_BRANDS,
-  DEVICE_BRAND_PREVIEW,
-  DEVICE_MODEL_SUGGESTIONS,
-} from "@/lib/data";
+import { DEVICE_BRANDS, DEVICE_BRAND_PREVIEW } from "@/lib/data";
 import {
   COMPUTER_CATEGORY_OPTIONS,
   DEVICE_TYPE_OPTIONS,
@@ -39,6 +35,8 @@ import {
   useResumePayment,
 } from "@/lib/api/hooks";
 import { VerificationMediaUpload } from "@/components/forms/verification-media-upload";
+import { ModelCombobox } from "@/components/forms/model-combobox";
+import { Stepper, type StepDef } from "@/components/ui/stepper";
 import { ApiError } from "@/lib/api/client";
 import { isTotalPlan } from "@/lib/plans";
 import {
@@ -205,6 +203,8 @@ function PaiementContent() {
   const [photoUrls, setPhotoUrls] = useState<string[]>(["", ""]);
   const [videoUrl, setVideoUrl] = useState("");
   const [error, setError] = useState("");
+  // Stepper: 0 = device, 1 = verification, 2 = payment.
+  const [step, setStep] = useState(0);
 
   const filledPhotos = photoUrls.filter((u) => u.trim() !== "");
   const photosReady = filledPhotos.length === 2;
@@ -245,6 +245,14 @@ function PaiementContent() {
       clearStoredCreateFlow();
     }
   }, [currentCreateQueryKey, isTrackedMode]);
+
+  // Scroll back to the recap/stepper when advancing between steps so the
+  // next step starts in view rather than mid-scroll.
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }, [step]);
 
   const brandLabel = DEVICE_BRANDS.find((b) => b.id === selectedBrandSlug);
   const previewBrandLabel = selectedBrandSlug
@@ -291,22 +299,6 @@ function PaiementContent() {
       trimmedSerialNumber,
     ],
   );
-
-  const modelSuggestions = useMemo(() => {
-    if (effectiveDeviceType !== "smartphone" || !selectedBrandSlug) return [];
-    const suggestions =
-      DEVICE_MODEL_SUGGESTIONS[
-        selectedBrandSlug as keyof typeof DEVICE_MODEL_SUGGESTIONS
-      ] ?? [];
-    if (!trimmedModel) {
-      return suggestions.slice(0, 6);
-    }
-
-    const query = trimmedModel.toLowerCase();
-    return suggestions
-      .filter((suggestion) => suggestion.toLowerCase().includes(query))
-      .slice(0, 6);
-  }, [effectiveDeviceType, selectedBrandSlug, trimmedModel]);
 
   const fullDeviceName = useMemo(() => {
     if (!effectiveBrand && !trimmedModel && !trimmedProductSubtype) {
@@ -721,10 +713,8 @@ function PaiementContent() {
     : createDeviceMeta;
   const summaryPlanName = isTrackedMode ? trackedPlanName : createPlanName;
   const summaryPrice = isTrackedMode ? trackedPrice : createPrice;
-  const canSubmitPayment =
+  const deviceStepValid =
     !!selectedPlan &&
-    photosReady &&
-    videoReady &&
     (effectiveDeviceType === "smartphone"
       ? !!selectedBrandSlug && !!trimmedModel
       : effectiveDeviceType === "computer"
@@ -732,6 +722,17 @@ function PaiementContent() {
         : effectiveDeviceType === "home_electronics"
           ? !!trimmedBrandInput && !!trimmedModel && !!trimmedProductSubtype
           : !!trimmedBrandInput && !!trimmedModel);
+  const mediaStepValid = photosReady && videoReady;
+  const canSubmitPayment = deviceStepValid && mediaStepValid;
+
+  const steps: StepDef[] = [
+    { key: "device", label: lang === "fr" ? "Appareil" : "Device" },
+    {
+      key: "verification",
+      label: lang === "fr" ? "Vérification" : "Verification",
+    },
+    { key: "payment", label: lang === "fr" ? "Paiement" : "Payment" },
+  ];
 
   return (
     <div className="bg-slate-50 py-24 md:py-32">
@@ -810,6 +811,12 @@ function PaiementContent() {
           renderTrackedState()
         ) : (
           <>
+            <div className="mb-6">
+              <Stepper steps={steps} current={step} onStepClick={setStep} />
+            </div>
+
+            {step === 0 && (
+            <>
             <div className="mb-6 rounded-[2rem] border border-slate-200/80 bg-white p-6 shadow-sm">
               <h3 className="mb-4 text-sm font-medium text-indigo-950">
                 {lang === "fr" ? "Details de l'appareil" : "Device details"}
@@ -937,9 +944,12 @@ function PaiementContent() {
                     label={lang === "fr" ? "Modele" : "Model"}
                     hint={modelGuidance}
                   >
-                    <Input
+                    <ModelCombobox
                       value={model}
-                      onChange={(e) => setModel(e.target.value)}
+                      onChange={setModel}
+                      brandLabel={previewBrandLabel || ""}
+                      brandSlug={selectedBrandSlug}
+                      brandReady={!!selectedBrandSlug}
                       placeholder={
                         lang === "fr"
                           ? "Ex: Galaxy A54, iPhone 13..."
@@ -947,30 +957,6 @@ function PaiementContent() {
                       }
                     />
                   </FormField>
-                  {selectedBrandSlug && modelSuggestions.length > 0 && (
-                    <div className="mt-4">
-                      <p className="mb-2 text-xs font-medium text-slate-500">
-                        {lang === "fr" ? "Suggestions" : "Suggestions"}
-                      </p>
-                      <div className="flex flex-wrap gap-2">
-                        {modelSuggestions.map((suggestion) => (
-                          <button
-                            key={suggestion}
-                            type="button"
-                            onClick={() => setModel(suggestion)}
-                            className={cn(
-                              "rounded-full border px-3 py-1.5 text-xs font-medium transition-all",
-                              trimmedModel === suggestion
-                                ? "border-indigo-950 bg-indigo-950 text-white"
-                                : "border-slate-200 bg-white text-indigo-950 hover:border-slate-300 hover:bg-slate-50",
-                            )}
-                          >
-                            {suggestion}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
                   <p className="mt-3 text-xs text-slate-400">
                     {lang === "fr"
                       ? "L'IMEI sera demande depuis votre tableau de bord apres souscription."
@@ -1177,7 +1163,21 @@ function PaiementContent() {
                 </>
               )}
             </div>
+            <div className="mt-6 flex justify-end">
+              <Button
+                variant="primary"
+                size="lg"
+                onClick={() => setStep(1)}
+                disabled={!deviceStepValid}
+              >
+                {lang === "fr" ? "Continuer" : "Continue"}
+              </Button>
+            </div>
+            </>
+            )}
 
+            {step === 1 && (
+            <>
             {/* Plans v2 verification proof — same as US wizard. */}
             <div className="mb-6 rounded-[2rem] border border-slate-200/80 bg-white p-6 shadow-sm">
               <h3 className="text-sm font-semibold text-indigo-950">
@@ -1235,7 +1235,24 @@ function PaiementContent() {
                   : "Your coverage activates after our team's review. First claim eligible 30 days after activation."}
               </p>
             </div>
+            <div className="mt-6 flex items-center justify-between gap-3">
+              <Button variant="ghost" size="lg" onClick={() => setStep(0)}>
+                {lang === "fr" ? "Retour" : "Back"}
+              </Button>
+              <Button
+                variant="primary"
+                size="lg"
+                onClick={() => setStep(2)}
+                disabled={!mediaStepValid}
+              >
+                {lang === "fr" ? "Continuer" : "Continue"}
+              </Button>
+            </div>
+            </>
+            )}
 
+            {step === 2 && (
+            <>
             <div className="mb-6 rounded-[2rem] border border-slate-200/80 bg-white p-6 shadow-sm">
               <p className="text-sm text-slate-500">
                 {lang === "fr"
@@ -1262,6 +1279,13 @@ function PaiementContent() {
                 ? t.payment.processing
                 : `${t.payment.pay} — ${createPrice.toLocaleString("fr-FR")} XOF`}
             </Button>
+            <div className="mt-3 flex justify-center">
+              <Button variant="ghost" size="sm" onClick={() => setStep(1)}>
+                {lang === "fr" ? "Retour" : "Back"}
+              </Button>
+            </div>
+            </>
+            )}
           </>
         )}
       </div>

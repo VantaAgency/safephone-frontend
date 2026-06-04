@@ -6,10 +6,11 @@ import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { VerificationMediaUpload } from "@/components/forms/verification-media-upload";
+import { ModelCombobox } from "@/components/forms/model-combobox";
 import { ApiError } from "@/lib/api/client";
 import { useRegisterUSDevice } from "@/lib/api/hooks";
 import { useAuth } from "@/lib/auth/auth-provider";
-import { DEVICE_BRANDS } from "@/lib/data";
+import { DEVICE_BRANDS, DEVICE_BRAND_PREVIEW } from "@/lib/data";
 import { routesFor } from "@/lib/markets/routes";
 import { cn } from "@/lib/utils";
 
@@ -191,14 +192,17 @@ export default function USRegisterDevicePage() {
             >
               Model
             </label>
-            <input
-              id="model"
-              type="text"
+            <ModelCombobox
+              inputId="model"
               value={model}
-              onChange={(e) => setModel(e.target.value)}
+              onChange={setModel}
+              brandLabel={
+                DEVICE_BRAND_PREVIEW[brand as keyof typeof DEVICE_BRAND_PREVIEW]
+                  ?.labelEn ?? ""
+              }
+              brandSlug={brand}
+              brandReady={isSmartphone && !!brand}
               placeholder="e.g. iPhone 15 Pro"
-              required
-              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-indigo-950 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
             />
           </div>
 
