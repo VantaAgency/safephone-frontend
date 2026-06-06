@@ -24,6 +24,7 @@ import {
   COMPUTER_CATEGORY_OPTIONS,
   DEVICE_TYPE_OPTIONS,
   DEVICE_SUGGESTIONS,
+  deviceVerificationSpec,
   coveredDeviceTypes,
   deviceRequiresImei,
   formatDeviceDisplayName,
@@ -215,8 +216,6 @@ function PaiementContent() {
   // Stepper: 0 = device, 1 = verification, 2 = payment.
   const [step, setStep] = useState(0);
 
-  const filledPhotos = photoUrls.filter((u) => u.trim() !== "");
-  const photosReady = filledPhotos.length === 2;
   const videoReady = videoUrl.trim() !== "";
 
   const autoRedirectedRef = useRef(false);
@@ -279,6 +278,14 @@ function PaiementContent() {
   const effectiveDeviceType = multiDeviceType
     ? activeDeviceType
     : "smartphone";
+  // Verification proof is tailored to the device (e.g. a TV needs just one
+  // photo + a video of it powered on, not a front/back pair).
+  const verifSpec = deviceVerificationSpec(effectiveDeviceType);
+  const requiredPhotos = verifSpec.photos.length;
+  const filledPhotos = photoUrls
+    .slice(0, requiredPhotos)
+    .filter((u) => u.trim() !== "");
+  const photosReady = filledPhotos.length === requiredPhotos;
   const effectiveBrand =
     effectiveDeviceType === "smartphone"
       ? brandLabel
@@ -1180,26 +1187,20 @@ function PaiementContent() {
             <div className="mb-6 rounded-[2rem] border border-slate-200/80 bg-white p-6 shadow-sm">
               <h3 className="text-sm font-semibold text-indigo-950">
                 {lang === "fr"
-                  ? "Photos de verification (2 obligatoires)"
-                  : "Verification photos (2 required)"}
+                  ? `Photo${requiredPhotos > 1 ? "s" : ""} de vérification (${requiredPhotos} obligatoire${requiredPhotos > 1 ? "s" : ""})`
+                  : `Verification photo${requiredPhotos > 1 ? "s" : ""} (${requiredPhotos} required)`}
               </h3>
               <p className="mt-1 text-xs text-slate-500">
-                {lang === "fr"
-                  ? "Une photo de l'avant (ecran) et une de l'arriere. JPG / PNG / WEBP / HEIC, jusqu'a 12 Mo par photo."
-                  : "One photo of the front (screen) and one of the back. JPG / PNG / WEBP / HEIC, up to 12 MB each."}
+                {lang === "fr" ? verifSpec.photoHintFr : verifSpec.photoHintEn}
               </p>
               <div className="mt-3 space-y-2">
-                {photoUrls.map((url, idx) => (
+                {verifSpec.photos.map((slot, idx) => (
                   <VerificationMediaUpload
                     key={idx}
                     kind="photo"
                     index={idx + 1}
-                    label={
-                      lang === "fr"
-                        ? ["Avant (ecran)", "Arriere"][idx]
-                        : ["Front (screen)", "Back"][idx]
-                    }
-                    value={url}
+                    label={lang === "fr" ? slot.labelFr : slot.labelEn}
+                    value={photoUrls[idx] ?? ""}
                     onChange={(next) => {
                       const arr = [...photoUrls];
                       arr[idx] = next;
@@ -1215,9 +1216,7 @@ function PaiementContent() {
                   : "Verification video (1 required)"}
               </h3>
               <p className="mt-1 text-xs text-slate-500">
-                {lang === "fr"
-                  ? "Un court clip montrant l'appareil sous tension. MP4 / MOV / WEBM, jusqu'a 75 Mo."
-                  : "A short clip showing the device powered on. MP4 / MOV / WEBM, up to 75 MB."}
+                {lang === "fr" ? verifSpec.videoHintFr : verifSpec.videoHintEn}
               </p>
               <div className="mt-3">
                 <VerificationMediaUpload

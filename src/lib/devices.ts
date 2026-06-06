@@ -94,6 +94,49 @@ export const DEVICE_SUGGESTIONS: Partial<Record<DeviceType, string[]>> = {
   ],
 };
 
+// Verification proof requested at the payment step, tailored to the device.
+// Smartphones/tablets show a front (screen) + back photo; TVs, computers and
+// consoles just need a single photo of the device powered on. The video always
+// shows the device powered on.
+export function deviceVerificationSpec(
+  deviceType: DeviceType | string | undefined,
+): {
+  photos: Array<{ labelFr: string; labelEn: string }>;
+  photoHintFr: string;
+  photoHintEn: string;
+  videoHintFr: string;
+  videoHintEn: string;
+} {
+  const fmt = "JPG / PNG / WEBP / HEIC";
+  const vid = "MP4 / MOV / WEBM";
+  if (deviceType === "smartphone" || deviceType === "tablet") {
+    return {
+      photos: [
+        { labelFr: "Avant (écran)", labelEn: "Front (screen)" },
+        { labelFr: "Arrière", labelEn: "Back" },
+      ],
+      photoHintFr: `Une photo de l'avant (écran) et une de l'arrière. ${fmt}, jusqu'à 12 Mo par photo.`,
+      photoHintEn: `One photo of the front (screen) and one of the back. ${fmt}, up to 12 MB each.`,
+      videoHintFr: `Un court clip montrant l'appareil allumé. ${vid}, jusqu'à 75 Mo.`,
+      videoHintEn: `A short clip showing the device powered on. ${vid}, up to 75 MB.`,
+    };
+  }
+  const isTv = deviceType === "tv";
+  const subjectFr = isTv ? "le téléviseur" : "l'appareil";
+  const subjectEn = isTv ? "the TV" : "the device";
+  return {
+    photos: [
+      isTv
+        ? { labelFr: "Téléviseur allumé", labelEn: "TV powered on" }
+        : { labelFr: "Appareil allumé", labelEn: "Device powered on" },
+    ],
+    photoHintFr: `Une photo de ${subjectFr} allumé. ${fmt}, jusqu'à 12 Mo.`,
+    photoHintEn: `One photo of ${subjectEn} powered on. ${fmt}, up to 12 MB.`,
+    videoHintFr: `Un court clip montrant ${subjectFr} allumé. ${vid}, jusqu'à 75 Mo.`,
+    videoHintEn: `A short clip showing ${subjectEn} powered on. ${vid}, up to 75 MB.`,
+  };
+}
+
 export const COMPUTER_CATEGORY_OPTIONS = [
   { id: "laptop", labelFr: "Portable", labelEn: "Laptop" },
   { id: "desktop", labelFr: "Bureau", labelEn: "Desktop" },
