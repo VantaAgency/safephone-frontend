@@ -39,7 +39,7 @@ export const registerSchema = z
 
 export const createDeviceSchema = z.object({
   device_type: z
-    .enum(["smartphone", "tablet", "tv", "computer", "home_electronics"])
+    .enum(["smartphone", "tablet", "tv", "computer", "game_console", "home_electronics"])
     .optional(),
   brand: z.string().min(1, "Marque requise / Brand required"),
   model: z.string().min(1, "Modèle requis / Model required"),
@@ -73,7 +73,7 @@ export const createClaimSchema = z.object({
 
 export const createPaymentSchema = z.object({
   device_type: z
-    .enum(["smartphone", "tablet", "tv", "computer", "home_electronics"])
+    .enum(["smartphone", "tablet", "tv", "computer", "game_console", "home_electronics"])
     .optional(),
   brand: z.string().min(1, "Marque requise / Brand required"),
   model: z.string().min(1, "Modèle requis / Model required"),

@@ -1,4 +1,4 @@
-import type { Device, DeviceMetadata, DeviceType } from "@/lib/api/types";
+import type { Device, DeviceMetadata, DeviceType, Plan } from "@/lib/api/types";
 
 export const TOTAL_PLAN_SLUG = "totale";
 
@@ -34,8 +34,15 @@ export const DEVICE_TYPE_OPTIONS: Array<{
     id: "computer",
     labelFr: "Ordinateur",
     labelEn: "Computer",
-    descriptionFr: "Portable ou fixe couvert par la Formule Totale.",
-    descriptionEn: "Laptop or desktop covered by the Total plan.",
+    descriptionFr: "Portable ou fixe couvert par votre formule.",
+    descriptionEn: "Laptop or desktop covered by your plan.",
+  },
+  {
+    id: "game_console",
+    labelFr: "Console de jeux",
+    labelEn: "Game console",
+    descriptionFr: "Console declaree, aucun IMEI requis.",
+    descriptionEn: "Declared console, no IMEI required.",
   },
   {
     id: "home_electronics",
@@ -71,6 +78,52 @@ export function deviceRequiresImei(
   deviceType: DeviceType | string | undefined,
 ): boolean {
   return (deviceType ?? "smartphone") === "smartphone";
+}
+
+// Device types a plan covers (cap > 0), in display order. home_electronics
+// has no cap column, so it's only offered on the Total plan.
+export function coveredDeviceTypes(
+  plan: Plan | null | undefined,
+): DeviceType[] {
+  if (!plan) return ["smartphone"];
+  const covered: DeviceType[] = [];
+  if (plan.max_smartphones > 0) covered.push("smartphone");
+  if (plan.max_tablets > 0) covered.push("tablet");
+  if (plan.max_computers > 0) covered.push("computer");
+  if (plan.max_game_consoles > 0) covered.push("game_console");
+  if (plan.max_tvs > 0) covered.push("tv");
+  if (isTotalPlanSlug(plan.slug)) covered.push("home_electronics");
+  return covered.length > 0 ? covered : ["smartphone"];
+}
+
+// True when the plan covers more than just a smartphone — i.e. the user
+// should get to pick which kind of device to register.
+export function planCoversMultipleDeviceTypes(
+  plan: Plan | null | undefined,
+): boolean {
+  return coveredDeviceTypes(plan).length > 1;
+}
+
+// Per-type coverage counts for display, only for the types the plan covers.
+export function planDeviceCoverageItems(
+  plan: Plan | null | undefined,
+  lang: "fr" | "en",
+): Array<{ type: DeviceType; label: string; count: number }> {
+  if (!plan) return [];
+  const rows: Array<{ type: DeviceType; count: number; fr: string; en: string }> = [
+    { type: "smartphone", count: plan.max_smartphones, fr: "smartphones", en: "phones" },
+    { type: "tablet", count: plan.max_tablets, fr: "tablettes", en: "tablets" },
+    { type: "computer", count: plan.max_computers, fr: "ordinateurs", en: "computers" },
+    { type: "game_console", count: plan.max_game_consoles, fr: "consoles", en: "consoles" },
+    { type: "tv", count: plan.max_tvs, fr: "TV", en: "TVs" },
+  ];
+  return rows
+    .filter((r) => r.count > 0)
+    .map((r) => ({
+      type: r.type,
+      count: r.count,
+      label: lang === "fr" ? r.fr : r.en,
+    }));
 }
 
 export function formatDeviceDisplayName(

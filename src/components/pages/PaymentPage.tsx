@@ -17,11 +17,13 @@ import {
   TvIcon,
   LaptopIcon,
   PlugIcon,
+  GamepadIcon,
 } from "@/components/ui/icons";
 import { DEVICE_BRANDS, DEVICE_BRAND_PREVIEW } from "@/lib/data";
 import {
   COMPUTER_CATEGORY_OPTIONS,
   DEVICE_TYPE_OPTIONS,
+  coveredDeviceTypes,
   deviceRequiresImei,
   formatDeviceDisplayName,
   getDeviceMetadataSummary,
@@ -38,7 +40,6 @@ import { VerificationMediaUpload } from "@/components/forms/verification-media-u
 import { ModelCombobox } from "@/components/forms/model-combobox";
 import { Stepper, type StepDef } from "@/components/ui/stepper";
 import { ApiError } from "@/lib/api/client";
-import { isTotalPlan } from "@/lib/plans";
 import {
   appendPartnerReferralParams,
   normalizePartnerReferralSourceMedium,
@@ -187,10 +188,18 @@ function PaiementContent() {
   });
 
   const selectedPlan = plans?.find((p) => p.id === planId || p.slug === planId);
-  const totalPlanSelected = isTotalPlan(selectedPlan);
+  const coveredTypes = useMemo(
+    () => coveredDeviceTypes(selectedPlan),
+    [selectedPlan],
+  );
+  const multiDeviceType = coveredTypes.length > 1;
   const [selectedDeviceType, setSelectedDeviceType] = useState<DeviceType>(
     deviceTypeFromQuery || "smartphone",
   );
+  // Effective device type, clamped at render to the plan's coverage.
+  const activeDeviceType: DeviceType = coveredTypes.includes(selectedDeviceType)
+    ? selectedDeviceType
+    : coveredTypes[0];
   const [selectedBrandSlug, setSelectedBrandSlug] = useState(brandSlug);
   const [brandInput, setBrandInput] = useState("");
   const [model, setModel] = useState("");
@@ -270,8 +279,8 @@ function PaiementContent() {
   const trimmedScreenSize = screenSize.trim();
   const trimmedComputerCategory = computerCategory.trim();
   const trimmedProductSubtype = productSubtype.trim();
-  const effectiveDeviceType = totalPlanSelected
-    ? selectedDeviceType
+  const effectiveDeviceType = multiDeviceType
+    ? activeDeviceType
     : "smartphone";
   const effectiveBrand =
     effectiveDeviceType === "smartphone"
@@ -821,7 +830,7 @@ function PaiementContent() {
               <h3 className="mb-4 text-sm font-medium text-indigo-950">
                 {lang === "fr" ? "Details de l'appareil" : "Device details"}
               </h3>
-              {totalPlanSelected && (
+              {multiDeviceType && (
                 <div className="mb-5">
                   <FormField
                     label={
@@ -834,7 +843,9 @@ function PaiementContent() {
                     }
                   >
                     <div className="grid gap-2 sm:grid-cols-2">
-                      {DEVICE_TYPE_OPTIONS.map((option) => {
+                      {DEVICE_TYPE_OPTIONS.filter((option) =>
+                        coveredTypes.includes(option.id),
+                      ).map((option) => {
                         const Icon =
                           option.id === "smartphone"
                             ? PhoneIcon
@@ -844,7 +855,9 @@ function PaiementContent() {
                                 ? TvIcon
                                 : option.id === "computer"
                                   ? LaptopIcon
-                                  : PlugIcon;
+                                  : option.id === "game_console"
+                                    ? GamepadIcon
+                                    : PlugIcon;
 
                         return (
                           <button
@@ -853,7 +866,7 @@ function PaiementContent() {
                             onClick={() => setSelectedDeviceType(option.id)}
                             className={cn(
                               "flex items-start gap-3 rounded-2xl border px-4 py-3 text-left transition-all",
-                              selectedDeviceType === option.id
+                              activeDeviceType === option.id
                                 ? "border-indigo-950 bg-indigo-950 text-white"
                                 : "border-slate-200 bg-white text-indigo-950 hover:border-slate-300 hover:bg-slate-50",
                             )}
@@ -861,7 +874,7 @@ function PaiementContent() {
                             <Icon
                               size={18}
                               className={
-                                selectedDeviceType === option.id
+                                activeDeviceType === option.id
                                   ? "text-white"
                                   : "text-slate-400"
                               }
@@ -875,7 +888,7 @@ function PaiementContent() {
                               <div
                                 className={cn(
                                   "mt-1 text-xs",
-                                  selectedDeviceType === option.id
+                                  activeDeviceType === option.id
                                     ? "text-white/80"
                                     : "text-slate-500",
                                 )}

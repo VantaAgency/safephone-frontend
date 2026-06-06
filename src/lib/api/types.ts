@@ -8,6 +8,7 @@ export type DeviceType =
   | "tablet"
   | "tv"
   | "computer"
+  | "game_console"
   | "home_electronics";
 export type SubscriptionStatus =
   | "pending"

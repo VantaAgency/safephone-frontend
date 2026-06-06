@@ -12,9 +12,15 @@ import {
   TvIcon,
   LaptopIcon,
   PlugIcon,
+  GamepadIcon,
 } from "@/components/ui/icons";
 import { DEVICE_BRANDS, PAYMENT_METHODS } from "@/lib/data";
-import { DEVICE_TYPE_OPTIONS, getDeviceTypeLabel } from "@/lib/devices";
+import {
+  DEVICE_TYPE_OPTIONS,
+  getDeviceTypeLabel,
+  coveredDeviceTypes,
+  planDeviceCoverageItems,
+} from "@/lib/devices";
 import { useLanguage } from "@/lib/language-context";
 import { useMarket } from "@/lib/markets/context";
 import { MARKETS } from "@/lib/markets/config";
@@ -31,7 +37,6 @@ import { useAuth } from "@/lib/auth/auth-provider";
 import { ApiError } from "@/lib/api/client";
 import { PlanCardSkeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import { isTotalPlan } from "@/lib/plans";
 import {
   appendPartnerReferralParams,
   clearPartnerReferralCookies,
@@ -343,10 +348,22 @@ function InscriptionContent() {
       !partnerClaimError &&
       partnerClaimedForCurrentAccount);
 
-  const totalPlanSelected = isTotalPlan(selectedPlanObj);
+  // Device types the selected plan actually covers (cap > 0). When it covers
+  // more than a smartphone, the user gets to pick which kind of device to
+  // register instead of being forced onto a phone.
+  const coveredTypes = useMemo(
+    () => coveredDeviceTypes(selectedPlanObj),
+    [selectedPlanObj],
+  );
+  const multiDeviceType = coveredTypes.length > 1;
+  // Effective device type, clamped at render to what the current plan covers
+  // (so changing plan after a selection can't carry an uncovered type).
+  const activeDeviceType = coveredTypes.includes(selectedDeviceType)
+    ? selectedDeviceType
+    : coveredTypes[0];
   const stepLabels = [
     t.register.stepPlan,
-    totalPlanSelected
+    multiDeviceType
       ? lang === "fr"
         ? "Appareil"
         : "Device"
@@ -364,14 +381,14 @@ function InscriptionContent() {
 
   const handleContinueToPay = () => {
     if (!resolvedSelectedPlanId) return;
-    if (!totalPlanSelected && !selectedBrand) return;
+    if (!multiDeviceType && !selectedBrand) return;
 
     const params = new URLSearchParams({
       plan: resolvedSelectedPlanId,
       annual: annual ? "true" : "false",
-      device_type: totalPlanSelected ? selectedDeviceType : "smartphone",
+      device_type: multiDeviceType ? activeDeviceType : "smartphone",
     });
-    if (!totalPlanSelected && selectedBrand) {
+    if (!multiDeviceType && selectedBrand) {
       params.set("brand", selectedBrand);
     }
     if (inviteToken) {
@@ -622,6 +639,14 @@ function InscriptionContent() {
                                 </span>
                               )}
                             </div>
+                            <div className="mt-1.5 text-xs text-slate-500">
+                              <span className="font-medium text-slate-400">
+                                {lang === "fr" ? "Couvre : " : "Covers: "}
+                              </span>
+                              {planDeviceCoverageItems(plan, lang)
+                                .map((item) => `${item.count} ${item.label}`)
+                                .join(" · ")}
+                            </div>
                           </div>
                           <div className="shrink-0 text-right">
                             {(() => {
@@ -662,7 +687,7 @@ function InscriptionContent() {
             {step === 2 && (
               <div className="rounded-[2rem] border border-slate-200/80 bg-white p-6 shadow-sm md:p-8">
                 <h2 className="mb-2 text-lg font-medium text-indigo-950">
-                  {totalPlanSelected
+                  {multiDeviceType
                     ? lang === "fr"
                       ? "Quel appareil voulez-vous declarer ?"
                       : "Which device do you want to declare?"
@@ -671,18 +696,20 @@ function InscriptionContent() {
                       : "What's your phone?"}
                 </h2>
                 <p className="mb-6 text-sm text-slate-500">
-                  {totalPlanSelected
+                  {multiDeviceType
                     ? lang === "fr"
-                      ? "La Formule Totale accepte smartphone, tablette, TV, ordinateur et electronique domestique declaree. Les details adaptes seront demandes a l'etape suivante."
-                      : "The Total plan accepts smartphones, tablets, TVs, computers, and declared home electronics. The adapted details will be requested on the next step."
+                      ? "Cette formule couvre plusieurs types d'appareils. Choisissez celui à déclarer — les détails adaptés seront demandés à l'étape suivante (l'IMEI n'est requis que pour les smartphones)."
+                      : "This plan covers several device types. Pick the one to declare — the right details are requested on the next step (IMEI is only required for smartphones)."
                     : lang === "fr"
                       ? "Sélectionnez votre marque. Le modèle et l'IMEI seront demandés après souscription."
                       : "Select your brand. Model and IMEI will be requested after subscription."}
                 </p>
 
-                {totalPlanSelected ? (
+                {multiDeviceType ? (
                   <div className="grid gap-3 sm:grid-cols-2">
-                    {DEVICE_TYPE_OPTIONS.map((option) => {
+                    {DEVICE_TYPE_OPTIONS.filter((option) =>
+                      coveredTypes.includes(option.id),
+                    ).map((option) => {
                       const Icon =
                         option.id === "smartphone"
                           ? PhoneIcon
@@ -692,7 +719,9 @@ function InscriptionContent() {
                               ? TvIcon
                               : option.id === "computer"
                                 ? LaptopIcon
-                                : PlugIcon;
+                                : option.id === "game_console"
+                                  ? GamepadIcon
+                                  : PlugIcon;
 
                       return (
                         <button
@@ -701,7 +730,7 @@ function InscriptionContent() {
                           onClick={() => setSelectedDeviceType(option.id)}
                           className={cn(
                             "flex items-start gap-4 rounded-2xl border p-4 text-left transition-all",
-                            selectedDeviceType === option.id
+                            activeDeviceType === option.id
                               ? "border-indigo-950 bg-indigo-950/5 ring-1 ring-indigo-950/20"
                               : "border-slate-200/80 bg-white hover:border-slate-300 hover:shadow-lg",
                           )}
@@ -709,7 +738,7 @@ function InscriptionContent() {
                           <div
                             className={cn(
                               "flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl",
-                              selectedDeviceType === option.id
+                              activeDeviceType === option.id
                                 ? "bg-indigo-950/10 text-indigo-950"
                                 : "bg-slate-50 text-slate-400",
                             )}
@@ -784,7 +813,7 @@ function InscriptionContent() {
                     className="flex-1"
                     onClick={() => setStep(3)}
                     disabled={
-                      totalPlanSelected ? !selectedDeviceType : !selectedBrand
+                      multiDeviceType ? !selectedDeviceType : !selectedBrand
                     }
                   >
                     {lang === "fr" ? "Continuer →" : "Continue →"}
@@ -815,12 +844,12 @@ function InscriptionContent() {
                       </span>
                       <span className="text-right font-medium text-indigo-950">
                         {getDeviceTypeLabel(
-                          totalPlanSelected ? selectedDeviceType : "smartphone",
+                          multiDeviceType ? activeDeviceType : "smartphone",
                           lang,
                         )}
                       </span>
                     </div>
-                    {!totalPlanSelected && (
+                    {!multiDeviceType && (
                       <div className="flex items-center justify-between gap-4">
                         <span className="text-sm text-slate-500">
                           {lang === "fr" ? "Marque" : "Brand"}
@@ -922,7 +951,7 @@ function InscriptionContent() {
                     onClick={handleContinueToPay}
                     disabled={
                       !resolvedSelectedPlanId ||
-                      (!totalPlanSelected && !selectedBrand)
+                      (!multiDeviceType && !selectedBrand)
                     }
                   >
                     {lang === "fr"
