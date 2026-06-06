@@ -21,6 +21,7 @@ import {
   WrenchIcon,
 } from "@/components/ui/icons";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { AddDeviceToSubscriptionModal } from "@/components/dashboard/add-device-to-subscription-modal";
 import { StatCard } from "@/components/cards/stat-card";
 import { CardSkeleton, Skeleton } from "@/components/ui/skeleton";
 import {
@@ -277,7 +278,10 @@ export default function DashboardPage() {
   const shouldLoadPayments = shouldLoadCoverageDetails || isPaymentsTab;
   const shouldLoadClaims = isClaimsTab;
   const shouldLoadRepairs = tab === "repairs";
-  const shouldLoadPlans = isDevicesTab;
+  // Plans power the device-coverage caps shown on the devices tab AND the
+  // "Ajouter un appareil" button on each active-subscription card in the
+  // overview. The list is tiny and cached (30 min staleTime).
+  const shouldLoadPlans = isDevicesTab || tab === "overview";
 
   const { data: dashboardSummary, isLoading: dashboardSummaryLoading } =
     useMemberDashboardSummary();
@@ -687,9 +691,26 @@ export default function DashboardPage() {
   );
 
   const userName = user?.name || "Utilisateur";
+  const [addDeviceSubId, setAddDeviceSubId] = useState<string | null>(null);
 
   return (
     <div className="min-h-screen bg-slate-50 py-10 md:py-14">
+      {addDeviceSubId &&
+        (() => {
+          const entry = overviewActiveSubscriptions.find(
+            (x) => x.subscription.id === addDeviceSubId,
+          );
+          const plan = entry
+            ? planById.get(entry.subscription.plan_id)
+            : undefined;
+          return entry && plan ? (
+            <AddDeviceToSubscriptionModal
+              subscriptionId={entry.subscription.id}
+              plan={plan}
+              onClose={() => setAddDeviceSubId(null)}
+            />
+          ) : null;
+        })()}
       <div className="mx-auto max-w-[1200px] px-5 md:px-8">
         {/* Page Header */}
         <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -1064,6 +1085,30 @@ export default function DashboardPage() {
                               )}
                             </div>
                           )}
+                          {(() => {
+                            const plan = planById.get(subscription.plan_id);
+                            const totalCap = plan
+                              ? plan.max_smartphones +
+                                plan.max_tablets +
+                                plan.max_computers +
+                                plan.max_game_consoles +
+                                plan.max_tvs
+                              : 0;
+                            return totalCap > 1 ? (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setAddDeviceSubId(subscription.id)
+                                }
+                                className="mt-3 cursor-pointer text-xs font-medium text-indigo-600 hover:underline"
+                              >
+                                +{" "}
+                                {lang === "fr"
+                                  ? "Ajouter un appareil"
+                                  : "Add a device"}
+                              </button>
+                            ) : null;
+                          })()}
                         </div>
                       );
                     })}

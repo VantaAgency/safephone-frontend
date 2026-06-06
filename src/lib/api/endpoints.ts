@@ -32,6 +32,7 @@ import type {
   ClaimPartnerReferralRequest,
   CreatePaymentRequest,
   CreateRepairRequest,
+  AddSubscriptionDeviceRequest,
   CreateSubscriptionRequest,
   Device,
   EmployeeClaimDetail,
@@ -121,6 +122,9 @@ export const subscriptions = {
     ),
   get: (id: string) => api.get<Subscription>(`/subscriptions/${id}`),
   cancel: (id: string) => api.post<Subscription>(`/subscriptions/${id}/cancel`),
+  devices: (id: string) => api.get<Device[]>(`/subscriptions/${id}/devices`),
+  addDevice: (id: string, data: AddSubscriptionDeviceRequest) =>
+    api.post<Device>(`/subscriptions/${id}/devices`, data),
 };
 
 export const admin = {

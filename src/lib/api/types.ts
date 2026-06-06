@@ -881,6 +881,15 @@ export interface CreateSubscriptionRequest {
   billing_cycle: "monthly" | "annual";
 }
 
+export interface AddSubscriptionDeviceRequest {
+  device_type: DeviceType;
+  brand?: string;
+  model: string;
+  metadata?: DeviceMetadata;
+  verification_photos: string[];
+  verification_video: string;
+}
+
 export interface CreateClaimRequest {
   device_id: string;
   subscription_id: string;

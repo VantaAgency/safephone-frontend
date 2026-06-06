@@ -72,6 +72,8 @@ export {
 } from "./use-devices";
 export {
   useSubscriptions,
+  useSubscriptionDevices,
+  useAddDeviceToSubscription,
   useCreateSubscription,
   useCancelSubscription,
 } from "./use-subscriptions";
