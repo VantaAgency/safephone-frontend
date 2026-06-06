@@ -44,13 +44,6 @@ export const DEVICE_TYPE_OPTIONS: Array<{
     descriptionFr: "Console declaree, aucun IMEI requis.",
     descriptionEn: "Declared console, no IMEI required.",
   },
-  {
-    id: "home_electronics",
-    labelFr: "Electronique domestique",
-    labelEn: "Home electronics",
-    descriptionFr: "Equipement menager ou electronique declare.",
-    descriptionEn: "Declared domestic or home electronic equipment.",
-  },
 ];
 
 export const COMPUTER_CATEGORY_OPTIONS = [
@@ -92,7 +85,6 @@ export function coveredDeviceTypes(
   if (plan.max_computers > 0) covered.push("computer");
   if (plan.max_game_consoles > 0) covered.push("game_console");
   if (plan.max_tvs > 0) covered.push("tv");
-  if (isTotalPlanSlug(plan.slug)) covered.push("home_electronics");
   return covered.length > 0 ? covered : ["smartphone"];
 }
 
