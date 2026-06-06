@@ -10,6 +10,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useSession, authClient } from "./client";
 import { setAuthTokenGetter } from "@/lib/api/client";
 import type { UserRole } from "@/lib/api/types";
@@ -34,6 +35,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const session = useSession();
+  const queryClient = useQueryClient();
   const tokenCacheRef = useRef<{ token: string | null; expiresAt: number }>({
     token: null,
     expiresAt: 0,
@@ -139,7 +141,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     tokenPromiseRef.current = null;
     setTokenRoleState(null);
     await authClient.signOut();
-  }, []);
+    // Drop every cached query so the next user on this browser can't see the
+    // previous session's data (query keys aren't user-scoped). Better Auth
+    // already cleared the cookie + our token cache above.
+    queryClient.clear();
+  }, [queryClient]);
 
   // Wire up API client token injection
   useEffect(() => {
