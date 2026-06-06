@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { AdminCommercialsTab } from "@/components/admin/admin-commercials-tab";
 import { AdminEmployeesTab } from "@/components/admin/admin-employees-tab";
 import { AdminVerificationsTab } from "@/components/admin/admin-verifications-tab";
+import { MarketFilter, type MarketFilterValue } from "@/components/admin/market-filter";
 import { RouteGuardLoader } from "@/components/auth/route-guard-loader";
 import { StatCard } from "@/components/cards/stat-card";
 import { Button } from "@/components/ui/button";
@@ -82,6 +83,25 @@ export default function AdminPage() {
   const [partnersPage, setPartnersPage] = useState(1);
   const [claimsPage, setClaimsPage] = useState(1);
   const [repairsPage, setRepairsPage] = useState(1);
+
+  // Market filter shared by every market-aware list, synced to the ?market=
+  // URL param so refresh and bookmarks keep the selection.
+  const [market, setMarket] = useState<MarketFilterValue>("");
+  useEffect(() => {
+    const m = new URLSearchParams(window.location.search).get("market");
+    if (m === "SN" || m === "US") setMarket(m);
+  }, []);
+  const handleMarketChange = (next: MarketFilterValue) => {
+    setMarket(next);
+    setClaimsPage(1);
+    setRepairsPage(1);
+    setPaymentsPage(1);
+    const params = new URLSearchParams(window.location.search);
+    if (next) params.set("market", next);
+    else params.delete("market");
+    const qs = params.toString();
+    router.replace(qs ? `?${qs}` : window.location.pathname, { scroll: false });
+  };
   const pageToOffset = (page: number) => (page - 1) * PAGE_SIZE;
   const paginationFor = (page: number) => ({
     limit: PAGE_SIZE,
@@ -106,7 +126,7 @@ export default function AdminPage() {
     data: adminClaims,
     isLoading: claimsLoading,
     refetch: refetchClaims,
-  } = useAdminClaims(paginationFor(claimsPage), {
+  } = useAdminClaims({ ...paginationFor(claimsPage), market: market || undefined }, {
     enabled: isAdmin && tab === "claims",
   });
   const {
@@ -114,7 +134,7 @@ export default function AdminPage() {
     isLoading: repairsLoading,
     refetch: refetchRepairs,
   } = useAdminRepairRequests(
-    { search: deferredSearch, ...paginationFor(repairsPage) },
+    { search: deferredSearch, market: market || undefined, ...paginationFor(repairsPage) },
     { enabled: isAdmin && tab === "repairs" },
   );
   const updateClaimStatus = useUpdateClaimStatus();
@@ -135,7 +155,7 @@ export default function AdminPage() {
     data: adminPayments,
     isLoading: paymentsLoading,
     refetch: refetchPayments,
-  } = useAdminPayments(paginationFor(paymentsPage), {
+  } = useAdminPayments({ ...paginationFor(paymentsPage), market: market || undefined }, {
     enabled: isAdmin && tab === "payments",
   });
   const {
@@ -668,6 +688,12 @@ export default function AdminPage() {
             </button>
           ))}
         </div>
+
+        {(tab === "claims" || tab === "repairs" || tab === "payments") && (
+          <div className="mb-6 flex justify-end">
+            <MarketFilter value={market} onChange={handleMarketChange} />
+          </div>
+        )}
 
         {/* Overview Tab */}
         {tab === "overview" && (

@@ -1082,6 +1082,8 @@ export interface AdminEmployeeDetail {
 export interface PaginationParams {
   limit?: number;
   offset?: number;
+  /** Optional market filter for admin list endpoints (omit = all markets). */
+  market?: MarketCode;
 }
 
 export interface AdminClaimParams extends PaginationParams {
