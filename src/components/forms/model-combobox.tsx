@@ -23,6 +23,8 @@ interface ModelComboboxProps {
   inputId?: string;
   disabled?: boolean;
   error?: boolean;
+  /** When provided, suggestions come from this static list (no Groq fetch). */
+  staticSuggestions?: string[];
 }
 
 interface SuggestResponse {
@@ -60,6 +62,7 @@ export function ModelCombobox({
   inputId,
   disabled,
   error,
+  staticSuggestions,
 }: ModelComboboxProps) {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
@@ -78,16 +81,18 @@ export function ModelCombobox({
 
   // Base list — refetched when the brand changes.
   useEffect(() => {
+    if (staticSuggestions) return;
     if (!brandReady || !brandLabel) return;
     const ctrl = new AbortController();
     fetchModels(brandLabel, brandSlug, "", ctrl.signal)
       .then((models) => setBase({ key: brandLabel, models }))
       .catch(() => {});
     return () => ctrl.abort();
-  }, [brandReady, brandLabel, brandSlug]);
+  }, [brandReady, brandLabel, brandSlug, staticSuggestions]);
 
   // Query-refined list — debounced, only for longer inputs.
   useEffect(() => {
+    if (staticSuggestions) return;
     const q = value.trim();
     if (!brandReady || !brandLabel || q.length < 2) return;
     const ctrl = new AbortController();
@@ -102,13 +107,20 @@ export function ModelCombobox({
       clearTimeout(timer);
       ctrl.abort();
     };
-  }, [value, brandReady, brandLabel, brandSlug]);
+  }, [value, brandReady, brandLabel, brandSlug, staticSuggestions]);
 
   // Merge, dedupe (case-insensitive), then filter by what's typed.
   // Stale result sets (whose tag no longer matches the current brand /
   // query) contribute nothing.
   const suggestions = useMemo(() => {
     const q = value.trim();
+    if (staticSuggestions) {
+      const ql = q.toLowerCase();
+      const filtered = ql
+        ? staticSuggestions.filter((m) => m.toLowerCase().includes(ql))
+        : staticSuggestions;
+      return filtered.slice(0, 10);
+    }
     const baseModels =
       brandReady && base.key === brandLabel ? base.models : [];
     const queryModels =
@@ -129,7 +141,7 @@ export function ModelCombobox({
       ? merged.filter((m) => m.toLowerCase().includes(ql))
       : merged;
     return filtered.slice(0, 10);
-  }, [base, queried, value, brandReady, brandLabel]);
+  }, [base, queried, value, brandReady, brandLabel, staticSuggestions]);
 
   // Close on outside click.
   useEffect(() => {
@@ -197,7 +209,7 @@ export function ModelCombobox({
           setActiveIndex(-1);
         }}
         onFocus={() => {
-          if (brandReady) setOpen(true);
+          if (brandReady || staticSuggestions) setOpen(true);
         }}
         onKeyDown={handleKeyDown}
         placeholder={placeholder}

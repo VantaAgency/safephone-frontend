@@ -46,6 +46,54 @@ export const DEVICE_TYPE_OPTIONS: Array<{
   },
 ];
 
+// Popular "brand + model" suggestions per non-smartphone category. Used by the
+// single combined device-name combobox; the user can always type their own.
+export const DEVICE_SUGGESTIONS: Partial<Record<DeviceType, string[]>> = {
+  tablet: [
+    "Apple iPad",
+    "Apple iPad Air",
+    "Apple iPad Pro",
+    "Apple iPad mini",
+    "Samsung Galaxy Tab S9",
+    "Samsung Galaxy Tab A9",
+    "Lenovo Tab",
+    "Xiaomi Pad 6",
+    "Huawei MatePad",
+  ],
+  tv: [
+    "Samsung QLED",
+    "Samsung Crystal UHD",
+    "LG OLED",
+    "LG NanoCell",
+    "Sony Bravia",
+    "TCL",
+    "Hisense",
+    "Philips",
+  ],
+  computer: [
+    "Apple MacBook Air",
+    "Apple MacBook Pro",
+    "Dell XPS",
+    "Dell Inspiron",
+    "HP Pavilion",
+    "HP Spectre",
+    "Lenovo ThinkPad",
+    "Lenovo IdeaPad",
+    "Asus ZenBook",
+    "Acer Aspire",
+  ],
+  game_console: [
+    "Sony PlayStation 5",
+    "Sony PlayStation 4",
+    "Microsoft Xbox Series X",
+    "Microsoft Xbox Series S",
+    "Microsoft Xbox One",
+    "Nintendo Switch",
+    "Nintendo Switch OLED",
+    "Steam Deck",
+  ],
+};
+
 export const COMPUTER_CATEGORY_OPTIONS = [
   { id: "laptop", labelFr: "Portable", labelEn: "Laptop" },
   { id: "desktop", labelFr: "Bureau", labelEn: "Desktop" },

@@ -23,6 +23,7 @@ import { DEVICE_BRANDS, DEVICE_BRAND_PREVIEW } from "@/lib/data";
 import {
   COMPUTER_CATEGORY_OPTIONS,
   DEVICE_TYPE_OPTIONS,
+  DEVICE_SUGGESTIONS,
   coveredDeviceTypes,
   deviceRequiresImei,
   formatDeviceDisplayName,
@@ -201,7 +202,6 @@ function PaiementContent() {
     ? selectedDeviceType
     : coveredTypes[0];
   const [selectedBrandSlug, setSelectedBrandSlug] = useState(brandSlug);
-  const [brandInput, setBrandInput] = useState("");
   const [model, setModel] = useState("");
   const [serialNumber, setSerialNumber] = useState("");
   const [screenSize, setScreenSize] = useState("");
@@ -228,7 +228,6 @@ function PaiementContent() {
         annual,
         deviceType: selectedDeviceType,
         brandSlug: selectedBrandSlug,
-        brandInput: brandInput.trim(),
         model: model.trim(),
         serialNumber: serialNumber.trim(),
         screenSize: screenSize.trim(),
@@ -237,7 +236,6 @@ function PaiementContent() {
       }),
     [
       annual,
-      brandInput,
       computerCategory,
       model,
       planId,
@@ -273,7 +271,6 @@ function PaiementContent() {
           selectedBrandSlug as keyof typeof DEVICE_BRAND_PREVIEW
         ]?.labelEn
     : "";
-  const trimmedBrandInput = brandInput.trim();
   const trimmedModel = model.trim();
   const trimmedSerialNumber = serialNumber.trim();
   const trimmedScreenSize = screenSize.trim();
@@ -289,7 +286,7 @@ function PaiementContent() {
           ? brandLabel.labelFr
           : brandLabel.labelEn
         : selectedBrandSlug.trim()
-      : trimmedBrandInput;
+      : "";
   const deviceMetadata: DeviceMetadata = useMemo(
     () => ({
       ...(trimmedSerialNumber ? { serial_number: trimmedSerialNumber } : {}),
@@ -727,10 +724,10 @@ function PaiementContent() {
     (effectiveDeviceType === "smartphone"
       ? !!selectedBrandSlug && !!trimmedModel
       : effectiveDeviceType === "computer"
-        ? !!trimmedBrandInput && !!trimmedModel && !!trimmedComputerCategory
+        ? !!trimmedModel && !!trimmedComputerCategory
         : effectiveDeviceType === "home_electronics"
-          ? !!trimmedBrandInput && !!trimmedModel && !!trimmedProductSubtype
-          : !!trimmedBrandInput && !!trimmedModel);
+          ? !!trimmedModel && !!trimmedProductSubtype
+          : !!trimmedModel);
   const mediaStepValid = photosReady && videoReady;
   const canSubmitPayment = deviceStepValid && mediaStepValid;
 
@@ -994,45 +991,33 @@ function PaiementContent() {
                     </p>
                   </div>
 
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <FormField
-                      label={lang === "fr" ? "Marque" : "Brand"}
-                      hint={
-                        lang === "fr"
-                          ? "Ex: Samsung, LG, Dell, Apple..."
-                          : "E.g. Samsung, LG, Dell, Apple..."
+                  <FormField
+                    label={
+                      lang === "fr"
+                        ? "Appareil (marque et modèle)"
+                        : "Device (brand and model)"
+                    }
+                    hint={
+                      lang === "fr"
+                        ? "Choisissez un modèle courant ou saisissez le vôtre."
+                        : "Pick a common model or type your own."
+                    }
+                  >
+                    <ModelCombobox
+                      value={model}
+                      onChange={setModel}
+                      brandLabel=""
+                      brandReady
+                      staticSuggestions={
+                        DEVICE_SUGGESTIONS[effectiveDeviceType] ?? []
                       }
-                    >
-                      <Input
-                        value={brandInput}
-                        onChange={(e) => setBrandInput(e.target.value)}
-                        placeholder={
-                          lang === "fr"
-                            ? "Marque de l'appareil"
-                            : "Device brand"
-                        }
-                      />
-                    </FormField>
-
-                    <FormField
-                      label={lang === "fr" ? "Modele" : "Model"}
-                      hint={modelGuidance}
-                    >
-                      <Input
-                        value={model}
-                        onChange={(e) => setModel(e.target.value)}
-                        placeholder={
-                          effectiveDeviceType === "tv"
-                            ? lang === "fr"
-                              ? "Ex: OLED C3"
-                              : "E.g. OLED C3"
-                            : lang === "fr"
-                              ? "Modele commercial"
-                              : "Commercial model"
-                        }
-                      />
-                    </FormField>
-                  </div>
+                      placeholder={
+                        lang === "fr"
+                          ? "Ex : PlayStation 5, MacBook Pro, iPad..."
+                          : "E.g. PlayStation 5, MacBook Pro, iPad..."
+                      }
+                    />
+                  </FormField>
 
                   {effectiveDeviceType === "tablet" && (
                     <div className="mt-4">
