@@ -92,7 +92,7 @@ export function useAdminCustomers(
   { enabled = true }: AdminQueryOptions = {},
 ) {
   return useQuery<AdminCustomer[]>({
-    queryKey: ["admin-customers", search, pagination?.limit, pagination?.offset],
+    queryKey: ["admin-customers", search, pagination?.limit, pagination?.offset, pagination?.market],
     queryFn: () => admin.customers({ search, ...pagination }),
     enabled,
     placeholderData: keepPreviousData,

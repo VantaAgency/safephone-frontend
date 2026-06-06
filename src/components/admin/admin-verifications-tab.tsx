@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { CardSkeleton } from "@/components/ui/skeleton";
 import { api } from "@/lib/api/client";
 import { useLanguage } from "@/lib/language-context";
-import type { Device } from "@/lib/api/types";
+import type { Device, MarketCode } from "@/lib/api/types";
 
 // Verification URLs come from end-user input. Refuse anything that isn't
 // http(s) so a hostile user can't smuggle `javascript:` / `data:` into an
@@ -25,8 +25,8 @@ function safeHttpUrl(u?: string | null): string {
 // whose verification_status is 'pending'. The same Device type covers the
 // full row since the backend includes verification_photos / verification_video
 // / verification_status / verified_at / etc.
-async function fetchPendingVerifications(): Promise<Device[]> {
-  return api.get<Device[]>("/admin/verifications", { limit: 50 });
+async function fetchPendingVerifications(market?: MarketCode): Promise<Device[]> {
+  return api.get<Device[]>("/admin/verifications", { limit: 50, market });
 }
 
 async function approveVerification(deviceID: string): Promise<void> {
@@ -40,15 +40,15 @@ async function rejectVerification(
   await api.post<unknown>(`/admin/verifications/${deviceID}/reject`, { reason });
 }
 
-export function AdminVerificationsTab() {
+export function AdminVerificationsTab({ market }: { market?: MarketCode }) {
   const { lang } = useLanguage();
   const queryClient = useQueryClient();
   const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [rejectionReason, setRejectionReason] = useState("");
 
   const { data, isLoading, error } = useQuery<Device[]>({
-    queryKey: ["admin-verifications"],
-    queryFn: fetchPendingVerifications,
+    queryKey: ["admin-verifications", market],
+    queryFn: () => fetchPendingVerifications(market),
   });
 
   const approveMutation = useMutation({

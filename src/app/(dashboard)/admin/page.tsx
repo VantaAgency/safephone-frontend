@@ -148,7 +148,7 @@ export default function AdminPage() {
     refetch: refetchCustomers,
   } = useAdminCustomers(
     deferredSearch,
-    paginationFor(customersPage),
+    { ...paginationFor(customersPage), market: market || undefined },
     { enabled: isAdmin && tab === "customers" },
   );
   const {
@@ -701,7 +701,11 @@ export default function AdminPage() {
           ))}
         </div>
 
-        {(tab === "claims" || tab === "repairs" || tab === "payments") && (
+        {(tab === "claims" ||
+          tab === "repairs" ||
+          tab === "payments" ||
+          tab === "customers" ||
+          tab === "verifications") && (
           <div className="mb-6 flex justify-end">
             <MarketFilter value={market} onChange={handleMarketChange} />
           </div>
@@ -817,7 +821,7 @@ export default function AdminPage() {
                   : "Review photos and video before activating subscriptions."}
               </p>
             </div>
-            <AdminVerificationsTab />
+            <AdminVerificationsTab market={market || undefined} />
           </div>
         )}
 
