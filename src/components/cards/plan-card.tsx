@@ -18,16 +18,16 @@ interface PlanCardProps {
 }
 
 // Plans v2 dropped the per-slug "progressive content" switch — every plan
-// in v2 ships the same 5 standard services and the differentiation is the
-// device coverage matrix. Compact view bullets now come straight from the
-// (identical-across-plans) feature list and the kicker is just the plan
-// name, which keeps the homepage preview row visually consistent.
+// in v2 ships the same standard services and the differentiation is the
+// device coverage matrix. Compact view bullets list every standard service
+// (incl. hardware-failure and battery-damage support) and the kicker is just
+// the plan name, which keeps the homepage preview row visually consistent.
 function getProgressiveContent(plan: Plan, lang: Lang) {
   const isFr = lang === "fr";
   const name = isFr ? plan.name_fr : plan.name_en;
   return {
     kicker: isFr ? `Forfait ${name}` : `${name} plan`,
-    bullets: (isFr ? plan.features_fr : plan.features_en).slice(0, 3),
+    bullets: isFr ? plan.features_fr : plan.features_en,
     exclusion: "",
   };
 }
