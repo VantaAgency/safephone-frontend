@@ -262,6 +262,18 @@ export default function AdminPage() {
       ? stats.revenue_by_provider
       : [{ provider: "dexpay", market: "SN" as const, amount_minor: 0 }];
 
+  // Per-market revenue totals, never summed across currencies. Derived from
+  // the per-(provider, market) rows; both are always shown so the mental
+  // model stays consistent even when one market has no revenue yet.
+  const revenueByMarket = (stats?.revenue_by_provider ?? []).reduce(
+    (acc, row) => {
+      if (row.market === "US") acc.US += row.amount_minor;
+      else acc.SN += row.amount_minor;
+      return acc;
+    },
+    { SN: 0, US: 0 },
+  );
+
   const getProviderDisplay = (provider?: string) => {
     if (!provider) {
       return { label: "—", color: "#64748B" };
@@ -698,9 +710,9 @@ export default function AdminPage() {
         {/* Overview Tab */}
         {tab === "overview" && (
           <div>
-            <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-4">
+            <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
               {overviewLoading ? (
-                Array.from({ length: 4 }).map((_, i) => <CardSkeleton key={i} />)
+                Array.from({ length: 5 }).map((_, i) => <CardSkeleton key={i} />)
               ) : (
                 <>
                   <StatCard
@@ -709,8 +721,13 @@ export default function AdminPage() {
                     icon={<UsersIcon size={20} className="text-indigo-600" />}
                   />
                   <StatCard
-                    label={lang === "fr" ? "Revenu mensuel" : "Monthly revenue"}
-                    value={stats ? formatXOF(stats.monthly_revenue_xof) : "—"}
+                    label={lang === "fr" ? "Revenus SN" : "Revenue SN"}
+                    value={stats ? `🇸🇳 ${formatPrice(revenueByMarket.SN, "XOF")}` : "—"}
+                    icon={<CreditCardIcon size={20} className="text-emerald-500" />}
+                  />
+                  <StatCard
+                    label={lang === "fr" ? "Revenus US" : "Revenue US"}
+                    value={stats ? `🇺🇸 ${formatPrice(revenueByMarket.US, "USD")}` : "—"}
                     icon={<CreditCardIcon size={20} className="text-emerald-500" />}
                   />
                   <StatCard
