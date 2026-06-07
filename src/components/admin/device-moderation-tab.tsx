@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { CardSkeleton } from "@/components/ui/skeleton";
-import { AuthedImage, AuthedVideoButton } from "@/components/admin/authed-media";
+import { AuthedImage, AuthedVideo } from "@/components/admin/authed-media";
 import {
   useModerationDevices,
   useSuspendDevice,
@@ -111,7 +111,7 @@ export function DeviceModerationTab() {
             {/* Video */}
             {d.verification_video && (
               <div className="mt-3">
-                <AuthedVideoButton
+                <AuthedVideo
                   url={d.verification_video}
                   label={(lang === "fr" ? "Voir la vidéo" : "Open video") + " →"}
                   className="cursor-pointer text-sm font-medium text-indigo-600 hover:underline disabled:opacity-60"

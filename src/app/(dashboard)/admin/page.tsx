@@ -4,7 +4,6 @@ import { Fragment, useDeferredValue, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AdminCommercialsTab } from "@/components/admin/admin-commercials-tab";
 import { AdminEmployeesTab } from "@/components/admin/admin-employees-tab";
-import { AdminVerificationsTab } from "@/components/admin/admin-verifications-tab";
 import { DeviceModerationTab } from "@/components/admin/device-moderation-tab";
 import { RouteGuardLoader } from "@/components/auth/route-guard-loader";
 import { StatCard } from "@/components/cards/stat-card";
@@ -50,7 +49,7 @@ import {
 import { cn } from "@/lib/utils";
 import type { AdminCustomer, AdminCustomerSubscription, ClaimStatus, RepairRequest, RepairRequestStatus } from "@/lib/api/types";
 
-const ADMIN_TABS = ["overview", "claims", "verifications", "moderation", "repairs", "customers", "employees", "commercials", "payments", "applications", "partners"] as const;
+const ADMIN_TABS = ["overview", "claims", "moderation", "repairs", "customers", "employees", "commercials", "payments", "applications", "partners"] as const;
 type AdminTab = (typeof ADMIN_TABS)[number];
 
 const STATUS_TRANSITIONS: Record<string, ClaimStatus[]> = {
@@ -195,7 +194,6 @@ export default function AdminPage() {
   const tabLabels: Record<AdminTab, string> = {
     overview: lang === "fr" ? "Vue d'ensemble" : "Overview",
     claims: lang === "fr" ? "Sinistres" : "Claims",
-    verifications: lang === "fr" ? "Vérifications" : "Verifications",
     moderation: lang === "fr" ? "Modération" : "Moderation",
     repairs: lang === "fr" ? "Réparations" : "Repairs",
     customers: lang === "fr" ? "Clients" : "Customers",
@@ -764,22 +762,6 @@ export default function AdminPage() {
         )}
 
         {/* Verifications Tab (plans v2) */}
-        {tab === "verifications" && (
-          <div>
-            <div className="mb-4">
-              <h2 className="text-lg font-medium text-indigo-950">
-                {lang === "fr" ? "Vérifications en attente" : "Pending verifications"}
-              </h2>
-              <p className="mt-1 text-sm text-slate-500">
-                {lang === "fr"
-                  ? "Revue des photos et vidéos avant activation des abonnements."
-                  : "Review photos and video before activating subscriptions."}
-              </p>
-            </div>
-            <AdminVerificationsTab />
-          </div>
-        )}
-
         {tab === "moderation" && (
           <div>
             <div className="mb-4">

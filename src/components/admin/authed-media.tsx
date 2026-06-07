@@ -83,8 +83,11 @@ export function AuthedImage({
   return <img src={objUrl} alt={alt} className={className} />;
 }
 
-// Videos can be large, so fetch the blob only when the user asks to view it.
-export function AuthedVideoButton({
+// Videos can be large, so fetch the blob only when the user asks to view it,
+// then play it INLINE. Opening a blob in a new tab via window.open() after an
+// await is blocked by the popup blocker (the call is no longer in the click
+// gesture), which is why a plain "open in new tab" button silently failed.
+export function AuthedVideo({
   url,
   label,
   className,
@@ -93,18 +96,38 @@ export function AuthedVideoButton({
   label: string;
   className?: string;
 }) {
+  const [objUrl, setObjUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(false);
   const safe = safeHttp(url);
+
+  useEffect(
+    () => () => {
+      if (objUrl) URL.revokeObjectURL(objUrl);
+    },
+    [objUrl],
+  );
+
   if (!safe) return null;
 
-  const open = async () => {
+  if (objUrl) {
+    return (
+      <video
+        src={objUrl}
+        controls
+        autoPlay
+        className="mt-1 w-full max-w-md rounded-xl border border-slate-200 bg-black"
+      />
+    );
+  }
+
+  const load = async () => {
     setLoading(true);
+    setError(false);
     try {
-      const obj = await fetchAuthedObjectUrl(safe);
-      window.open(obj, "_blank", "noopener,noreferrer");
-      setTimeout(() => URL.revokeObjectURL(obj), 60_000);
+      setObjUrl(await fetchAuthedObjectUrl(safe));
     } catch {
-      // swallow — the button just no-ops if the media can't be fetched
+      setError(true);
     } finally {
       setLoading(false);
     }
@@ -113,11 +136,11 @@ export function AuthedVideoButton({
   return (
     <button
       type="button"
-      onClick={open}
+      onClick={load}
       disabled={loading}
       className={className}
     >
-      {loading ? "…" : label}
+      {loading ? "…" : error ? "Vidéo indisponible" : label}
     </button>
   );
 }
