@@ -7,27 +7,31 @@ import {
 } from "@playwright/test";
 
 /**
- * PR #2 — add a device to an EXISTING active subscription (free, within the
- * plan's per-type caps). The dashboard active-subscription card must show an
- * "Ajouter un appareil" button for multi-device plans; the modal must let you
- * pick a covered device type (with remaining-slot counts), use the combined
- * brand+model field for non-phones, upload the per-device verification media,
- * and submit.
+ * Add a device to an EXISTING active subscription (free, within the plan's
+ * per-type caps), from the dashboard.
  *
- * The dashboard summary + subscription devices + POST + media upload are
- * stubbed so the test is self-contained; /plans and auth hit the real backend
- * so planById resolves the real "totale" plan caps (4/3/2/2/1). Backend caps +
- * coverage enforcement is covered separately by the Go service tests.
+ * Scenario mirrors a reported case: the plan covers several device types but
+ * the PRIMARY (originally-paid) device is a computer, and the plan covers only
+ * 1 computer. The user must still be able to add the OTHER covered types
+ * (smartphone, tablet, console) to the same subscription — and the computer
+ * slot must show as full (the primary device is counted).
+ *
+ * The dashboard header must expose an explicit "Ajouter un appareil" button
+ * (distinct from "Prendre un nouveau forfait", which starts a brand-new plan).
+ *
+ * Backend (summary, devices, plans, POST, upload) is stubbed so the test is
+ * self-contained; auth hits the real backend. Cap/coverage enforcement is
+ * covered separately by the Go service tests.
  *
  *   SLOW_MO=800 npx playwright test add-device-to-subscription --headed
  */
 
 const PASSWORD = "TestPassword123!";
 const BASE_URL = "http://localhost:3001";
-// Real SN "totale" plan — covers smartphone(4)/tablet(3)/computer(2)/console(2)/tv(1).
-const TOTALE_PLAN_ID = "d4d91039-7050-4557-8aed-0453946e5b84";
+const PLAN_ID = "a1111111-1111-1111-1111-111111111111";
 const SUB_ID = "11111111-1111-1111-1111-111111111111";
 const ORG_ID = "469242c2-df0e-44e4-ad77-0b8e40b61f41";
+const NOW = "2026-06-06T00:00:00Z";
 
 function uniqueEmail() {
   return `member+${Math.random().toString(36).slice(2, 10)}@safephone.test`;
@@ -52,18 +56,18 @@ async function registerAndSignIn(
   await context.addCookies((await request.storageState()).cookies);
 }
 
-const NOW = "2026-06-06T00:00:00Z";
-
-function primaryPhone() {
+// Primary device = a computer (no brand; full name in model), already filling
+// the plan's single computer slot.
+function primaryComputer() {
   return {
     id: "22222222-2222-2222-2222-222222222222",
     org_id: ORG_ID,
     user_id: "33333333-3333-3333-3333-333333333333",
-    device_type: "smartphone",
-    brand: "Apple",
-    model: "iPhone 15",
+    device_type: "computer",
+    brand: "",
+    model: "Apple MacBook Air m2",
     metadata: {},
-    imei: "356789012345678",
+    imei: "",
     status: "active",
     created_at: NOW,
     updated_at: NOW,
@@ -79,38 +83,35 @@ function ok(data: unknown, status = 200) {
   };
 }
 
-const TOTALE_PLAN = {
-  id: TOTALE_PLAN_ID,
-  slug: "totale",
-  name_fr: "Totale",
-  name_en: "Total",
-  price_monthly: 15000,
-  price_annual: 150000,
-  tier: "totale",
+// "haute"-like plan: 3 smartphones / 2 tablets / 1 computer / 1 console / 0 tv.
+const PLAN = {
+  id: PLAN_ID,
+  slug: "haute",
+  name_fr: "Haute",
+  name_en: "High",
+  price_monthly: 10000,
+  price_annual: 100000,
+  tier: "haute",
   features_fr: [],
   features_en: [],
   not_covered_fr: [],
   not_covered_en: [],
   service_time: "48h",
   is_popular: false,
-  sort_order: 5,
-  max_smartphones: 4,
-  max_tablets: 3,
-  max_computers: 2,
-  max_game_consoles: 2,
-  max_tvs: 1,
+  sort_order: 4,
+  max_smartphones: 3,
+  max_tablets: 2,
+  max_computers: 1,
+  max_game_consoles: 1,
+  max_tvs: 0,
   claim_waiting_period_days: 30,
   created_at: NOW,
   updated_at: NOW,
 };
 
 async function stubBackend(page: Page) {
-  // Plans list — so planById resolves the multi-device "totale" caps.
-  await page.route("**/api/v1/plans", (route) =>
-    route.fulfill(ok([TOTALE_PLAN])),
-  );
+  await page.route("**/api/v1/plans", (route) => route.fulfill(ok([PLAN])));
 
-  // Member dashboard summary — one active subscription on the multi-device plan.
   await page.route("**/api/v1/dashboard/summary", (route) =>
     route.fulfill(
       ok({
@@ -128,8 +129,8 @@ async function stubBackend(page: Page) {
               id: SUB_ID,
               org_id: ORG_ID,
               user_id: "33333333-3333-3333-3333-333333333333",
-              device_id: primaryPhone().id,
-              plan_id: TOTALE_PLAN_ID,
+              device_id: primaryComputer().id,
+              plan_id: PLAN_ID,
               status: "active",
               billing_cycle: "monthly",
               activated_at: NOW,
@@ -137,31 +138,31 @@ async function stubBackend(page: Page) {
               created_at: NOW,
               updated_at: NOW,
             },
-            device: primaryPhone(),
+            device: primaryComputer(),
           },
         ],
       }),
     ),
   );
 
-  // Devices attached to the subscription + create + media upload.
+  // Devices attached to the subscription (the primary computer counts) + create.
   await page.route(`**/api/v1/subscriptions/${SUB_ID}/devices`, (route) => {
     if (route.request().method() === "POST") {
       return route.fulfill(
         ok(
           {
-            ...primaryPhone(),
+            ...primaryComputer(),
             id: "44444444-4444-4444-4444-444444444444",
-            device_type: "game_console",
-            brand: "",
-            model: "PlayStation 5",
+            device_type: "smartphone",
+            brand: "Samsung",
+            model: "Galaxy S24",
             status: "pending",
           },
           201,
         ),
       );
     }
-    return route.fulfill(ok([primaryPhone()]));
+    return route.fulfill(ok([primaryComputer()]));
   });
 
   await page.route("**/api/v1/devices/verification-media", (route) =>
@@ -170,17 +171,17 @@ async function stubBackend(page: Page) {
 }
 
 const FAKE_IMAGE = {
-  name: "tv.jpg",
+  name: "front.jpg",
   mimeType: "image/jpeg",
   buffer: Buffer.from([0xff, 0xd8, 0xff, 0xd9]),
 };
 const FAKE_VIDEO = {
-  name: "tv.mp4",
+  name: "clip.mp4",
   mimeType: "video/mp4",
   buffer: Buffer.from([0x00, 0x00, 0x00, 0x18]),
 };
 
-test("add a covered device to an existing subscription from the dashboard", async ({
+test("add a non-computer device to a subscription whose computer slot is full", async ({
   page,
   request,
   context,
@@ -191,44 +192,42 @@ test("add a covered device to an existing subscription from the dashboard", asyn
 
   await page.goto("/tableau-de-bord");
 
-  // The active-subscription card shows the primary phone and the new button.
-  // Scope to the card so we don't hit the page-level "Ajouter un appareil"
-  // link (which navigates to /sn/inscription).
-  const card = page
-    .locator("div.rounded-xl")
-    .filter({ hasText: "Apple iPhone 15" });
-  await expect(card.getByText("Apple iPhone 15")).toBeVisible({
-    timeout: 20_000,
-  });
-  await card.getByRole("button", { name: /Ajouter un appareil/i }).click();
+  // Header exposes BOTH a "new plan" action and an explicit "add device" one.
+  await expect(
+    page.getByRole("button", { name: /Prendre un nouveau forfait/i }).first(),
+  ).toBeVisible({ timeout: 20_000 });
+  const headerAdd = page
+    .getByRole("button", { name: "Ajouter un appareil", exact: true })
+    .first();
+  await expect(headerAdd).toBeVisible({ timeout: 15_000 });
+  await headerAdd.click();
 
-  // Modal: device-type chips with remaining counts; pick a non-phone (console).
   const modal = page.locator("div.fixed.inset-0");
   await expect(
     modal.getByRole("heading", { name: /Ajouter un appareil/ }),
   ).toBeVisible({ timeout: 15_000 });
-  await expect(modal.getByText(/restant\(s\)/).first()).toBeVisible({
-    timeout: 15_000,
-  });
-  await modal.getByRole("button", { name: /Console de jeux/ }).click();
 
-  // Non-phone uses the single combined brand+model field (no separate Brand).
-  await expect(modal.getByText(/Appareil \(marque et modèle\)/)).toBeVisible();
-  await modal
-    .getByPlaceholder(/PlayStation 5, MacBook Pro/)
-    .fill("PlayStation 5");
+  // The computer slot is full (primary device) → not offered; other covered
+  // types are. Smartphone shows its remaining count.
+  await expect(modal.getByRole("button", { name: /Ordinateur/ })).toHaveCount(0);
+  const smartphoneChip = modal.getByRole("button", { name: /Smartphone/ });
+  await expect(smartphoneChip).toBeVisible({ timeout: 15_000 });
+  await expect(modal.getByText(/3 restant\(s\)/)).toBeVisible();
+  await smartphoneChip.click();
 
-  // Per-device verification: console = 1 powered-on photo + 1 video.
+  // Smartphone keeps the separate brand field + 2 verification photos.
+  await modal.getByPlaceholder(/Apple, Samsung/).fill("Samsung");
+  await modal.getByPlaceholder(/iPhone 15/).fill("Galaxy S24");
+
   const fileInputs = modal.locator('input[type="file"]');
-  await expect(fileInputs).toHaveCount(2);
+  await expect(fileInputs).toHaveCount(3); // 2 photos + 1 video
   await fileInputs.nth(0).setInputFiles(FAKE_IMAGE);
-  await fileInputs.nth(1).setInputFiles(FAKE_VIDEO);
+  await fileInputs.nth(1).setInputFiles(FAKE_IMAGE);
+  await fileInputs.nth(2).setInputFiles(FAKE_VIDEO);
 
-  // Once both uploads resolve, submit becomes enabled.
   const submit = modal.getByRole("button", { name: /Ajouter l'appareil/ });
   await expect(submit).toBeEnabled({ timeout: 15_000 });
   await submit.click();
 
-  // On success the modal closes.
   await expect(modal).toHaveCount(0, { timeout: 15_000 });
 });

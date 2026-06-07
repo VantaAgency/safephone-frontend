@@ -650,8 +650,10 @@ export default function DashboardPage() {
   const overviewRecentDevices = dashboardSummary?.recent_devices ?? [];
   const overviewRecentClaims = dashboardSummary?.recent_claims ?? [];
   const overviewRecentPayments = dashboardSummary?.recent_payments ?? [];
-  const overviewActiveSubscriptions =
-    dashboardSummary?.active_subscriptions ?? [];
+  const overviewActiveSubscriptions = useMemo(
+    () => dashboardSummary?.active_subscriptions ?? [],
+    [dashboardSummary],
+  );
 
   // Plans v2: surface a banner when one of the user's subscriptions is
   // awaiting admin verification, and gate the claim CTA when no sub is
@@ -663,6 +665,24 @@ export default function DashboardPage() {
     plans?.forEach((p) => map.set(p.id, p));
     return map;
   }, [plans]);
+  // The first active subscription whose plan covers more than one device —
+  // i.e. one you can add another covered device to (within the plan caps),
+  // as opposed to having to take a brand-new plan. Drives the header
+  // "Ajouter un appareil" button (the modal re-checks remaining slots).
+  const addableSubscription = useMemo(() => {
+    for (const { subscription } of overviewActiveSubscriptions) {
+      const plan = planById.get(subscription.plan_id);
+      if (!plan) continue;
+      const totalCap =
+        plan.max_smartphones +
+        plan.max_tablets +
+        plan.max_computers +
+        plan.max_game_consoles +
+        plan.max_tvs;
+      if (totalCap > 1) return subscription;
+    }
+    return null;
+  }, [overviewActiveSubscriptions, planById]);
   const claimableSubsCount = (subscriptions ?? []).reduce((count, s) => {
     if (s.status !== "active") return count;
     if (!s.activated_at) return count + 1; // legacy sub: no waiting window
@@ -722,11 +742,25 @@ export default function DashboardPage() {
               {t.dashboard.welcome}, {userName}
             </h1>
           </div>
-          <Link href={routes.signup}>
-            <Button variant="primary" size="sm">
-              {t.dashboard.addDevice}
-            </Button>
-          </Link>
+          <div className="flex flex-wrap items-center gap-2">
+            {addableSubscription && (
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => setAddDeviceSubId(addableSubscription.id)}
+              >
+                {t.dashboard.addDevice}
+              </Button>
+            )}
+            <Link href={routes.signup}>
+              <Button
+                variant={addableSubscription ? "outline" : "primary"}
+                size="sm"
+              >
+                {t.dashboard.newPlan}
+              </Button>
+            </Link>
+          </div>
         </div>
 
         {paymentActionError && (
@@ -1524,11 +1558,25 @@ export default function DashboardPage() {
                     : "All your registered devices and their current coverage status."}
                 </p>
               </div>
-              <Link href={routes.signup}>
-                <Button variant="primary" size="sm">
-                  {t.dashboard.addDevice}
-                </Button>
-              </Link>
+              <div className="flex flex-wrap items-center gap-2">
+                {addableSubscription && (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => setAddDeviceSubId(addableSubscription.id)}
+                  >
+                    {t.dashboard.addDevice}
+                  </Button>
+                )}
+                <Link href={routes.signup}>
+                  <Button
+                    variant={addableSubscription ? "outline" : "primary"}
+                    size="sm"
+                  >
+                    {t.dashboard.newPlan}
+                  </Button>
+                </Link>
+              </div>
             </div>
 
             {coverageDataLoading ? (
