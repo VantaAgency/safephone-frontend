@@ -67,6 +67,24 @@ async function fetchApi<T>(
   return body.data;
 }
 
+// Verification media is served by the backend behind JWT Bearer auth, but an
+// <img>/<video> tag can't send an Authorization header. Fetch the (absolute)
+// URL with the Bearer token and hand back an object URL the browser can render.
+// Caller is responsible for URL.revokeObjectURL once done.
+export async function fetchAuthedObjectUrl(url: string): Promise<string> {
+  const headers = new Headers();
+  if (getAuthToken) {
+    const token = await getAuthToken();
+    if (token) headers.set("Authorization", `Bearer ${token}`);
+  }
+  const res = await fetch(url, { headers });
+  if (!res.ok) {
+    throw new Error(`media fetch failed (${res.status})`);
+  }
+  const blob = await res.blob();
+  return URL.createObjectURL(blob);
+}
+
 export const api = {
   get<T>(path: string, params?: Record<string, string | number | undefined>) {
     let url = path;
