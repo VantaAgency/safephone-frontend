@@ -64,6 +64,11 @@ export {
 } from "./use-commercial";
 export { usePlans } from "./use-plans";
 export {
+  useModerationDevices,
+  useSuspendDevice,
+  useReactivateDevice,
+} from "./use-moderation";
+export {
   useDevices,
   useDevice,
   useCreateDevice,

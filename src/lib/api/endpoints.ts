@@ -112,6 +112,20 @@ export const devices = {
   delete: (id: string) => api.delete<{ status: string }>(`/devices/${id}`),
 };
 
+// Device moderation — admin + employee review covered devices and suspend
+// (reversibly) anything fraudulent.
+export const moderation = {
+  devices: (params?: PaginationParams) =>
+    api.get<Device[]>(
+      "/moderation/devices",
+      params as Record<string, string | number>,
+    ),
+  suspend: (id: string) =>
+    api.post<{ status: string }>(`/moderation/devices/${id}/suspend`),
+  reactivate: (id: string) =>
+    api.post<{ status: string }>(`/moderation/devices/${id}/reactivate`),
+};
+
 export const subscriptions = {
   create: (data: CreateSubscriptionRequest) =>
     api.post<Subscription>("/subscriptions", data),

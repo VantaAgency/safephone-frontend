@@ -3,6 +3,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { RouteGuardLoader } from "@/components/auth/route-guard-loader";
+import { DeviceModerationTab } from "@/components/admin/device-moderation-tab";
 import { StatCard } from "@/components/cards/stat-card";
 import { Button } from "@/components/ui/button";
 import {
@@ -64,6 +65,7 @@ type EmployeeTab =
   | "payments"
   | "claims"
   | "repairs"
+  | "moderation"
   | "tasks";
 
 const FOLLOW_UP_STATUS_OPTIONS: FollowUpStatus[] = [
@@ -320,6 +322,7 @@ export default function EmployeeWorkspacePage() {
               "payments",
               "claims",
               "repairs",
+              "moderation",
               "tasks",
             ] as EmployeeTab[]
           ).map((value) => (
@@ -840,6 +843,22 @@ export default function EmployeeWorkspacePage() {
                 />
               )}
             </PanelShell>
+          </div>
+        )}
+
+        {tab === "moderation" && (
+          <div>
+            <div className="mb-4">
+              <h2 className="text-lg font-medium text-indigo-950">
+                {lang === "fr" ? "Modération des appareils" : "Device moderation"}
+              </h2>
+              <p className="mt-1 text-sm text-slate-500">
+                {lang === "fr"
+                  ? "Appareils couverts ajoutés aux forfaits. Suspendez ceux qui semblent frauduleux."
+                  : "Covered devices added to plans. Suspend any that look fraudulent."}
+              </p>
+            </div>
+            <DeviceModerationTab />
           </div>
         )}
 
@@ -2440,6 +2459,8 @@ function tabLabel(tab: EmployeeTab, lang: "fr" | "en") {
       return lang === "fr" ? "Sinistres" : "Claims";
     case "repairs":
       return lang === "fr" ? "Réparations" : "Repairs";
+    case "moderation":
+      return lang === "fr" ? "Modération" : "Moderation";
     case "tasks":
       return lang === "fr" ? "Tâches / Notes" : "Tasks / Notes";
   }

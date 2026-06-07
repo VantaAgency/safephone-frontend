@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { AdminCommercialsTab } from "@/components/admin/admin-commercials-tab";
 import { AdminEmployeesTab } from "@/components/admin/admin-employees-tab";
 import { AdminVerificationsTab } from "@/components/admin/admin-verifications-tab";
+import { DeviceModerationTab } from "@/components/admin/device-moderation-tab";
 import { RouteGuardLoader } from "@/components/auth/route-guard-loader";
 import { StatCard } from "@/components/cards/stat-card";
 import { Button } from "@/components/ui/button";
@@ -49,7 +50,7 @@ import {
 import { cn } from "@/lib/utils";
 import type { AdminCustomer, AdminCustomerSubscription, ClaimStatus, RepairRequest, RepairRequestStatus } from "@/lib/api/types";
 
-const ADMIN_TABS = ["overview", "claims", "verifications", "repairs", "customers", "employees", "commercials", "payments", "applications", "partners"] as const;
+const ADMIN_TABS = ["overview", "claims", "verifications", "moderation", "repairs", "customers", "employees", "commercials", "payments", "applications", "partners"] as const;
 type AdminTab = (typeof ADMIN_TABS)[number];
 
 const STATUS_TRANSITIONS: Record<string, ClaimStatus[]> = {
@@ -195,6 +196,7 @@ export default function AdminPage() {
     overview: lang === "fr" ? "Vue d'ensemble" : "Overview",
     claims: lang === "fr" ? "Sinistres" : "Claims",
     verifications: lang === "fr" ? "Vérifications" : "Verifications",
+    moderation: lang === "fr" ? "Modération" : "Moderation",
     repairs: lang === "fr" ? "Réparations" : "Repairs",
     customers: lang === "fr" ? "Clients" : "Customers",
     employees: lang === "fr" ? "Employés" : "Employees",
@@ -775,6 +777,22 @@ export default function AdminPage() {
               </p>
             </div>
             <AdminVerificationsTab />
+          </div>
+        )}
+
+        {tab === "moderation" && (
+          <div>
+            <div className="mb-4">
+              <h2 className="text-lg font-medium text-indigo-950">
+                {lang === "fr" ? "Modération des appareils" : "Device moderation"}
+              </h2>
+              <p className="mt-1 text-sm text-slate-500">
+                {lang === "fr"
+                  ? "Appareils couverts (ajoutés aux forfaits, activés automatiquement). Suspendez ceux qui semblent frauduleux."
+                  : "Covered devices (added to plans, auto-activated). Suspend any that look fraudulent."}
+              </p>
+            </div>
+            <DeviceModerationTab />
           </div>
         )}
 
