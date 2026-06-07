@@ -68,16 +68,37 @@ async function fetchApi<T>(
 }
 
 // Verification media is served by the backend behind JWT Bearer auth, but an
-// <img>/<video> tag can't send an Authorization header. Fetch the (absolute)
-// URL with the Bearer token and hand back an object URL the browser can render.
-// Caller is responsible for URL.revokeObjectURL once done.
+// <img>/<video> tag can't send an Authorization header. Fetch the media with
+// the Bearer token and hand back an object URL. Caller revokes it once done.
+//
+// SECURITY: the stored media URL's host comes from user input (a device's
+// verification_photos/video). To avoid leaking the admin's bearer token to an
+// attacker-controlled host, we ignore the URL's origin entirely — we take only
+// its path, require it to be the verification-media route, and fetch it
+// same-origin through our /api/v1 proxy. `redirect: "error"` stops a redirect
+// from bouncing the token to another host.
+const MEDIA_PATH_PREFIX = "/api/v1/devices/verification-media/";
+
 export async function fetchAuthedObjectUrl(url: string): Promise<string> {
+  let path: string;
+  try {
+    const origin =
+      typeof window !== "undefined"
+        ? window.location.origin
+        : "http://localhost";
+    path = new URL(url, origin).pathname;
+  } catch {
+    throw new Error("invalid media url");
+  }
+  if (!path.startsWith(MEDIA_PATH_PREFIX)) {
+    throw new Error("refusing to fetch non-media url");
+  }
   const headers = new Headers();
   if (getAuthToken) {
     const token = await getAuthToken();
     if (token) headers.set("Authorization", `Bearer ${token}`);
   }
-  const res = await fetch(url, { headers });
+  const res = await fetch(path, { headers, redirect: "error" });
   if (!res.ok) {
     throw new Error(`media fetch failed (${res.status})`);
   }
