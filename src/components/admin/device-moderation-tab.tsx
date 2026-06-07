@@ -108,14 +108,10 @@ export function DeviceModerationTab() {
               </div>
             )}
 
-            {/* Video */}
+            {/* Video — inline streaming player */}
             {d.verification_video && (
               <div className="mt-3">
-                <AuthedVideo
-                  url={d.verification_video}
-                  label={(lang === "fr" ? "Voir la vidéo" : "Open video") + " →"}
-                  className="cursor-pointer text-sm font-medium text-indigo-600 hover:underline disabled:opacity-60"
-                />
+                <AuthedVideo url={d.verification_video} />
               </div>
             )}
 
