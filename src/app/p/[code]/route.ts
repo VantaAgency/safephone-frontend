@@ -107,12 +107,16 @@ export async function GET(
   const visitorToken =
     request.cookies.get(PARTNER_REFERRAL_VISITOR_COOKIE)?.value ?? "";
 
+  // Record the visit by calling the backend directly over the internal
+  // network. Using `request.url` made the server fetch its own PUBLIC origin
+  // (e.g. the ngrok tunnel) when the link was opened externally — that
+  // round-trip fails, so the visit was never recorded and the attribution
+  // cookie never got set (the QR appeared to "not link to the partner").
+  const backendBase = process.env.BACKEND_URL || "http://localhost:8080";
+
   try {
     const response = await fetch(
-      new URL(
-        `/api/v1/partner-referrals/${encodeURIComponent(normalizedCode)}/visits`,
-        request.url,
-      ),
+      `${backendBase}/api/v1/partner-referrals/${encodeURIComponent(normalizedCode)}/visits`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
