@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth/auth-provider";
 import { ApiError } from "@/lib/api/client";
 import { useStripeCheckout } from "@/lib/api/hooks";
+import { usePartnerReferralClaim } from "@/lib/hooks/use-partner-referral-claim";
 import { routesFor } from "@/lib/markets/routes";
 
 export default function USSignupPage() {
@@ -21,6 +22,9 @@ function USSignupContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { isAuthenticated, isPending: authPending } = useAuth();
+  // Attribute the signup to a partner if the visitor arrived via /p/<code>
+  // (the US flow has no inline claim step like the SN InscriptionPage).
+  usePartnerReferralClaim();
   const checkout = useStripeCheckout();
   const planSlug = (searchParams.get("plan") ?? "").trim();
   const triggeredRef = useRef(false);

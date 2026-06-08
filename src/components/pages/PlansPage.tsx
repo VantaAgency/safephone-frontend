@@ -6,6 +6,7 @@ import { useMarket } from "@/lib/markets/context";
 import { routesFor } from "@/lib/markets/routes";
 import { PlanCard } from "@/components/cards/plan-card";
 import { usePlans } from "@/lib/api/hooks";
+import { usePartnerReferralClaim } from "@/lib/hooks/use-partner-referral-claim";
 import { PlanCardSkeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
@@ -18,6 +19,9 @@ import { useRouter } from "next/navigation";
 export default function PlansPage() {
   const { lang, t } = useLanguage();
   const { market } = useMarket();
+  // Attribute a partner referral as soon as a logged-in visitor lands here
+  // (e.g. after scanning a partner QR, which redirects to the plans page).
+  usePartnerReferralClaim();
   const routes = routesFor(market.code);
   const [annual, setAnnual] = useState(false);
   const router = useRouter();
