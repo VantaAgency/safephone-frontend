@@ -7,6 +7,7 @@ import { routesFor } from "@/lib/markets/routes";
 import { PlanCard } from "@/components/cards/plan-card";
 import { usePlans } from "@/lib/api/hooks";
 import { usePartnerReferralClaim } from "@/lib/hooks/use-partner-referral-claim";
+import { PartnerReferralBanner } from "@/components/partner/partner-referral-banner";
 import { PlanCardSkeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
@@ -56,6 +57,7 @@ export default function PlansPage() {
       </div>
 
       <div className="relative z-10 mx-auto max-w-400 px-5 md:px-10">
+        <PartnerReferralBanner className="mx-auto mb-8 max-w-3xl" />
         {/* Header */}
         <div className="mx-auto mb-10 max-w-2xl text-center md:mb-12">
           <div className="mb-4 inline-flex items-center rounded-full border border-slate-200/80 bg-white px-4 py-1.5 text-xs font-medium uppercase tracking-wider text-slate-500">

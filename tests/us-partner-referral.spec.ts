@@ -70,4 +70,11 @@ test("US partner QR attributes the authenticated visitor to the partner", async 
 
   const resp = await claimResponse;
   expect(resp.status()).toBeLessThan(300);
+
+  // The US flow now also shows the "signing up with <partner>" banner.
+  await expect(
+    page
+      .getByText(/You are signing up with|Vous êtes accompagné par/)
+      .first(),
+  ).toBeVisible({ timeout: 15_000 });
 });
