@@ -90,6 +90,8 @@ export type Market = {
   };
   /** Cities offered in the partner application form. */
   partnerCities: string[];
+  /** Example for the partner "business location / area" free-text field. */
+  partnerLocationPlaceholder: string;
   /** Pre-formatted strings the partner-section mockup needs. */
   copy: {
     repairBrand: string;
@@ -273,6 +275,7 @@ export const MARKETS: Record<MarketCode, Market> = {
       "Rufisque",
       "Mbour",
     ],
+    partnerLocationPlaceholder: "Marché Ouest Foire, Liberté 6…",
     copy: {
       repairBrand: "MobiTech",
       repairBadge: "MobiTech 48h",
@@ -357,6 +360,7 @@ export const MARKETS: Record<MarketCode, Market> = {
       "Atlanta, GA",
       "Other",
     ],
+    partnerLocationPlaceholder: "Downtown Brooklyn, 5th Ave…",
     copy: {
       repairBrand: "Approved Partner",
       repairBadge: "Approved 48h",

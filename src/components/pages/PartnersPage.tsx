@@ -387,7 +387,7 @@ export default function PartenairesPage() {
           <Input
             value={businessData.businessLocation}
             onChange={(e) => { setBusinessData({ ...businessData, businessLocation: e.target.value }); clearFieldError("businessLocation"); }}
-            placeholder={tr("Marché Ouest Foire, Liberté 6…", "Marché Ouest Foire, Liberté 6…")}
+            placeholder={market.partnerLocationPlaceholder}
             error={!!fieldErrors.businessLocation}
           />
         </FormField>
