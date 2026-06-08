@@ -174,7 +174,10 @@ export default function RegisterPage() {
 
         <FormField
           label={lang === "fr" ? "Telephone" : "Phone number"}
-          hint={lang === "fr" ? "Exemple: +221 77 000 00 00" : "Example: +221 77 000 00 00"}
+          hint={
+            (lang === "fr" ? "Exemple: " : "Example: ") +
+            market.contact.phonePlaceholder
+          }
           error={fieldErrors.phone}
         >
           <Input

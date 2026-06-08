@@ -259,7 +259,7 @@ export default function PartenairesPage() {
         </FormField>
         <FormField
           label={tr("Numéro de téléphone", "Phone number")}
-          hint={tr("Exemple : +221 77 000 00 00", "Example: +221 77 000 00 00")}
+          hint={tr("Exemple : ", "Example: ") + market.contact.phonePlaceholder}
           error={fieldErrors.phone}
         >
           <Input
@@ -347,7 +347,7 @@ export default function PartenairesPage() {
         {isAuthenticated && !user?.phone && (
           <FormField
             label={tr("Numéro de téléphone", "Phone number")}
-            hint={tr("Exemple : +221 77 000 00 00", "Example: +221 77 000 00 00")}
+            hint={tr("Exemple : ", "Example: ") + market.contact.phonePlaceholder}
             error={fieldErrors.phone}
           >
             <Input
