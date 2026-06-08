@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { FormErrorAlert, FormField, Input, PasswordInput } from "@/components/ui/form-field";
 import { XIcon } from "@/components/ui/icons";
 import { loginSchema, registerSchema } from "@/lib/validation/schemas";
+import { phoneFormatError } from "@/lib/markets/config";
 import type { UserRole } from "@/lib/api/types";
 import type { Lang, Translations } from "@/lib/i18n";
 
@@ -345,6 +346,8 @@ function SignUpForm({
         errors[normalizedKey] = issue.message.split(" / ")[lang === "fr" ? 0 : 1] ?? issue.message;
       }
     }
+    const phoneErr = phoneFormatError(form.phone, market);
+    if (phoneErr && !errors.phone) errors.phone = phoneErr;
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
   };

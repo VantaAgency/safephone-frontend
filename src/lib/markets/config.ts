@@ -409,3 +409,21 @@ export function getMarket(code: MarketCode): Market {
 export function listMarkets(): Market[] {
   return SUPPORTED_MARKET_CODES.map((code) => MARKETS[code]);
 }
+
+/**
+ * Returns the market's phone-format error message when `phone` is non-empty and
+ * doesn't match that market's expected format, else null. "Required" is left to
+ * the form schema; this is only the per-market format check (so the US form
+ * shows the +1 example, not the +221 one).
+ */
+export function phoneFormatError(phone: string, market: Market): string | null {
+  const trimmed = phone.trim();
+  if (!trimmed) return null;
+  try {
+    return new RegExp(market.contact.phoneRegex).test(trimmed)
+      ? null
+      : market.contact.phoneRegexMessage;
+  } catch {
+    return null;
+  }
+}

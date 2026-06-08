@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useLanguage } from "@/lib/language-context";
 import { useMarket } from "@/lib/markets/context";
+import { phoneFormatError } from "@/lib/markets/config";
 import { Button } from "@/components/ui/button";
 import { FormErrorAlert, FormField, Input, PasswordInput } from "@/components/ui/form-field";
 import { authClient } from "@/lib/auth/client";
@@ -48,6 +49,9 @@ export default function RegisterPage() {
         errors[normalizedKey] = issue.message.split(" / ")[lang === "fr" ? 0 : 1] ?? issue.message;
       }
     }
+
+    const phoneErr = phoneFormatError(form.phone, market);
+    if (phoneErr && !errors.phone) errors.phone = phoneErr;
 
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;

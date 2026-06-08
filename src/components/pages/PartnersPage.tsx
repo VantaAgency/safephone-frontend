@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useLanguage } from "@/lib/language-context";
 import { useMarket } from "@/lib/markets/context";
+import { phoneFormatError } from "@/lib/markets/config";
 import { useAuth } from "@/lib/auth/auth-provider";
 import { Button } from "@/components/ui/button";
 import { FormField, Input, PasswordInput, Select } from "@/components/ui/form-field";
@@ -82,19 +83,19 @@ export default function PartenairesPage() {
       password: accountData.password,
       confirmPassword: accountData.confirmPassword,
     });
+    const errors: Record<string, string> = {};
     if (!parsed.success) {
-      const errors: Record<string, string> = {};
       for (const issue of parsed.error.issues) {
         const key = issue.path[0];
         if (typeof key !== "string" || errors[key]) continue;
         const normalizedKey = key === "fullName" ? "name" : key;
         errors[normalizedKey] = issue.message.split(" / ")[lang === "fr" ? 0 : 1] ?? issue.message;
       }
-      setFieldErrors(errors);
-      return false;
     }
-    setFieldErrors({});
-    return true;
+    const phoneErr = phoneFormatError(accountData.phone, market);
+    if (phoneErr && !errors.phone) errors.phone = phoneErr;
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
   const validateBusiness = (): boolean => {
@@ -107,6 +108,8 @@ export default function PartenairesPage() {
       errors.businessLocation = tr("Zone commerciale requise", "Business location required");
     if (isAuthenticated && !user?.phone && !businessData.phone.trim())
       errors.phone = tr("Numéro de téléphone requis", "Phone number required");
+    const phoneErr = phoneFormatError(businessData.phone, market);
+    if (phoneErr && !errors.phone) errors.phone = phoneErr;
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
   };

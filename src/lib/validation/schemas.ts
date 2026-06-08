@@ -25,10 +25,9 @@ export const registerSchema = z
   .object({
     fullName: z.string().min(1, "Nom requis / Name required"),
     email: z.string().email("Email invalide / Invalid email"),
-    phone: z
-      .string()
-      .min(1, "Téléphone requis / Phone required")
-      .regex(/^(\+221\s?)?[0-9\s]{9,15}$/, "Format: +221 77 000 00 00"),
+    // Format is validated per-market in the form (phoneFormatError); the schema
+    // only enforces "required" so it stays market-agnostic.
+    phone: z.string().min(1, "Téléphone requis / Phone required"),
     password: z.string().min(8, "8 caractères minimum / Minimum 8 characters"),
     confirmPassword: z.string(),
   })
@@ -105,9 +104,8 @@ export const contactFormSchema = z.object({
 export const partnerApplicationSchema = z.object({
   storeName: z.string().min(1, "Nom de boutique requis / Store name required"),
   fullName: z.string().min(1, "Nom requis / Name required"),
-  phone: z
-    .string()
-    .regex(/^(\+221\s?)?[0-9\s]{9,15}$/, "Format: +221 77 000 00 00"),
+  // Format validated per-market in the form (phoneFormatError).
+  phone: z.string().min(1, "Téléphone requis / Phone required"),
   city: z.string().min(1, "Ville requise / City required"),
   businessLocation: z
     .string()
