@@ -106,6 +106,10 @@ export function PlansPreview() {
   const { market } = useMarket();
   const routes = routesFor(market.code);
   const [annual, setAnnual] = useState(false);
+  // US bills via Stripe (monthly-only), so hide the annual toggle for US and
+  // always show monthly prices. SN (DEXPAY) supports annual.
+  const showBillingToggle = market.code !== "US";
+  const effectiveAnnual = showBillingToggle && annual;
   const { data: allPlans, isLoading } = usePlans();
 
   // Filter plans by market. US plan slugs are prefixed with "us_"; everything
@@ -136,7 +140,8 @@ export function PlansPreview() {
               : "Choose the protection that matches your smartphone's value. No binding commitment, no hidden fees at repair time."}
           </p>
 
-          {/* Toggle */}
+          {/* Toggle — hidden for US (Stripe is wired monthly-only) */}
+          {showBillingToggle && (
           <div className="inline-flex items-center rounded-full border border-slate-200/80 bg-slate-200/50 p-1.5 backdrop-blur-sm">
             <button
               type="button"
@@ -164,6 +169,7 @@ export function PlansPreview() {
               </span>
             </button>
           </div>
+          )}
         </div>
 
         {/* Pricing Grid */}
@@ -183,7 +189,7 @@ export function PlansPreview() {
                 lang === "fr" ? plan.features_fr : plan.features_en;
               const notCovered =
                 lang === "fr" ? plan.not_covered_fr : plan.not_covered_en;
-              const rawPrice = annual ? plan.price_annual : plan.price_monthly;
+              const rawPrice = effectiveAnnual ? plan.price_annual : plan.price_monthly;
               const isDevPlan = isDevelopmentPlan(plan);
               // Currency formatting is driven by the plan's market: USD
               // plans (us_*) display as "$X.XX / month", XOF plans keep
@@ -191,7 +197,7 @@ export function PlansPreview() {
               const { value: priceDisplay, period } = splitPrice(
                 rawPrice,
                 market,
-                annual ? "annual" : "monthly",
+                effectiveAnnual ? "annual" : "monthly",
                 lang,
               );
               const ctaLabel =

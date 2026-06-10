@@ -25,6 +25,11 @@ export default function PlansPage() {
   usePartnerReferralClaim();
   const routes = routesFor(market.code);
   const [annual, setAnnual] = useState(false);
+  // US bills via Stripe, which is wired monthly-only (one price per plan), so
+  // hide the annual toggle for US — the displayed price must match what the
+  // Stripe checkout actually charges. SN (DEXPAY) supports annual.
+  const showBillingToggle = market.code !== "US";
+  const effectiveAnnual = showBillingToggle && annual;
   const router = useRouter();
   const { data: allPlans, isLoading, error } = usePlans();
 
@@ -71,7 +76,8 @@ export default function PlansPage() {
           </p>
         </div>
 
-        {/* Billing Toggle */}
+        {/* Billing Toggle — hidden for US (Stripe is wired monthly-only) */}
+        {showBillingToggle && (
         <div className="mb-10 flex items-center justify-center md:mb-12">
           <div className="inline-flex items-center gap-1 rounded-full border border-slate-200/80 bg-slate-200/50 p-1">
             <button
@@ -103,6 +109,7 @@ export default function PlansPage() {
             </button>
           </div>
         </div>
+        )}
 
         {/* Error state */}
         {error && (
@@ -123,7 +130,7 @@ export default function PlansPage() {
                   plan={plan}
                   lang={lang}
                   t={t}
-                  annual={annual}
+                  annual={effectiveAnnual}
                   compact
                   onSelect={handleSelect}
                 />
