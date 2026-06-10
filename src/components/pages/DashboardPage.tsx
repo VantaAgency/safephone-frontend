@@ -33,6 +33,7 @@ import {
   useRenewSubscriptionPayment,
   useResumePayment,
   useSubscriptions,
+  useCancelSubscription,
   useCreateClaim,
   useMyRepairRequests,
   useUpdateDevice,
@@ -712,6 +713,9 @@ export default function DashboardPage() {
 
   const userName = user?.name || "Utilisateur";
   const [addDeviceSubId, setAddDeviceSubId] = useState<string | null>(null);
+  // Two-step cancel: clicking "Résilier" arms the confirmation for that sub.
+  const [cancelConfirmSubId, setCancelConfirmSubId] = useState<string | null>(null);
+  const cancelSubscription = useCancelSubscription();
 
   return (
     <div className="min-h-screen bg-slate-50 py-10 md:py-14">
@@ -1143,6 +1147,63 @@ export default function DashboardPage() {
                               </button>
                             ) : null;
                           })()}
+
+                          {cancelConfirmSubId === subscription.id ? (
+                            <div className="mt-3 rounded-lg border border-red-200/70 bg-red-50 p-3">
+                              <p className="text-xs text-red-700">
+                                {lang === "fr"
+                                  ? "Résilier cet abonnement ? Vous perdrez la couverture de cet appareil."
+                                  : "Cancel this subscription? You will lose coverage for this device."}
+                              </p>
+                              {cancelSubscription.isError && (
+                                <p className="mt-1 text-xs font-medium text-red-600">
+                                  {lang === "fr"
+                                    ? "Échec de la résiliation. Réessayez."
+                                    : "Cancellation failed. Try again."}
+                                </p>
+                              )}
+                              <div className="mt-2 flex gap-2">
+                                <button
+                                  type="button"
+                                  disabled={cancelSubscription.isPending}
+                                  onClick={() =>
+                                    cancelSubscription.mutate(subscription.id, {
+                                      onSettled: () =>
+                                        setCancelConfirmSubId(null),
+                                    })
+                                  }
+                                  className="cursor-pointer rounded-md bg-red-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-red-700 disabled:opacity-60"
+                                >
+                                  {cancelSubscription.isPending
+                                    ? lang === "fr"
+                                      ? "Résiliation…"
+                                      : "Cancelling…"
+                                    : lang === "fr"
+                                      ? "Oui, résilier"
+                                      : "Yes, cancel"}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setCancelConfirmSubId(null)}
+                                  className="cursor-pointer rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50"
+                                >
+                                  {lang === "fr" ? "Garder" : "Keep"}
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setCancelConfirmSubId(subscription.id)
+                              }
+                              className="mt-3 block cursor-pointer text-xs font-medium text-red-500 hover:underline"
+                            >
+                              {lang === "fr"
+                                ? "Résilier l'abonnement"
+                                : "Cancel subscription"}
+                            </button>
+                          )}
                         </div>
                       );
                     })}
