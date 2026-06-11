@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { AdminCommercialsTab } from "@/components/admin/admin-commercials-tab";
 import { AdminEmployeesTab } from "@/components/admin/admin-employees-tab";
 import { DeviceModerationTab } from "@/components/admin/device-moderation-tab";
+import { MarketFilter, type MarketFilterValue } from "@/components/admin/market-filter";
 import { RouteGuardLoader } from "@/components/auth/route-guard-loader";
 import { StatCard } from "@/components/cards/stat-card";
 import { Button } from "@/components/ui/button";
@@ -82,6 +83,25 @@ export default function AdminPage() {
   const [partnersPage, setPartnersPage] = useState(1);
   const [claimsPage, setClaimsPage] = useState(1);
   const [repairsPage, setRepairsPage] = useState(1);
+
+  // Market filter shared by every market-aware list, synced to the ?market=
+  // URL param so refresh and bookmarks keep the selection.
+  const [market, setMarket] = useState<MarketFilterValue>("");
+  useEffect(() => {
+    const m = new URLSearchParams(window.location.search).get("market");
+    if (m === "SN" || m === "US") setMarket(m);
+  }, []);
+  const handleMarketChange = (next: MarketFilterValue) => {
+    setMarket(next);
+    setClaimsPage(1);
+    setRepairsPage(1);
+    setPaymentsPage(1);
+    const params = new URLSearchParams(window.location.search);
+    if (next) params.set("market", next);
+    else params.delete("market");
+    const qs = params.toString();
+    router.replace(qs ? `?${qs}` : window.location.pathname, { scroll: false });
+  };
   const pageToOffset = (page: number) => (page - 1) * PAGE_SIZE;
   const paginationFor = (page: number) => ({
     limit: PAGE_SIZE,
@@ -106,7 +126,7 @@ export default function AdminPage() {
     data: adminClaims,
     isLoading: claimsLoading,
     refetch: refetchClaims,
-  } = useAdminClaims(paginationFor(claimsPage), {
+  } = useAdminClaims({ ...paginationFor(claimsPage), market: market || undefined }, {
     enabled: isAdmin && tab === "claims",
   });
   const {
@@ -114,7 +134,7 @@ export default function AdminPage() {
     isLoading: repairsLoading,
     refetch: refetchRepairs,
   } = useAdminRepairRequests(
-    { search: deferredSearch, ...paginationFor(repairsPage) },
+    { search: deferredSearch, market: market || undefined, ...paginationFor(repairsPage) },
     { enabled: isAdmin && tab === "repairs" },
   );
   const updateClaimStatus = useUpdateClaimStatus();
@@ -128,14 +148,14 @@ export default function AdminPage() {
     refetch: refetchCustomers,
   } = useAdminCustomers(
     deferredSearch,
-    paginationFor(customersPage),
+    { ...paginationFor(customersPage), market: market || undefined },
     { enabled: isAdmin && tab === "customers" },
   );
   const {
     data: adminPayments,
     isLoading: paymentsLoading,
     refetch: refetchPayments,
-  } = useAdminPayments(paginationFor(paymentsPage), {
+  } = useAdminPayments({ ...paginationFor(paymentsPage), market: market || undefined }, {
     enabled: isAdmin && tab === "payments",
   });
   const {
@@ -241,6 +261,18 @@ export default function AdminPage() {
     stats?.revenue_by_provider && stats.revenue_by_provider.length > 0
       ? stats.revenue_by_provider
       : [{ provider: "dexpay", market: "SN" as const, amount_minor: 0 }];
+
+  // Per-market revenue totals, never summed across currencies. Derived from
+  // the per-(provider, market) rows; both are always shown so the mental
+  // model stays consistent even when one market has no revenue yet.
+  const revenueByMarket = (stats?.revenue_by_provider ?? []).reduce(
+    (acc, row) => {
+      if (row.market === "US") acc.US += row.amount_minor;
+      else acc.SN += row.amount_minor;
+      return acc;
+    },
+    { SN: 0, US: 0 },
+  );
 
   const getProviderDisplay = (provider?: string) => {
     if (!provider) {
@@ -669,12 +701,21 @@ export default function AdminPage() {
           ))}
         </div>
 
+        {(tab === "claims" ||
+          tab === "repairs" ||
+          tab === "payments" ||
+          tab === "customers") && (
+          <div className="mb-6 flex justify-end">
+            <MarketFilter value={market} onChange={handleMarketChange} />
+          </div>
+        )}
+
         {/* Overview Tab */}
         {tab === "overview" && (
           <div>
-            <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-4">
+            <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
               {overviewLoading ? (
-                Array.from({ length: 4 }).map((_, i) => <CardSkeleton key={i} />)
+                Array.from({ length: 5 }).map((_, i) => <CardSkeleton key={i} />)
               ) : (
                 <>
                   <StatCard
@@ -683,8 +724,13 @@ export default function AdminPage() {
                     icon={<UsersIcon size={20} className="text-indigo-600" />}
                   />
                   <StatCard
-                    label={lang === "fr" ? "Revenu mensuel" : "Monthly revenue"}
-                    value={stats ? formatXOF(stats.monthly_revenue_xof) : "—"}
+                    label={lang === "fr" ? "Revenus SN" : "Revenue SN"}
+                    value={stats ? `🇸🇳 ${formatPrice(revenueByMarket.SN, "XOF")}` : "—"}
+                    icon={<CreditCardIcon size={20} className="text-emerald-500" />}
+                  />
+                  <StatCard
+                    label={lang === "fr" ? "Revenus US" : "Revenue US"}
+                    value={stats ? `🇺🇸 ${formatPrice(revenueByMarket.US, "USD")}` : "—"}
                     icon={<CreditCardIcon size={20} className="text-emerald-500" />}
                   />
                   <StatCard

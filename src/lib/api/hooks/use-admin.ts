@@ -22,6 +22,7 @@ import type {
   AdminPartnerApplication,
   AdminPayment,
   AdminStats,
+  MarketCode,
   CreateEmployeeRequest,
   CreateCommercialRequest,
   PartnerApplicationStatus,
@@ -39,6 +40,8 @@ interface AdminQueryOptions {
 export interface AdminPaginationParams {
   limit?: number;
   offset?: number;
+  /** Optional market filter (omit = all markets). */
+  market?: MarketCode;
 }
 
 async function fetchAdminAction<T>(path: string, init: RequestInit): Promise<T> {
@@ -89,7 +92,7 @@ export function useAdminCustomers(
   { enabled = true }: AdminQueryOptions = {},
 ) {
   return useQuery<AdminCustomer[]>({
-    queryKey: ["admin-customers", search, pagination?.limit, pagination?.offset],
+    queryKey: ["admin-customers", search, pagination?.limit, pagination?.offset, pagination?.market],
     queryFn: () => admin.customers({ search, ...pagination }),
     enabled,
     placeholderData: keepPreviousData,
@@ -101,7 +104,7 @@ export function useAdminPayments(
   { enabled = true }: AdminQueryOptions = {},
 ) {
   return useQuery<AdminPayment[]>({
-    queryKey: ["admin-payments", pagination?.limit, pagination?.offset],
+    queryKey: ["admin-payments", pagination?.limit, pagination?.offset, pagination?.market],
     queryFn: () => admin.payments(pagination),
     enabled,
     placeholderData: keepPreviousData,
