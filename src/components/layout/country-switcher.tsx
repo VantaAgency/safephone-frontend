@@ -51,8 +51,14 @@ export function CountrySwitcher({ compact = false }: CountrySwitcherProps) {
           ? "Vous consultez maintenant SafePhone Sénégal."
           : "You're now viewing SafePhone United States.";
       toast(message, "success");
-      router.replace(data.redirectTo);
-      router.refresh();
+      // A dedicated-domain market is cross-origin → full navigation. A
+      // same-host market stays a soft client navigation.
+      if (/^https?:\/\//i.test(data.redirectTo)) {
+        window.location.assign(data.redirectTo);
+      } else {
+        router.replace(data.redirectTo);
+        router.refresh();
+      }
     } catch {
       toast(
         market.language === "fr"

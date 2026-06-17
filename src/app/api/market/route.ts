@@ -1,9 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
-import {
-  MARKETS,
-  MARKET_COOKIE,
-  isMarketCode,
-} from "@/lib/markets/config";
+import { MARKET_COOKIE, isMarketCode } from "@/lib/markets/config";
+import { US_ORIGIN, SN_ORIGIN, hostKind } from "@/lib/markets/domains";
 
 const ONE_YEAR_SECONDS = 60 * 60 * 24 * 365;
 
@@ -20,10 +17,24 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unsupported market" }, { status: 400 });
   }
 
-  const target = MARKETS[market].routePrefix;
+  // Where the chosen market lives, relative to the host the switcher was
+  // clicked on. On a dedicated domain the other market is cross-origin, so we
+  // return an absolute URL and the client does a full navigation.
+  const kind = hostKind(
+    request.headers.get("host") ?? request.headers.get("x-forwarded-host"),
+  );
+  let redirectTo: string;
+  if (market === "US") {
+    redirectTo =
+      kind === "us" ? "/" : kind === "sn" ? `${US_ORIGIN}/` : "/us";
+  } else {
+    redirectTo =
+      kind === "sn" ? "/sn" : kind === "us" ? `${SN_ORIGIN}/sn` : "/sn";
+  }
+
   const response = NextResponse.json({
     market,
-    redirectTo: target,
+    redirectTo,
   });
   response.cookies.set(MARKET_COOKIE, market, {
     path: "/",

@@ -1,8 +1,14 @@
 import type { MetadataRoute } from "next";
+import { headers } from "next/headers";
 import { getSiteURL } from "@/lib/site-url";
+import { hostKind, US_ORIGIN } from "@/lib/markets/domains";
 
-export default function robots(): MetadataRoute.Robots {
-  const siteURL = getSiteURL();
+export default async function robots(): Promise<MetadataRoute.Robots> {
+  const headerStore = await headers();
+  const kind = hostKind(
+    headerStore.get("host") ?? headerStore.get("x-forwarded-host"),
+  );
+  const base = kind === "us" ? US_ORIGIN : getSiteURL();
 
   return {
     rules: {
@@ -16,7 +22,7 @@ export default function robots(): MetadataRoute.Robots {
         "/api/",
       ],
     },
-    sitemap: `${siteURL}/sitemap.xml`,
-    host: siteURL,
+    sitemap: `${base}/sitemap.xml`,
+    host: base,
   };
 }

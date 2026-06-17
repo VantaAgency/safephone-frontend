@@ -92,3 +92,6 @@ export const test = base.extend<{ user: TestUser }>({
 });
 
 export { expect };
+// Re-export the Playwright types the spec files consume from "./fixtures" so
+// they have a single import source alongside `test`/`expect`.
+export type { BrowserContext, Page } from "@playwright/test";
