@@ -397,10 +397,13 @@ export interface StripeRegisterDeviceResponse {
   };
 }
 
+export type BillingCycle = "monthly" | "annual";
+
 export const stripe = {
-  createCheckout: (planSlug: string) =>
+  createCheckout: (planSlug: string, billingCycle: BillingCycle = "monthly") =>
     api.post<StripeCheckoutResponse>("/payments/stripe/checkout", {
       plan_slug: planSlug,
+      billing_cycle: billingCycle,
     }),
   registerDevice: (data: StripeRegisterDeviceRequest) =>
     api.post<StripeRegisterDeviceResponse>("/us/devices", data),
