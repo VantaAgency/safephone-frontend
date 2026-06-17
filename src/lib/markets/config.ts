@@ -314,7 +314,7 @@ export const MARKETS: Record<MarketCode, Market> = {
     currencyLabel: "$",
     currencyMinorUnit: 100,
     paymentProvider: "STRIPE",
-    domain: "getsafephone.com",
+    domain: "safephone.us",
     htmlLang: "en",
     ogLocale: "en_US",
     flag: "🇺🇸",

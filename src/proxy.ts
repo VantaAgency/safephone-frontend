@@ -5,6 +5,14 @@ import {
   isMarketCode,
   type MarketCode,
 } from "@/lib/markets/config";
+import {
+  US_ORIGIN,
+  SN_ORIGIN,
+  hostKind,
+  stripUSPrefix,
+  addUSPrefix,
+  isSharedPath,
+} from "@/lib/markets/domains";
 
 // ─── Auth route protection (was in src/middleware.ts) ──────────────────────
 const PROTECTED_ROUTES = [
@@ -41,39 +49,126 @@ function resolveMarketFromRequest(request: NextRequest): MarketCode | null {
   return isMarketCode(upper) ? upper : null;
 }
 
-export function proxy(request: NextRequest) {
-  const { pathname, search } = request.nextUrl;
+/**
+ * Auth gate shared by every host. `checkPath` is the effective internal route
+ * used to decide protection (e.g. `/us/dashboard` even when the browser shows
+ * `/dashboard` on the US domain); `redirectPath` is the URL the user sees, fed
+ * back into the sign-in modal so login returns them where they were.
+ * Returns a response to short-circuit on, or null to continue.
+ */
+function authGate(
+  request: NextRequest,
+  checkPath: string,
+  redirectPath: string = checkPath,
+): NextResponse | null {
   const sessionToken = getSessionToken(request);
 
-  // ─── Admin API: 401 on missing session ──────────────────────────────────
-  if (ADMIN_API_ROUTES.some((r) => pathname.startsWith(r)) && !sessionToken) {
+  // Admin API: 401 on missing session.
+  if (ADMIN_API_ROUTES.some((r) => checkPath.startsWith(r)) && !sessionToken) {
     return NextResponse.json(
       { error: { message: "Authentication required" } },
       { status: 401 },
     );
   }
 
-  // ─── Protected routes: redirect to home with auth modal ─────────────────
+  // Protected routes: redirect to home with the auth modal.
   const isProtected =
-    PROTECTED_ROUTES.some((r) => pathname.startsWith(r)) ||
-    ADMIN_ROUTES.some((r) => pathname.startsWith(r)) ||
-    EMPLOYEE_ROUTES.some((r) => pathname.startsWith(r)) ||
-    PARTNER_ROUTES.some((r) => pathname.startsWith(r)) ||
-    COMMERCIAL_ROUTES.some((r) => pathname.startsWith(r));
+    PROTECTED_ROUTES.some((r) => checkPath.startsWith(r)) ||
+    ADMIN_ROUTES.some((r) => checkPath.startsWith(r)) ||
+    EMPLOYEE_ROUTES.some((r) => checkPath.startsWith(r)) ||
+    PARTNER_ROUTES.some((r) => checkPath.startsWith(r)) ||
+    COMMERCIAL_ROUTES.some((r) => checkPath.startsWith(r));
   if (isProtected && !sessionToken) {
     const url = new URL("/", request.url);
     url.searchParams.set("auth", "sign-in");
-    url.searchParams.set("redirect", pathname);
+    url.searchParams.set("redirect", redirectPath);
     return NextResponse.redirect(url);
   }
 
-  // ─── Market resolution: forward x-pathname for RSC headers() ────────────
-  // Without this, server-side resolveMarket() can't see the URL prefix and
-  // falls back to the cookie/default market — causing /us to render with
-  // SN content and lang="fr".
+  return null;
+}
+
+/** Pass the request through, forwarding `x-pathname` so RSC `resolveMarket()`
+ * can read the (effective) URL prefix. */
+function passThrough(request: NextRequest, pathname: string) {
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-pathname", pathname);
-  const next = () => NextResponse.next({ request: { headers: requestHeaders } });
+  return NextResponse.next({ request: { headers: requestHeaders } });
+}
+
+/** Rewrite to an internal path (URL stays as the browser sees it) while
+ * forwarding `x-pathname` = the internal path for market resolution. */
+function rewriteTo(request: NextRequest, internalPath: string, search: string) {
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-pathname", internalPath);
+  return NextResponse.rewrite(
+    new URL(`${internalPath}${search}`, request.url),
+    { request: { headers: requestHeaders } },
+  );
+}
+
+export function proxy(request: NextRequest) {
+  const { pathname, search } = request.nextUrl;
+  const kind = hostKind(
+    request.headers.get("host") ?? request.headers.get("x-forwarded-host"),
+  );
+
+  // ── Dedicated US domain: serve the US market at the root ─────────────────
+  if (kind === "us") {
+    return proxyUSHost(request, pathname, search);
+  }
+
+  // ── Dedicated SN domain: the old `/us/*` path now lives on the US domain ─
+  if (kind === "sn" && (pathname === "/us" || pathname.startsWith("/us/"))) {
+    return NextResponse.redirect(
+      `${US_ORIGIN}${stripUSPrefix(pathname)}${search}`,
+      301,
+    );
+  }
+
+  // ── Legacy / SN multi-market behaviour ───────────────────────────────────
+  return proxyMultiMarket(request, pathname, search, kind);
+}
+
+/** safephone.us — US served clean at the root; /us/* canonicalised; /sn/* sent home. */
+function proxyUSHost(request: NextRequest, pathname: string, search: string) {
+  // SN content doesn't belong on the US domain → send it to the SN site.
+  if (pathname === "/sn" || pathname.startsWith("/sn/")) {
+    return NextResponse.redirect(`${SN_ORIGIN}${pathname}${search}`, 301);
+  }
+
+  // Canonicalise any `/us` or `/us/*` to its clean form so the app's own
+  // `/us/...` links and old bookmarks settle on the prefix-less URL.
+  if (pathname === "/us" || pathname.startsWith("/us/")) {
+    return NextResponse.redirect(
+      new URL(`${stripUSPrefix(pathname)}${search}`, request.url),
+      301,
+    );
+  }
+
+  // Shared routes (auth, dashboards, partner-ref, API) pass through as-is.
+  if (isSharedPath(pathname)) {
+    const gated = authGate(request, pathname);
+    if (gated) return gated;
+    return passThrough(request, pathname);
+  }
+
+  // Everything else is a US market page → rewrite to the internal `/us` path.
+  const internal = addUSPrefix(pathname);
+  const gated = authGate(request, internal, pathname);
+  if (gated) return gated;
+  return rewriteTo(request, internal, search);
+}
+
+/** localhost / preview / safephone.sn — both markets via `/sn` and `/us` prefixes. */
+function proxyMultiMarket(
+  request: NextRequest,
+  pathname: string,
+  search: string,
+  kind: "sn" | "legacy",
+) {
+  const gated = authGate(request, pathname);
+  if (gated) return gated;
 
   // Pass through canonical market routes.
   if (
@@ -83,12 +178,16 @@ export function proxy(request: NextRequest) {
     pathname.startsWith("/us/") ||
     pathname === "/select-country"
   ) {
-    return next();
+    return passThrough(request, pathname);
   }
 
   // Bare root → detection-based redirect.
   if (pathname === "/") {
     const market = resolveMarketFromRequest(request) ?? DEFAULT_MARKET;
+    // On the SN prod host, a US visitor belongs on the US domain.
+    if (market === "US" && kind === "sn") {
+      return NextResponse.redirect(`${US_ORIGIN}/${search}`, 307);
+    }
     const target = `/${market.toLowerCase()}`;
     return NextResponse.redirect(new URL(`${target}${search}`, request.url));
   }
@@ -102,11 +201,18 @@ export function proxy(request: NextRequest) {
   const redirect = BARE_PATH_REDIRECTS[barePath];
   if (redirect) {
     const market = resolveMarketFromRequest(request) ?? DEFAULT_MARKET;
+    // On the SN prod host, the US equivalent lives on the US domain.
+    if (market === "US" && kind === "sn") {
+      return NextResponse.redirect(
+        `${US_ORIGIN}${stripUSPrefix(redirect.US)}${search}`,
+        307,
+      );
+    }
     const target = redirect[market];
     return NextResponse.redirect(new URL(`${target}${search}`, request.url), 307);
   }
 
-  return next();
+  return passThrough(request, pathname);
 }
 
 // Bare-path → per-market target map. Keep this in sync with routes.ts.

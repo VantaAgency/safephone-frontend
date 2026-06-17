@@ -1,7 +1,11 @@
 import type { MetadataRoute } from "next";
+import { headers } from "next/headers";
 import { getSiteURL } from "@/lib/site-url";
+import { hostKind, US_ORIGIN } from "@/lib/markets/domains";
 
-const PUBLIC_ROUTES = [
+// Senegal market (safephone.sn / legacy hosts). Bare public routes that the
+// proxy canonicalises to /sn/*.
+const SN_ROUTES = [
   "",
   "/forfaits",
   "/partenaires",
@@ -16,12 +20,34 @@ const PUBLIC_ROUTES = [
   "/reinitialiser-mot-de-passe",
 ];
 
-export default function sitemap(): MetadataRoute.Sitemap {
-  const siteURL = getSiteURL();
+// United States market (safephone.us) — clean, prefix-less URLs.
+const US_ROUTES = [
+  "",
+  "/pricing",
+  "/claims",
+  "/repair",
+  "/partners",
+  "/contact",
+  "/how-it-works",
+  "/signup",
+  "/login",
+  "/terms",
+  "/privacy",
+  "/repair-protection-terms",
+];
+
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const headerStore = await headers();
+  const isUS =
+    hostKind(headerStore.get("host") ?? headerStore.get("x-forwarded-host")) ===
+    "us";
+
+  const base = isUS ? US_ORIGIN : getSiteURL();
+  const routes = isUS ? US_ROUTES : SN_ROUTES;
   const lastModified = new Date();
 
-  return PUBLIC_ROUTES.map((route) => ({
-    url: `${siteURL}${route}`,
+  return routes.map((route) => ({
+    url: `${base}${route}`,
     lastModified,
     changeFrequency: route === "" ? "weekly" : "monthly",
     priority: route === "" ? 1 : 0.7,

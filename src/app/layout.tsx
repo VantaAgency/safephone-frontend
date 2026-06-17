@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { headers } from "next/headers";
 import { AppShell } from "@/components/layout/app-shell";
 import { LanguageProvider } from "@/lib/language-context";
 import { AuthProvider } from "@/lib/auth/auth-provider";
@@ -9,6 +10,7 @@ import { ToastProvider } from "@/components/ui/toast";
 import { MarketProvider } from "@/lib/markets/context";
 import { resolveMarket } from "@/lib/markets/server";
 import { DEFAULT_MARKET, MARKETS } from "@/lib/markets/config";
+import { US_ORIGIN, SN_ORIGIN, hostKind } from "@/lib/markets/domains";
 import { getSiteURL } from "@/lib/site-url";
 import "./globals.css";
 
@@ -29,10 +31,23 @@ export async function generateMetadata(): Promise<Metadata> {
   const title = isUS ? US_TITLE : SN_TITLE;
   const description = isUS ? US_DESCRIPTION : SN_DESCRIPTION;
 
+  // Each market has its own canonical home on its own domain. The US site
+  // serves clean URLs at the root; SN lives under /sn.
+  const headerStore = await headers();
+  const kind = hostKind(
+    headerStore.get("host") ?? headerStore.get("x-forwarded-host"),
+  );
+  const usHome = `${US_ORIGIN}/`;
+  const snHome = `${SN_ORIGIN}/sn`;
+  const canonical = isUS ? usHome : snHome;
+  // metadataBase makes relative OG/asset URLs resolve against the host the
+  // page is actually served from.
+  const base = kind === "us" ? US_ORIGIN : siteURL;
+
   return {
     title,
     description,
-    metadataBase: new URL(siteURL),
+    metadataBase: new URL(base),
     icons: {
       icon: [
         { url: "/favicon.ico", sizes: "48x48" },
@@ -48,17 +63,17 @@ export async function generateMetadata(): Promise<Metadata> {
       ],
     },
     alternates: {
-      canonical: market.routePrefix,
+      canonical,
       // hreflang alternates so search engines understand the per-market URLs.
       languages: {
-        "fr-SN": "/sn",
-        "en-US": "/us",
+        "fr-SN": snHome,
+        "en-US": usHome,
       },
     },
     openGraph: {
       title,
       description,
-      url: `${siteURL}${market.routePrefix}`,
+      url: canonical,
       siteName: "SafePhone",
       locale: market.ogLocale,
       type: "website",
