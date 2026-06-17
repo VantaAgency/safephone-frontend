@@ -4,14 +4,21 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { stripe } from "../endpoints";
 import type {
+  BillingCycle,
   StripeCheckoutResponse,
   StripeRegisterDeviceRequest,
   StripeRegisterDeviceResponse,
 } from "../endpoints";
 
+export interface StripeCheckoutVars {
+  planSlug: string;
+  billingCycle?: BillingCycle;
+}
+
 export function useStripeCheckout() {
-  return useMutation<StripeCheckoutResponse, Error, string>({
-    mutationFn: (planSlug) => stripe.createCheckout(planSlug),
+  return useMutation<StripeCheckoutResponse, Error, StripeCheckoutVars>({
+    mutationFn: ({ planSlug, billingCycle }) =>
+      stripe.createCheckout(planSlug, billingCycle ?? "monthly"),
   });
 }
 

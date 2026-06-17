@@ -27,6 +27,8 @@ function USSignupContent() {
   usePartnerReferralClaim();
   const checkout = useStripeCheckout();
   const planSlug = (searchParams.get("plan") ?? "").trim();
+  const billingCycle =
+    searchParams.get("billing") === "annual" ? "annual" : "monthly";
   const triggeredRef = useRef(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const routes = routesFor("US");
@@ -42,7 +44,9 @@ function USSignupContent() {
     }
     if (authPending) return;
     if (!isAuthenticated) {
-      const redirect = encodeURIComponent(`/us/signup?plan=${planSlug}`);
+      const redirect = encodeURIComponent(
+        `/us/signup?plan=${planSlug}&billing=${billingCycle}`,
+      );
       router.replace(`${routes.login}?redirect=${redirect}`);
       return;
     }
@@ -50,7 +54,10 @@ function USSignupContent() {
     triggeredRef.current = true;
     void (async () => {
       try {
-        const { checkout_url } = await checkout.mutateAsync(planSlug);
+        const { checkout_url } = await checkout.mutateAsync({
+          planSlug,
+          billingCycle,
+        });
         if (typeof window !== "undefined" && checkout_url) {
           window.location.assign(checkout_url);
         }
