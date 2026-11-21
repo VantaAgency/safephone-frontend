@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { Pagination } from "@/components/ui/pagination";
+import { usePagination } from "@/lib/hooks/use-pagination";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FormField, Input, Select, Textarea } from "@/components/ui/form-field";
@@ -272,6 +274,12 @@ export default function DashboardPage() {
   const isClaimsTab = tab === "claims";
   const isPaymentsTab = tab === "payments";
   const shouldLoadClaimFormData = isClaimsTab && claimView === "new";
+  const subscriptionPage = usePagination(5);
+  const devicePage = usePagination();
+  const claimPage = usePagination();
+  const repairPage = usePagination();
+  const paymentPage = usePagination();
+
   const shouldLoadCoverageDetails = isDevicesTab;
   const shouldLoadDevices = shouldLoadCoverageDetails || shouldLoadClaimFormData;
   const shouldLoadSubscriptions =
@@ -284,24 +292,32 @@ export default function DashboardPage() {
   // overview. The list is tiny and cached (30 min staleTime).
   const shouldLoadPlans = isDevicesTab || tab === "overview";
 
-  const { data: dashboardSummary, isLoading: dashboardSummaryLoading } =
-    useMemberDashboardSummary();
+  const {
+    data: dashboardSummary,
+    isLoading: dashboardSummaryLoading,
+    isFetching: dashboardSummaryFetching,
+  } = useMemberDashboardSummary(subscriptionPage.params);
 
   const {
     data: devices,
     isLoading: devicesLoading,
+    isFetching: devicesFetching,
     refetch: refetchDevices,
-  } = useDevices({ enabled: shouldLoadDevices });
-  const { data: claims, isLoading: claimsLoading } = useClaims({
+  } = useDevices({ enabled: shouldLoadDevices, pagination: isDevicesTab ? devicePage.params : undefined });
+  const { data: claims, isLoading: claimsLoading, isFetching: claimsFetching } = useClaims({
     enabled: shouldLoadClaims,
+    pagination: claimPage.params,
   });
-  const { data: repairRequests, isLoading: repairsLoading } =
-    useMyRepairRequests({ enabled: shouldLoadRepairs });
+  const { data: repairRequests, isLoading: repairsLoading, isFetching: repairsFetching } = useMyRepairRequests({
+    enabled: shouldLoadRepairs,
+    pagination: repairPage.params,
+  });
   const { data: plans, isLoading: plansLoading } = usePlans({
     enabled: shouldLoadPlans,
   });
-  const { data: payments, isLoading: paymentsLoading } = usePayments({
+  const { data: payments, isLoading: paymentsLoading, isFetching: paymentsFetching } = usePayments({
     enabled: shouldLoadPayments,
+    pagination: isPaymentsTab ? paymentPage.params : undefined,
   });
   const {
     data: subscriptions,
@@ -425,6 +441,7 @@ export default function DashboardPage() {
       setClaimType("");
       setClaimDesc("");
       setClaimDeviceId("");
+      claimPage.setPage(1);
       setClaimView("history");
     } catch (err) {
       logger.error("dashboard: create claim failed", { error: err });
@@ -1084,7 +1101,7 @@ export default function DashboardPage() {
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {overviewActiveSubscriptions.map(({ subscription, device }) => {
+                    {subscriptionPage.items(overviewActiveSubscriptions).map(({ subscription, device }) => {
                       return (
                         <div
                           key={subscription.id}
@@ -1209,6 +1226,7 @@ export default function DashboardPage() {
                     })}
                   </div>
                 )}
+                <Pagination {...subscriptionPage.controls(overviewActiveSubscriptions, dashboardSummaryFetching)} lang={lang} />
               </section>
 
               <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
@@ -1435,7 +1453,7 @@ export default function DashboardPage() {
                   />
                 ) : (
                   <div className="space-y-3">
-                    {claims.map((claim) => {
+                    {claimPage.items(claims).map((claim) => {
                       const Icon =
                         CLAIM_TYPE_ICONS[claim.claim_type] || PhoneIcon;
                       return (
@@ -1481,6 +1499,7 @@ export default function DashboardPage() {
                     })}
                   </div>
                 )}
+                <Pagination {...claimPage.controls(claims, claimsFetching)} lang={lang} />
               </div>
             )}
           </div>
@@ -1528,7 +1547,7 @@ export default function DashboardPage() {
               />
             ) : (
               <div className="space-y-4">
-                {repairRequests.map((repair) => (
+                {repairPage.items(repairRequests).map((repair) => (
                   <div
                     key={repair.id}
                     className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm"
@@ -1602,6 +1621,7 @@ export default function DashboardPage() {
                 ))}
               </div>
             )}
+            <Pagination {...repairPage.controls(repairRequests, repairsFetching)} lang={lang} />
           </div>
         )}
 
@@ -1658,7 +1678,7 @@ export default function DashboardPage() {
               />
             ) : (
               <div className="space-y-4">
-                {devices.map((d) => {
+                {devicePage.items(devices).map((d) => {
                   const coverage = deviceCoverageById.get(d.id);
                   if (!coverage) return null;
                   const DeviceIcon = getDeviceIcon(d.device_type);
@@ -2011,6 +2031,7 @@ export default function DashboardPage() {
                 })}
               </div>
             )}
+            <Pagination {...devicePage.controls(devices, devicesFetching)} lang={lang} />
           </div>
         )}
 
@@ -2065,7 +2086,7 @@ export default function DashboardPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {payments.map((p) => (
+                      {paymentPage.items(payments).map((p) => (
                         <tr
                           key={p.id}
                           className="border-b border-slate-50 last:border-0 hover:bg-slate-50/30"
@@ -2127,6 +2148,7 @@ export default function DashboardPage() {
                 </div>
               </div>
             )}
+            <Pagination {...paymentPage.controls(payments, paymentsFetching)} lang={lang} />
           </div>
         )}
       </div>

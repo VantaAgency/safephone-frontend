@@ -1,7 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { type ReactNode, useState } from "react";
 import { StatCard } from "@/components/cards/stat-card";
+import { Pagination } from "@/components/ui/pagination";
+import { usePagination } from "@/lib/hooks/use-pagination";
 import { Button } from "@/components/ui/button";
 import { Input, Select } from "@/components/ui/form-field";
 import { ClockIcon, CreditCardIcon, ShieldCheckIcon, UsersIcon } from "@/components/ui/icons";
@@ -27,28 +29,29 @@ const DEFAULT_FORM = {
 
 export function AdminCommercialsTab() {
   const { lang } = useLanguage();
+  const commercialPage = usePagination();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState(DEFAULT_FORM);
   const [commissionDrafts, setCommissionDrafts] = useState<Record<string, string>>({});
 
-  const { data: commercials = [], isLoading } = useAdminCommercials();
-  const resolvedSelectedId = selectedId && commercials.some((item) => item.id === selectedId)
+  const { data: commercials = [], isLoading, isFetching } = useAdminCommercials();
+  const { offset, limit } = commercialPage.params;
+  const commercialRows = commercials.slice(offset, offset + limit);
+  const visibleCommercials = commercialPage.items(commercialRows);
+  const resolvedSelectedId = selectedId && visibleCommercials.some((item) => item.id === selectedId)
     ? selectedId
-    : commercials[0]?.id ?? null;
-  const { data: detail } = useAdminCommercial(resolvedSelectedId ?? undefined, {
-    enabled: !!resolvedSelectedId,
-  });
+    : visibleCommercials[0]?.id ?? null;
   const createCommercial = useCreateCommercialAccount();
   const updateStatus = useUpdateCommercialStatus();
   const updateCommission = useUpdateCommercialCommission();
 
-  const totals = useMemo(() => ({
+  const totals = {
     active: commercials.filter((item) => item.status === "active").length,
     partners: commercials.reduce((sum, item) => sum + item.partners_brought, 0),
     pending: commercials.reduce((sum, item) => sum + item.pending_partners, 0),
     earned: commercials.reduce((sum, item) => sum + item.commission_earned_xof, 0),
-  }), [commercials]);
+  };
 
   const submitCreate = async () => {
     await createCommercial.mutateAsync({
@@ -59,6 +62,7 @@ export function AdminCommercialsTab() {
       status: form.status,
       commission_percentage: Number(form.commission_percentage),
     });
+    commercialPage.setPage(1);
     setForm(DEFAULT_FORM);
     setShowCreate(false);
   };
@@ -128,7 +132,7 @@ export function AdminCommercialsTab() {
       <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm">
         {isLoading ? (
           <div className="p-6 text-sm text-slate-500">{lang === "fr" ? "Chargement..." : "Loading..."}</div>
-        ) : commercials.length === 0 ? (
+        ) : visibleCommercials.length === 0 ? (
           <div className="py-14 text-center text-sm text-slate-500">{lang === "fr" ? "Aucun commercial." : "No commercials."}</div>
         ) : (
           <div className="overflow-x-auto">
@@ -141,7 +145,7 @@ export function AdminCommercialsTab() {
                 </tr>
               </thead>
               <tbody>
-                {commercials.map((item) => (
+                {visibleCommercials.map((item) => (
                   <tr key={item.id} className="border-b border-slate-50 last:border-0">
                     <td className="px-5 py-3.5">
                       <div className="font-medium text-indigo-950">{item.name}</div>
@@ -186,42 +190,64 @@ export function AdminCommercialsTab() {
         )}
       </div>
 
-      {detail && (
-        <div className="grid gap-6 lg:grid-cols-2">
-          <DetailPanel
-            title={lang === "fr" ? "Partenaires apportés" : "Brought partners"}
-            empty={lang === "fr" ? "Aucun partenaire." : "No partners."}
-            rows={detail.partners.map((partner) => [
-              partner.store_name,
-              `${partner.city} · ${partner.status}`,
-              `${partner.active_clients}/${partner.clients_count} clients`,
-            ])}
-          />
-          <DetailPanel
-            title={lang === "fr" ? "Rapports terrain" : "Field reports"}
-            empty={lang === "fr" ? "Aucun rapport." : "No reports."}
-            rows={detail.reports.map((report) => [
-              report.partner_store_name ?? report.prospect_name ?? "—",
-              report.activity_type,
-              new Date(report.created_at).toLocaleString(lang === "fr" ? "fr-FR" : "en-US"),
-            ])}
-          />
-          <DetailPanel
-            title={lang === "fr" ? "Commissions commerciales" : "Commercial commissions"}
-            empty={lang === "fr" ? "Aucune commission." : "No commissions."}
-            rows={detail.commissions.map((commission) => [
-              commission.partner_store_name,
-              commission.client_name,
-              formatXOF(commission.commission_amount_xof),
-            ])}
-          />
-        </div>
+      <Pagination {...commercialPage.controls(commercialRows, isFetching)} lang={lang} />
+      {resolvedSelectedId && (
+        <CommercialDetail key={resolvedSelectedId} commercialId={resolvedSelectedId} lang={lang} />
       )}
     </div>
   );
 }
 
-function DetailPanel({ title, empty, rows }: { title: string; empty: string; rows: string[][] }) {
+function CommercialDetail({ commercialId, lang }: { commercialId: string; lang: "fr" | "en" }) {
+  const partnersPage = usePagination();
+  const reportsPage = usePagination();
+  const commissionsPage = usePagination();
+  const { data: detail, isFetching } = useAdminCommercial(commercialId, {
+    limit: partnersPage.params.limit,
+    partners_offset: partnersPage.params.offset,
+    reports_offset: reportsPage.params.offset,
+    commissions_offset: commissionsPage.params.offset,
+  });
+
+  if (!detail) return null;
+
+  return (
+    <div className="grid gap-6 lg:grid-cols-2">
+      <DetailPanel
+        title={lang === "fr" ? "Partenaires apportés" : "Brought partners"}
+        empty={lang === "fr" ? "Aucun partenaire." : "No partners."}
+        pagination={<Pagination {...partnersPage.controls(detail.partners, isFetching)} lang={lang} />}
+        rows={partnersPage.items(detail.partners).map((partner) => [
+          partner.store_name,
+          `${partner.city} · ${partner.status}`,
+          `${partner.active_clients}/${partner.clients_count} clients`,
+        ])}
+      />
+      <DetailPanel
+        title={lang === "fr" ? "Rapports terrain" : "Field reports"}
+        empty={lang === "fr" ? "Aucun rapport." : "No reports."}
+        pagination={<Pagination {...reportsPage.controls(detail.reports, isFetching)} lang={lang} />}
+        rows={reportsPage.items(detail.reports).map((report) => [
+          report.partner_store_name ?? report.prospect_name ?? "—",
+          report.activity_type,
+          new Date(report.created_at).toLocaleString(lang === "fr" ? "fr-FR" : "en-US"),
+        ])}
+      />
+      <DetailPanel
+        title={lang === "fr" ? "Commissions commerciales" : "Commercial commissions"}
+        empty={lang === "fr" ? "Aucune commission." : "No commissions."}
+        pagination={<Pagination {...commissionsPage.controls(detail.commissions, isFetching)} lang={lang} />}
+        rows={commissionsPage.items(detail.commissions).map((commission) => [
+          commission.partner_store_name,
+          commission.client_name,
+          formatXOF(commission.commission_amount_xof),
+        ])}
+      />
+    </div>
+  );
+}
+
+function DetailPanel({ title, empty, rows, pagination }: { title: string; empty: string; rows: string[][]; pagination: ReactNode }) {
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm">
       <div className="border-b border-slate-100 px-5 py-4">
@@ -240,6 +266,7 @@ function DetailPanel({ title, empty, rows }: { title: string; empty: string; row
           ))}
         </div>
       )}
+      {pagination}
     </div>
   );
 }

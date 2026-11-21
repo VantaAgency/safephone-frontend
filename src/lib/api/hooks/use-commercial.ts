@@ -1,12 +1,14 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { fetchAllPages } from "../fetch-all-pages";
 import { commercial } from "../endpoints";
 import type {
   CommercialActivityReport,
   CommercialCommission,
   CommercialDashboardOverview,
   CommercialPartner,
+  PaginationParams,
 } from "../types";
 
 interface CommercialQueryOptions {
@@ -22,27 +24,38 @@ export function useCommercialOverview({ enabled = true }: CommercialQueryOptions
   });
 }
 
-export function useCommercialPartners({ enabled = true }: CommercialQueryOptions = {}) {
+export function useCommercialPartners(params: PaginationParams, { enabled = true }: CommercialQueryOptions = {}) {
   return useQuery<CommercialPartner[]>({
-    queryKey: ["commercial", "partners"],
-    queryFn: () => commercial.partners(),
+    queryKey: ["commercial", "partners", params],
+    queryFn: () => commercial.partners(params),
+    enabled,
+    placeholderData: keepPreviousData,
+  });
+}
+
+export function useCommercialPartnerOptions(enabled: boolean) {
+  return useQuery({
+    queryKey: ["commercial", "partners", "options"],
+    queryFn: ({ signal }) => fetchAllPages(commercial.partners, signal),
     enabled,
   });
 }
 
-export function useCommercialCommissions({ enabled = true }: CommercialQueryOptions = {}) {
+export function useCommercialCommissions(params: PaginationParams, { enabled = true }: CommercialQueryOptions = {}) {
   return useQuery<CommercialCommission[]>({
-    queryKey: ["commercial", "commissions"],
-    queryFn: () => commercial.commissions(),
+    queryKey: ["commercial", "commissions", params],
+    queryFn: () => commercial.commissions(params),
     enabled,
+    placeholderData: keepPreviousData,
   });
 }
 
-export function useCommercialActivityReports({ enabled = true }: CommercialQueryOptions = {}) {
+export function useCommercialActivityReports(params: PaginationParams, { enabled = true }: CommercialQueryOptions = {}) {
   return useQuery<CommercialActivityReport[]>({
-    queryKey: ["commercial", "activity-reports"],
-    queryFn: () => commercial.activityReports(),
+    queryKey: ["commercial", "activity-reports", params],
+    queryFn: () => commercial.activityReports(params),
     enabled,
+    placeholderData: keepPreviousData,
   });
 }
 

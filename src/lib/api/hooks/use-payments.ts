@@ -1,8 +1,10 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { fetchAllPages } from "../fetch-all-pages";
 import { payments } from "../endpoints";
 import type {
+  PaginationParams,
   CheckoutResult,
   CreatePaymentRequest,
   Payment,
@@ -14,10 +16,12 @@ interface PaymentQueryOptions {
   refetchInterval?: number | false;
 }
 
-export function usePayments({ enabled = true }: { enabled?: boolean } = {}) {
+export function usePayments({ enabled = true, pagination }: { enabled?: boolean; pagination?: PaginationParams } = {}) {
   return useQuery<Payment[]>({
-    queryKey: ["payments"],
-    queryFn: () => payments.list(),
+    queryKey: ["payments", pagination],
+    queryFn: ({ signal }) => pagination
+      ? payments.list(pagination)
+      : fetchAllPages(payments.list, signal),
     enabled,
   });
 }

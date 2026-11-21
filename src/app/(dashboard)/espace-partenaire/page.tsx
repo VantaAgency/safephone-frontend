@@ -11,12 +11,15 @@ import {
   ShieldCheckIcon,
   UsersIcon,
 } from "@/components/ui/icons";
+import { Pagination } from "@/components/ui/pagination";
+import { usePagination } from "@/lib/hooks/use-pagination";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { useAuth } from "@/lib/auth/auth-provider";
 import { hasRole } from "@/lib/auth/roles";
 import { useLanguage } from "@/lib/language-context";
 import {
   usePartnerOverview,
+  usePartnerClients,
   usePartnerPayouts,
   usePartnerSales,
   usePlans,
@@ -55,10 +58,16 @@ export default function PartnerDashboardPage() {
   const { data: overview, isLoading: overviewLoading } = usePartnerOverview({
     enabled: isPartner,
   });
-  const { data: sales = [], isLoading: salesLoading } = usePartnerSales({
+  const clientsPage = usePagination();
+  const salesPage = usePagination();
+  const payoutsPage = usePagination();
+  const clients = usePartnerClients(clientsPage.params, {
+    enabled: isPartner && tab === "clients",
+  });
+  const sales = usePartnerSales(salesPage.params, {
     enabled: isPartner && tab === "performance",
   });
-  const { data: payouts = [], isLoading: payoutsLoading } = usePartnerPayouts({
+  const payouts = usePartnerPayouts(payoutsPage.params, {
     enabled: isPartner && tab === "performance",
   });
   const { data: plans = [] } = usePlans();
@@ -74,7 +83,6 @@ export default function PartnerDashboardPage() {
   }
 
   const profile = overview?.profile;
-  const clients = overview?.recent_clients ?? [];
   const referralMetrics = overview?.referral_metrics ?? {
     total_visits: 0,
     qr_visits: 0,
@@ -283,7 +291,7 @@ export default function PartnerDashboardPage() {
               </p>
             </div>
 
-            {overviewLoading ? (
+            {clients.isLoading ? (
               <div className="rounded-2xl border border-slate-200/80 bg-white shadow-sm">
                 {[...Array(3)].map((_, index) => (
                   <div
@@ -296,7 +304,7 @@ export default function PartnerDashboardPage() {
                   </div>
                 ))}
               </div>
-            ) : clients.length === 0 ? (
+            ) : (clients.data?.length ?? 0) === 0 ? (
               <div className="rounded-2xl border border-slate-200/80 bg-white py-16 text-center shadow-sm">
                 <p className="font-medium text-indigo-950">
                   {lang === "fr"
@@ -333,7 +341,7 @@ export default function PartnerDashboardPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {clients.map((client) => {
+                      {clientsPage.items(clients.data).map((client) => {
                         const plan = plans.find((item) => item.id === client.plan_id);
                         const sourceCopy = getClientSourceCopy(client);
                         const stepIndex = STATUS_ORDER.indexOf(client.status);
@@ -449,6 +457,7 @@ export default function PartnerDashboardPage() {
                 </div>
               </div>
             )}
+            <Pagination {...clientsPage.controls(clients.data, clients.isFetching)} lang={lang} />
           </div>
         )}
 
@@ -474,7 +483,7 @@ export default function PartnerDashboardPage() {
                       : "Acquisition commissions"}
                   </h2>
                 </div>
-                {salesLoading ? (
+                {sales.isLoading ? (
                   <div className="space-y-3 p-6">
                     {[...Array(3)].map((_, index) => (
                       <div
@@ -483,7 +492,7 @@ export default function PartnerDashboardPage() {
                       />
                     ))}
                   </div>
-                ) : sales.length === 0 ? (
+                ) : (sales.data?.length ?? 0) === 0 ? (
                   <div className="py-12 text-center text-sm text-slate-500">
                     {lang === "fr"
                       ? "Aucune commission générée pour l'instant"
@@ -512,7 +521,7 @@ export default function PartnerDashboardPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {sales.map((sale) => (
+                        {salesPage.items(sales.data).map((sale) => (
                           <tr
                             key={sale.id}
                             className="border-b border-slate-50 last:border-0"
@@ -560,6 +569,7 @@ export default function PartnerDashboardPage() {
                   </div>
                 )}
               </div>
+              <Pagination {...salesPage.controls(sales.data, sales.isFetching)} lang={lang} />
             </div>
 
             <div className="space-y-6">
@@ -607,7 +617,7 @@ export default function PartnerDashboardPage() {
                 <h2 className="text-lg font-medium text-indigo-950">
                   {lang === "fr" ? "Versements" : "Payouts"}
                 </h2>
-                {payoutsLoading ? (
+                {payouts.isLoading ? (
                   <div className="mt-4 space-y-3">
                     {[...Array(2)].map((_, index) => (
                       <div
@@ -616,13 +626,13 @@ export default function PartnerDashboardPage() {
                       />
                     ))}
                   </div>
-                ) : payouts.length === 0 ? (
+                ) : (payouts.data?.length ?? 0) === 0 ? (
                   <p className="mt-3 text-sm text-slate-500">
                     {lang === "fr" ? "Aucun versement pour le moment." : "No payouts yet."}
                   </p>
                 ) : (
                   <div className="mt-4 space-y-3">
-                    {payouts.map((payout) => (
+                    {payoutsPage.items(payouts.data).map((payout) => (
                       <div
                         key={payout.id}
                         className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4"
@@ -646,6 +656,7 @@ export default function PartnerDashboardPage() {
                   </div>
                 )}
               </div>
+              <Pagination {...payoutsPage.controls(payouts.data, payouts.isFetching)} lang={lang} />
             </div>
           </div>
         )}

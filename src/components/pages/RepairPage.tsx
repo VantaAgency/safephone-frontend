@@ -7,6 +7,8 @@ import { useLanguage } from "@/lib/language-context";
 import { useMarket } from "@/lib/markets/context";
 import { formatPrice } from "@/lib/markets/format";
 import { useAuth } from "@/lib/auth/auth-provider";
+import { Pagination } from "@/components/ui/pagination";
+import { usePagination } from "@/lib/hooks/use-pagination";
 import { Button } from "@/components/ui/button";
 import { FormField, Input } from "@/components/ui/form-field";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -147,7 +149,11 @@ export default function ReparationsPage() {
   // Authenticated users get a clickable history list on the Track tab so
   // they don't have to remember/copy reference codes. Anonymous users
   // (no JWT) just see the manual reference+phone form.
-  const { data: myRepairs } = useMyRepairRequests({ enabled: isAuthenticated });
+  const repairPage = usePagination(5);
+  const { data: myRepairs, isFetching: repairsFetching } = useMyRepairRequests({
+    enabled: isAuthenticated,
+    pagination: repairPage.params,
+  });
 
   const modelSuggestions =
     DEVICE_MODEL_SUGGESTIONS[
@@ -308,13 +314,13 @@ export default function ReparationsPage() {
 
       {/* Authenticated users see a clickable history. Each entry prefills
           and loads the lookup in one click — no need to memorise codes. */}
-      {isAuthenticated && (myRepairs?.length ?? 0) > 0 && (
+      {isAuthenticated && ((myRepairs?.length ?? 0) > 0 || repairPage.params.offset > 0) && (
         <div className="mt-6">
           <div className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
-            {lang === "fr" ? "Mes demandes récentes" : "My recent requests"}
+            {lang === "fr" ? "Mes demandes de réparation" : "My repair requests"}
           </div>
           <div className="space-y-2">
-            {(myRepairs ?? []).slice(0, 5).map((r) => (
+            {repairPage.items(myRepairs).map((r) => (
               <button
                 key={r.id}
                 type="button"
@@ -347,6 +353,7 @@ export default function ReparationsPage() {
               </button>
             ))}
           </div>
+          <Pagination {...repairPage.controls(myRepairs, repairsFetching)} lang={lang} />
         </div>
       )}
 

@@ -1,17 +1,18 @@
 "use client";
 
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { moderation } from "../endpoints";
-import type { Device } from "../types";
+import type { Device, PaginationParams } from "../types";
 
 // Covered devices an admin/employee can review for fraud (active + suspended).
-export function useModerationDevices({
+export function useModerationDevices(pagination: PaginationParams, {
   enabled = true,
 }: { enabled?: boolean } = {}) {
   return useQuery<Device[]>({
-    queryKey: ["moderation-devices"],
-    queryFn: () => moderation.devices({ limit: 50 }),
+    queryKey: ["moderation-devices", pagination],
+    queryFn: () => moderation.devices(pagination),
     enabled,
+    placeholderData: keepPreviousData,
   });
 }
 

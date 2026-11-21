@@ -58,6 +58,7 @@ export {
 export {
   useCommercialOverview,
   useCommercialPartners,
+  useCommercialPartnerOptions,
   useCommercialCommissions,
   useCommercialActivityReports,
   useCreateCommercialActivityReport,

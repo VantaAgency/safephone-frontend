@@ -2,6 +2,8 @@
 
 import { useDeferredValue, useRef, useState } from "react";
 import { StatCard } from "@/components/cards/stat-card";
+import { Pagination } from "@/components/ui/pagination";
+import { usePagination } from "@/lib/hooks/use-pagination";
 import { Button } from "@/components/ui/button";
 import { Input, Select, Textarea } from "@/components/ui/form-field";
 import {
@@ -42,6 +44,7 @@ const DEFAULT_CREATE_FORM = {
 
 export function AdminEmployeesTab() {
   const { lang } = useLanguage();
+  const employeePage = usePagination();
   const [search, setSearch] = useState("");
   const deferredSearch = useDeferredValue(search);
   const [statusFilter, setStatusFilter] = useState<"" | EmployeeAccountStatus>("");
@@ -54,6 +57,7 @@ export function AdminEmployeesTab() {
 
   const {
     data: employees = [],
+    isFetching: employeesFetching,
     isLoading: employeesLoading,
     error: employeesError,
   } = useAdminEmployees({
@@ -61,10 +65,13 @@ export function AdminEmployeesTab() {
     status: statusFilter || undefined,
     sort,
   });
+  const { offset, limit } = employeePage.params;
+  const employeeRows = employees.slice(offset, offset + limit);
+  const visibleEmployees = employeePage.items(employeeRows);
   const resolvedSelectedEmployeeId =
-    selectedEmployeeId && employees.some((employee) => employee.id === selectedEmployeeId)
+    selectedEmployeeId && visibleEmployees.some((employee) => employee.id === selectedEmployeeId)
       ? selectedEmployeeId
-      : employees[0]?.id ?? null;
+      : visibleEmployees[0]?.id ?? null;
   const {
     data: selectedEmployee,
     isLoading: employeeLoading,
@@ -111,6 +118,7 @@ export function AdminEmployeesTab() {
       createEmployee.reset();
       setCreateForm(DEFAULT_CREATE_FORM);
       setShowCreateForm(false);
+      employeePage.setPage(1);
       setSelectedEmployeeId(created.id);
     } finally {
       createSubmitLockRef.current = false;
@@ -308,14 +316,18 @@ export function AdminEmployeesTab() {
                     : "Search by name, email, or phone..."
                 }
                 value={search}
-                onChange={(event) => setSearch(event.target.value)}
+                onChange={(event) => {
+                  employeePage.setPage(1);
+                  setSearch(event.target.value);
+                }}
               />
               <div className="grid grid-cols-2 gap-3 lg:w-[280px]">
                 <Select
                   value={statusFilter}
-                  onChange={(event) =>
-                    setStatusFilter(event.target.value as "" | EmployeeAccountStatus)
-                  }
+                  onChange={(event) => {
+                    employeePage.setPage(1);
+                    setStatusFilter(event.target.value as "" | EmployeeAccountStatus);
+                  }}
                 >
                   <option value="">{lang === "fr" ? "Tous statuts" : "All statuses"}</option>
                   <option value="active">{getEmployeeStatusLabel("active", lang)}</option>
@@ -324,7 +336,10 @@ export function AdminEmployeesTab() {
                 </Select>
                 <Select
                   value={sort}
-                  onChange={(event) => setSort(event.target.value as AdminEmployeeSort)}
+                  onChange={(event) => {
+                    employeePage.setPage(1);
+                    setSort(event.target.value as AdminEmployeeSort);
+                  }}
                 >
                   <option value="recent_activity">
                     {lang === "fr" ? "Activité récente" : "Recent activity"}
@@ -352,7 +367,7 @@ export function AdminEmployeesTab() {
                   <CardSkeleton key={index} />
                 ))}
               </div>
-            ) : employees.length === 0 ? (
+            ) : visibleEmployees.length === 0 ? (
               <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50/80 px-6 py-12 text-center">
                 <p className="text-base font-medium text-indigo-950">
                   {lang === "fr" ? "Aucun employé trouvé" : "No employees found"}
@@ -365,7 +380,7 @@ export function AdminEmployeesTab() {
               </div>
             ) : (
               <div className="space-y-3">
-                {employees.map((employee) => (
+                {visibleEmployees.map((employee) => (
                   <button
                     key={employee.id}
                     type="button"
@@ -429,6 +444,7 @@ export function AdminEmployeesTab() {
                 ))}
               </div>
             )}
+            <Pagination {...employeePage.controls(employeeRows, employeesFetching)} lang={lang} />
           </div>
         </div>
 

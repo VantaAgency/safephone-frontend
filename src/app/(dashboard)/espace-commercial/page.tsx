@@ -5,6 +5,8 @@ import QRCode from "qrcode";
 import { useRouter } from "next/navigation";
 import { RouteGuardLoader } from "@/components/auth/route-guard-loader";
 import { StatCard } from "@/components/cards/stat-card";
+import { Pagination } from "@/components/ui/pagination";
+import { usePagination } from "@/lib/hooks/use-pagination";
 import { Button } from "@/components/ui/button";
 import { Input, Select, Textarea } from "@/components/ui/form-field";
 import {
@@ -20,6 +22,7 @@ import {
   useCommercialCommissions,
   useCommercialOverview,
   useCommercialPartners,
+  useCommercialPartnerOptions,
   useCreateCommercialActivityReport,
 } from "@/lib/api/hooks";
 import { useAuth } from "@/lib/auth/auth-provider";
@@ -63,15 +66,19 @@ export default function CommercialDashboardPage() {
   const { data: overview, isLoading: overviewLoading } = useCommercialOverview({
     enabled: isCommercial,
   });
-  const { data: partners = [] } = useCommercialPartners({
-    enabled: isCommercial,
+  const partnersPage = usePagination();
+  const reportsPage = usePagination();
+  const commissionsPage = usePagination();
+  const partners = useCommercialPartners(partnersPage.params, {
+    enabled: isCommercial && tab === "partners",
   });
-  const { data: reports = [] } = useCommercialActivityReports({
+  const reports = useCommercialActivityReports(reportsPage.params, {
     enabled: isCommercial && tab === "activity",
   });
-  const { data: commissions = [] } = useCommercialCommissions({
+  const commissions = useCommercialCommissions(commissionsPage.params, {
     enabled: isCommercial && tab === "commissions",
   });
+  const { data: partnerOptions = [] } = useCommercialPartnerOptions(isCommercial && tab === "activity");
   const createReport = useCreateCommercialActivityReport();
 
   useEffect(() => {
@@ -107,9 +114,7 @@ export default function CommercialDashboardPage() {
   }
 
   const referralLink = overview?.referral_link ?? "";
-  const recentReports = tab === "activity" ? reports : overview?.recent_reports ?? [];
-  const displayedCommissions = tab === "commissions" ? commissions : overview?.recent_commissions ?? [];
-  const displayedPartners = tab === "partners" ? partners : overview?.recent_partners ?? [];
+  const displayedPartners = tab === "partners" ? partnersPage.items(partners.data) : overview?.recent_partners ?? [];
 
   const copyReferralLink = async () => {
     if (!referralLink) return;
@@ -140,6 +145,7 @@ export default function CommercialDashboardPage() {
 
     try {
       await createReport.mutateAsync(data);
+      reportsPage.setPage(1);
       setActivityForm({
         partnerId: "",
         prospectName: "",
@@ -245,7 +251,12 @@ export default function CommercialDashboardPage() {
         )}
 
         {(tab === "overview" || tab === "partners") && (
-          <PartnerTable partners={displayedPartners} lang={lang} />
+          <div>
+            <PartnerTable partners={displayedPartners} lang={lang} />
+            {tab === "partners" && (
+              <Pagination {...partnersPage.controls(partners.data, partners.isFetching)} lang={lang} />
+            )}
+          </div>
         )}
 
         {tab === "activity" && (
@@ -257,7 +268,7 @@ export default function CommercialDashboardPage() {
               <div className="space-y-3">
                 <Select value={activityForm.partnerId} onChange={(event) => setActivityForm((current) => ({ ...current, partnerId: event.target.value }))}>
                   <option value="">{lang === "fr" ? "Prospect non créé" : "Uncreated prospect"}</option>
-                  {partners.map((partner) => (
+                  {partnerOptions.map((partner) => (
                     <option key={partner.id} value={partner.id}>{partner.store_name}</option>
                   ))}
                 </Select>
@@ -277,12 +288,18 @@ export default function CommercialDashboardPage() {
                 </Button>
               </div>
             </div>
-            <ReportList reports={recentReports} labels={labels} getToken={getToken} lang={lang} />
+            <div>
+              <ReportList reports={reportsPage.items(reports.data)} labels={labels} getToken={getToken} lang={lang} />
+              <Pagination {...reportsPage.controls(reports.data, reports.isFetching)} lang={lang} />
+            </div>
           </div>
         )}
 
         {tab === "commissions" && (
-          <CommissionTable commissions={displayedCommissions} lang={lang} />
+          <div>
+            <CommissionTable commissions={commissionsPage.items(commissions.data)} lang={lang} />
+            <Pagination {...commissionsPage.controls(commissions.data, commissions.isFetching)} lang={lang} />
+          </div>
         )}
       </div>
     </div>

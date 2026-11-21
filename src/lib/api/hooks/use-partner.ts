@@ -1,12 +1,13 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { partner } from "../endpoints";
 import type {
   ClaimPartnerReferralRequest,
   CreatePartnerReferralVisitRequest,
   CreatePartnerClientRequest,
   PartnerDashboardOverview,
+  PaginationParams,
   PartnerReferralDetails,
 } from "../types";
 
@@ -31,11 +32,12 @@ export function usePartnerProfile({ enabled = true }: PartnerQueryOptions = {}) 
   });
 }
 
-export function usePartnerClients({ enabled = true }: PartnerQueryOptions = {}) {
+export function usePartnerClients(params?: PaginationParams, { enabled = true }: PartnerQueryOptions = {}) {
   return useQuery({
-    queryKey: ["partner", "clients"],
-    queryFn: () => partner.listClients(),
+    queryKey: ["partner", "clients", params],
+    queryFn: () => partner.listClients(params),
     enabled,
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -130,18 +132,20 @@ export function useClaimPartnerReferral() {
   });
 }
 
-export function usePartnerSales({ enabled = true }: PartnerQueryOptions = {}) {
+export function usePartnerSales(params?: PaginationParams, { enabled = true }: PartnerQueryOptions = {}) {
   return useQuery({
-    queryKey: ["partner", "sales"],
-    queryFn: () => partner.listSales(),
+    queryKey: ["partner", "sales", params],
+    queryFn: () => partner.listSales(params),
     enabled,
+    placeholderData: keepPreviousData,
   });
 }
 
-export function usePartnerPayouts({ enabled = true }: PartnerQueryOptions = {}) {
+export function usePartnerPayouts(params?: PaginationParams, { enabled = true }: PartnerQueryOptions = {}) {
   return useQuery({
-    queryKey: ["partner", "payouts"],
-    queryFn: () => partner.listPayouts(),
+    queryKey: ["partner", "payouts", params],
+    queryFn: () => partner.listPayouts(params),
     enabled,
+    placeholderData: keepPreviousData,
   });
 }

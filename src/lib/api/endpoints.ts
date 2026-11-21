@@ -54,6 +54,7 @@ import type {
   OperationalFollowUp,
   OperationalNote,
   PaginationParams,
+  CommercialDetailPagination,
   PartnerApplication,
   PartnerClient,
   PartnerDashboardOverview,
@@ -79,7 +80,8 @@ import type {
 } from "./types";
 
 export const dashboard = {
-  summary: () => api.get<MemberDashboardSummary>("/dashboard/summary"),
+  summary: (params?: PaginationParams) =>
+    api.get<MemberDashboardSummary>("/dashboard/summary", { ...params }),
 };
 
 export const users = {
@@ -165,8 +167,8 @@ export const admin = {
       "/admin/commercials",
       params as Record<string, string | number>,
     ),
-  commercial: (id: string) =>
-    api.get<AdminCommercialDetail>(`/admin/commercials/${id}`),
+  commercial: (id: string, pagination: CommercialDetailPagination) =>
+    api.get<AdminCommercialDetail>(`/admin/commercials/${id}`, { ...pagination }),
   commercialActivityReports: (
     params?: PaginationParams & { commercial_id?: string; partner_id?: string },
   ) =>
