@@ -209,7 +209,7 @@ function PaiementSuccesContent() {
         variant="primary"
         size="lg"
         className="mt-8"
-        onClick={() => router.push(`/paiement?payment_id=${paymentId}`)}
+        onClick={() => router.push(`/sn/paiement?payment_id=${paymentId}`)}
       >
         {lang === "fr" ? "Revenir au paiement" : "Return to payment"}
       </Button>
@@ -234,7 +234,7 @@ function PaiementSuccesContent() {
         variant="outline"
         size="lg"
         className="mt-3"
-        onClick={() => router.push(`/paiement?payment_id=${paymentId}`)}
+        onClick={() => router.push(`/sn/paiement?payment_id=${paymentId}`)}
       >
         {lang === "fr" ? "Voir l'etat du paiement" : "View payment state"}
       </Button>

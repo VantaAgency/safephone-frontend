@@ -6,51 +6,24 @@ import {
   MARKET_COOKIE,
   isMarketCode,
   type Market,
-  type MarketCode,
 } from "./config";
 
+import { geoCountry, geoMarket, isUnder, marketForHost } from "./domains";
+
 export type MarketResolution =
-  | { status: "resolved"; market: Market; source: "url" | "manual" | "geo" | "default" }
+  | { status: "resolved"; market: Market; source: "domain" | "url" | "manual" | "geo" }
   | { status: "unsupported"; detectedCountry: string | null };
 
-function marketFromCountry(country: string | null): MarketCode | null {
-  if (!country) return null;
-  const upper = country.toUpperCase();
-  return isMarketCode(upper) ? upper : null;
-}
-
-function readGeoCountry(headerStore: Awaited<ReturnType<typeof headers>>): string | null {
-  const vercel = headerStore.get("x-vercel-ip-country");
-  if (vercel) return vercel;
-  const cloudflare = headerStore.get("cf-ipcountry");
-  if (cloudflare) return cloudflare;
-  return null;
-}
-
-/**
- * Derive a market from a URL pathname. Recognises both the canonical
- * prefixes (`/sn`, `/us`) and the redirect endpoints emitted by the
- * country switcher.
- */
-function marketFromPathname(pathname: string | null): MarketCode | null {
-  if (!pathname) return null;
-  if (pathname === "/sn" || pathname.startsWith("/sn/")) return "SN";
-  if (pathname === "/us" || pathname.startsWith("/us/")) return "US";
-  return null;
-}
-
-/**
- * Server-side market resolution. Priority:
- *   1. URL pathname (`x-pathname` header set by proxy) — the URL prefix
- *      always wins so visiting `/sn` with a US cookie shows SN content.
- *   2. sp_market cookie (manual choice via the country switcher).
- *   3. Geo header from upstream edge (x-vercel-ip-country / cf-ipcountry).
- *   4. Unsupported → caller decides whether to fall back or prompt.
- */
 export async function resolveMarket(): Promise<MarketResolution> {
   const headerStore = await headers();
 
-  const pathnameMarket = marketFromPathname(headerStore.get("x-pathname"));
+  const domainMarket = marketForHost(headerStore.get("host") ?? headerStore.get("x-forwarded-host"));
+  if (domainMarket) {
+    return { status: "resolved", market: MARKETS[domainMarket], source: "domain" };
+  }
+
+  const pathname = headerStore.get("x-pathname") ?? "";
+  const pathnameMarket = isUnder(pathname, "/sn") ? "SN" : isUnder(pathname, "/us") ? "US" : null;
   if (pathnameMarket) {
     return { status: "resolved", market: MARKETS[pathnameMarket], source: "url" };
   }
@@ -61,13 +34,12 @@ export async function resolveMarket(): Promise<MarketResolution> {
     return { status: "resolved", market: MARKETS[manual], source: "manual" };
   }
 
-  const geoCountry = readGeoCountry(headerStore);
-  const geoMarket = marketFromCountry(geoCountry);
-  if (geoMarket) {
-    return { status: "resolved", market: MARKETS[geoMarket], source: "geo" };
+  const detected = geoMarket(headerStore);
+  if (detected) {
+    return { status: "resolved", market: MARKETS[detected], source: "geo" };
   }
 
-  return { status: "unsupported", detectedCountry: geoCountry };
+  return { status: "unsupported", detectedCountry: geoCountry(headerStore) };
 }
 
 /**

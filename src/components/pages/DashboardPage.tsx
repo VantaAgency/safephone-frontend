@@ -646,11 +646,12 @@ export default function DashboardPage() {
     });
   }
 
+  const renewalPlans = plans?.filter((plan) => plan.market === "SN") ?? [];
   const effectiveRenewalPlanId =
-    renewalFormSubscriptionId && plans && plans.length > 0
-      ? plans.some((plan) => plan.id === renewalPlanId)
+    renewalFormSubscriptionId && renewalPlans.length > 0
+      ? renewalPlans.some((plan) => plan.id === renewalPlanId)
         ? renewalPlanId
-        : plans[0].id
+        : renewalPlans[0].id
       : renewalPlanId;
 
   const eligibleDevices =
@@ -1541,7 +1542,7 @@ export default function DashboardPage() {
                   label:
                     lang === "fr" ? "Prendre rendez-vous" : "Book a repair",
                   onClick: () => {
-                    window.location.assign("/reparations");
+                    window.location.assign(routes.repair);
                   },
                 }}
               />
@@ -1690,7 +1691,9 @@ export default function DashboardPage() {
                   );
 
                   const canResume =
-                    !!coverage.payment &&
+                    market.code === "SN" &&
+                    coverage.payment?.provider === "dexpay" &&
+                    coverage.payment.market !== "US" &&
                     ["pending", "failed", "cancelled", "expired"].includes(
                       coverage.payment.status,
                     );
@@ -1877,8 +1880,8 @@ export default function DashboardPage() {
                           </div>
                         )}
 
-                      {coverage.status === "expired" &&
-                        coverage.subscription && (
+                      {market.code === "SN" && coverage.status === "expired" &&
+                        coverage.subscription && coverage.subscription.market !== "US" && (
                           <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4">
                             {renewalFormOpen ? (
                               <div className="space-y-4">
@@ -1909,10 +1912,10 @@ export default function DashboardPage() {
                                     <Select
                                       value={effectiveRenewalPlanId}
                                       onChange={(e) => setRenewalPlanId(e.target.value)}
-                                      disabled={plansLoading || !plans || plans.length === 0}
+                                      disabled={plansLoading || renewalPlans.length === 0}
                                     >
-                                      {plans && plans.length > 0 ? (
-                                        plans.map((plan) => (
+                                      {renewalPlans.length > 0 ? (
+                                        renewalPlans.map((plan) => (
                                           <option key={plan.id} value={plan.id}>
                                             {lang === "fr" ? plan.name_fr : plan.name_en}
                                           </option>
@@ -2115,7 +2118,7 @@ export default function DashboardPage() {
                               : "—"}
                           </td>
                           <td className="whitespace-nowrap px-5 py-4">
-                            {[
+                            {market.code === "SN" && p.provider === "dexpay" && p.market !== "US" && [
                               "pending",
                               "failed",
                               "cancelled",

@@ -189,7 +189,7 @@ function PaiementContent() {
     enabled: isTrackedMode,
   });
 
-  const selectedPlan = plans?.find((p) => p.id === planId || p.slug === planId);
+  const selectedPlan = plans?.find((p) => p.market === "SN" && (p.id === planId || p.slug === planId));
   const coveredTypes = useMemo(
     () => coveredDeviceTypes(selectedPlan),
     [selectedPlan],
@@ -425,7 +425,7 @@ function PaiementContent() {
       partnerCode,
       partnerSourceMedium,
     );
-    const canonicalPath = `/paiement?${canonicalParams.toString()}`;
+    const canonicalPath = `/sn/paiement?${canonicalParams.toString()}`;
 
     if (
       searchParams.get("redirect") &&
@@ -499,7 +499,7 @@ function PaiementContent() {
           redirect: "checkout",
         });
         appendPartnerReferralParams(params, partnerCode, partnerSourceMedium);
-        router.replace(`/paiement?${params.toString()}`);
+        router.replace(`/sn/paiement?${params.toString()}`);
       }
     } catch (err) {
       logger.error("payment: flow error", { error: err });
@@ -527,7 +527,7 @@ function PaiementContent() {
           redirect: "checkout",
         });
         appendPartnerReferralParams(params, partnerCode, partnerSourceMedium);
-        router.replace(`/paiement?${params.toString()}`);
+        router.replace(`/sn/paiement?${params.toString()}`);
       }
     } catch (err) {
       logger.error("payment: resume error", { error: err });

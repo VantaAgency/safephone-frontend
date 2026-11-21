@@ -1,24 +1,7 @@
-/**
- * Multi-domain routing config. In production each market has its own
- * dedicated domain:
- *
- *   - safephone.us  → United States market, served at the ROOT. The internal
- *                     `/us` route prefix is hidden: `/pricing` is rewritten to
- *                     `/us/pricing`, and any `/us/*` URL 301-redirects to its
- *                     clean (de-prefixed) form.
- *   - safephone.sn  → Senegal market, served under `/sn` (plus the bare public
- *                     routes). `/us/*` on this host 301-redirects to the US
- *                     domain so US content lives in exactly one place.
- *
- * Any OTHER host (localhost, *.vercel.app preview URLs, unknown) is treated as
- * a "legacy" multi-market host that serves BOTH markets via the `/sn` and
- * `/us` path prefixes — so local dev and preview deployments keep working with
- * no cross-domain redirects.
- *
- * Host lists and canonical origins are overridable via env so a staging domain
- * can adopt the US behaviour without a code change.
- */
+import { isMarketCode, type MarketCode } from "./config";
 
+// Production domains identify a market. Local and preview hosts keep the /sn
+// and /us prefixes so both paths can be exercised on the same deployment.
 function parseHosts(raw: string | undefined, fallback: string[]): string[] {
   if (!raw) return fallback;
   const parsed = raw
@@ -38,7 +21,7 @@ export const US_HOSTS = parseHosts(process.env.NEXT_PUBLIC_US_HOSTS, [
   "www.safephone.us",
 ]);
 
-/** Hostnames that serve the Senegal market (and redirect `/us/*` away). */
+/** Hostnames that serve the Senegal market. */
 export const SN_HOSTS = parseHosts(process.env.NEXT_PUBLIC_SN_HOSTS, [
   "safephone.sn",
   "www.safephone.sn",
@@ -47,7 +30,7 @@ export const SN_HOSTS = parseHosts(process.env.NEXT_PUBLIC_SN_HOSTS, [
 /** Canonical absolute origins used when redirecting across domains. */
 export const US_ORIGIN = trimOrigin(
   process.env.NEXT_PUBLIC_US_ORIGIN,
-  "https://safephone.us",
+  "https://www.safephone.us",
 );
 export const SN_ORIGIN = trimOrigin(
   process.env.NEXT_PUBLIC_SN_ORIGIN,
@@ -72,6 +55,24 @@ export function hostKind(host: string | null | undefined): HostKind {
   return "legacy";
 }
 
+export function marketForHost(host: string | null): MarketCode | null {
+  const kind = hostKind(host);
+  return kind === "legacy" ? null : kind === "sn" ? "SN" : "US";
+}
+
+export function geoCountry(headers: Pick<Headers, "get">): string | null {
+  return (headers.get("x-vercel-ip-country") ?? headers.get("cf-ipcountry"))?.toUpperCase() ?? null;
+}
+
+export function geoMarket(headers: Pick<Headers, "get">): MarketCode | null {
+  const country = geoCountry(headers);
+  return isMarketCode(country) ? country : null;
+}
+
+export function isUnder(pathname: string, prefix: string): boolean {
+  return pathname === prefix || pathname.startsWith(`${prefix}/`);
+}
+
 /** Clean (de-prefixed) path for a US URL: `/us/pricing` → `/pricing`, `/us` → `/`. */
 export function stripUSPrefix(pathname: string): string {
   if (pathname === "/us") return "/";
@@ -92,7 +93,6 @@ export function addUSPrefix(pathname: string): string {
  * everything else is a US market page served at a clean URL.
  */
 export const SHARED_PREFIXES = [
-  "/api",
   "/admin",
   "/espace-employe",
   "/espace-partenaire",
@@ -103,12 +103,9 @@ export const SHARED_PREFIXES = [
   "/mot-de-passe-oublie",
   "/reinitialiser-mot-de-passe",
   "/acces-refuse",
-  "/select-country",
   "/p",
 ];
 
 export function isSharedPath(pathname: string): boolean {
-  return SHARED_PREFIXES.some(
-    (p) => pathname === p || pathname.startsWith(`${p}/`),
-  );
+  return SHARED_PREFIXES.some((prefix) => isUnder(pathname, prefix));
 }

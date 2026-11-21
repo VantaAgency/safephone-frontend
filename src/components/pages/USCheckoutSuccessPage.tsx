@@ -34,15 +34,15 @@ export default function USCheckoutSuccessPage() {
           </div>
 
           <div className="mb-4 inline-flex items-center rounded-full border border-slate-200/80 bg-white px-4 py-1.5 text-xs font-medium uppercase tracking-wider text-slate-500">
-            Membership active
+            Device registration
           </div>
 
           <h1 className="mb-4 text-3xl font-medium tracking-tight text-indigo-950 md:text-4xl">
-            You&apos;re protected.
+            Finish setting up your protection.
           </h1>
           <p className="mx-auto mb-8 max-w-md text-base leading-relaxed text-slate-500">
-            Thanks for joining SafePhone. Next, tell us which phone is covered so
-            you can file a claim the moment something happens.
+            Once Stripe confirms your payment, register your device so SafePhone
+            can verify it and activate your coverage.
           </p>
 
           <div className="flex flex-col items-center justify-center gap-3 md:flex-row">
@@ -58,9 +58,7 @@ export default function USCheckoutSuccessPage() {
             </Link>
           </div>
 
-          <p className="mt-6 text-xs text-slate-400">
-            A receipt is on its way to your inbox.
-          </p>
+
         </div>
       </div>
     </div>

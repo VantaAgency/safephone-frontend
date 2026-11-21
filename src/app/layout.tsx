@@ -90,6 +90,9 @@ export default async function RootLayout({
   const resolved = resolution.status === "resolved";
   const marketCode = resolved ? resolution.market.code : DEFAULT_MARKET;
   const htmlLang = resolved ? resolution.market.htmlLang : MARKETS[DEFAULT_MARKET].htmlLang;
+  const requestHeaders = await headers();
+  const kind = hostKind(requestHeaders.get("host") ?? requestHeaders.get("x-forwarded-host"));
+  const canSwitchMarket = kind === "legacy" && process.env.VERCEL_ENV !== "production";
 
   return (
     <html lang={htmlLang} className="scroll-smooth" suppressHydrationWarning>
@@ -104,7 +107,7 @@ export default async function RootLayout({
       <body className="antialiased">
         <QueryProvider>
           <AuthProvider>
-            <MarketProvider marketCode={marketCode} resolved={resolved}>
+            <MarketProvider marketCode={marketCode} resolved={resolved} canSwitchMarket={canSwitchMarket}>
               <LanguageProvider>
                 <Suspense>
                   <AuthModalProvider>
