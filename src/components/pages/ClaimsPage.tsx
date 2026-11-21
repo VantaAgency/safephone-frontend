@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { useLanguage } from "@/lib/language-context";
+import { Pagination } from "@/components/ui/pagination";
+import { usePagination } from "@/lib/hooks/use-pagination";
 import { Button } from "@/components/ui/button";
 import { FormField, Textarea, Select } from "@/components/ui/form-field";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -46,9 +48,13 @@ export default function SinistresPage() {
   const [desc, setDesc] = useState("");
   const [selectedDeviceId, setSelectedDeviceId] = useState("");
 
-  const { data: claims, isLoading: claimsLoading } = useClaims();
-  const { data: devices } = useDevices();
-  const { data: subscriptions } = useSubscriptions();
+  const claimsPage = usePagination();
+  const { data: claims, isLoading: claimsLoading, isFetching: claimsFetching } = useClaims({
+    enabled: tab === "history",
+    pagination: claimsPage.params,
+  });
+  const { data: devices } = useDevices({ enabled: tab === "new" });
+  const { data: subscriptions } = useSubscriptions({ enabled: tab === "new" });
   const createClaim = useCreateClaim();
 
   // Only show devices that are active AND have an active subscription
@@ -86,6 +92,7 @@ export default function SinistresPage() {
       setClaimType("");
       setDesc("");
       setSelectedDeviceId("");
+      claimsPage.setPage(1);
       setTab("history");
     } catch (err) {
       logger.error("claims: create claim failed", { error: err });
@@ -252,7 +259,7 @@ export default function SinistresPage() {
               />
             ) : (
               <div className="space-y-3">
-                {claims.map((claim) => {
+                {claimsPage.items(claims).map((claim) => {
                   const Icon = CLAIM_TYPE_ICONS[claim.claim_type] || PhoneIcon;
                   return (
                     <div
@@ -297,6 +304,7 @@ export default function SinistresPage() {
                 })}
               </div>
             )}
+            <Pagination {...claimsPage.controls(claims, claimsFetching)} lang={lang} />
           </div>
         )}
       </div>

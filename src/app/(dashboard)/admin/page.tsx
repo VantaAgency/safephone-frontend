@@ -34,6 +34,7 @@ import {
 import { formatXOF } from "@/lib/data";
 import { formatPrice } from "@/lib/markets/format";
 import { currencyForMarket } from "@/lib/markets/currency";
+import { usePagination } from "@/lib/hooks/use-pagination";
 import { Pagination } from "@/components/ui/pagination";
 import { useAuth } from "@/lib/auth/auth-provider";
 import { hasRole } from "@/lib/auth/roles";
@@ -73,16 +74,14 @@ export default function AdminPage() {
   const [search, setSearch] = useState("");
   const deferredSearch = useDeferredValue(search);
 
-  // Per-tab pagination state. 1-indexed; PAGE_SIZE matches the backend's
-  // default limit when the param is omitted. Tabs without their own state
-  // here render only the first page (e.g. claims/repairs which usually
-  // have shorter lists and are filtered by status).
-  const PAGE_SIZE = 20;
-  const [customersPage, setCustomersPage] = useState(1);
-  const [paymentsPage, setPaymentsPage] = useState(1);
-  const [partnersPage, setPartnersPage] = useState(1);
-  const [claimsPage, setClaimsPage] = useState(1);
-  const [repairsPage, setRepairsPage] = useState(1);
+  const customersPage = usePagination();
+  const paymentsPage = usePagination();
+  const partnersPage = usePagination();
+  const claimsPage = usePagination();
+  const repairsPage = usePagination();
+  const applicationsPage = usePagination();
+  const partnerCommissionsPage = usePagination();
+  const partnerReferralsPage = usePagination();
 
   // Market filter shared by every market-aware list, synced to the ?market=
   // URL param so refresh and bookmarks keep the selection.
@@ -93,26 +92,21 @@ export default function AdminPage() {
   }, []);
   const handleMarketChange = (next: MarketFilterValue) => {
     setMarket(next);
-    setClaimsPage(1);
-    setRepairsPage(1);
-    setPaymentsPage(1);
+    claimsPage.setPage(1);
+    repairsPage.setPage(1);
+    paymentsPage.setPage(1);
+    customersPage.setPage(1);
     const params = new URLSearchParams(window.location.search);
     if (next) params.set("market", next);
     else params.delete("market");
     const qs = params.toString();
     router.replace(qs ? `?${qs}` : window.location.pathname, { scroll: false });
   };
-  const pageToOffset = (page: number) => (page - 1) * PAGE_SIZE;
-  const paginationFor = (page: number) => ({
-    limit: PAGE_SIZE,
-    offset: pageToOffset(page),
-  });
-
-  // Reset to page 1 when the search query changes — otherwise a fresh
-  // search on page 3 of the previous list would return zero results.
-  useEffect(() => {
-    setCustomersPage(1);
-  }, [deferredSearch]);
+  const handleSearchChange = (value: string) => {
+    setSearch(value);
+    customersPage.setPage(1);
+    repairsPage.setPage(1);
+  };
 
   const isAdmin = hasRole(user?.roles, "admin");
   const {
@@ -123,18 +117,20 @@ export default function AdminPage() {
     enabled: isAdmin,
   });
   const {
-    data: adminClaims,
+    data: adminClaimsRows,
     isLoading: claimsLoading,
+    isFetching: claimsFetching,
     refetch: refetchClaims,
-  } = useAdminClaims({ ...paginationFor(claimsPage), market: market || undefined }, {
+  } = useAdminClaims({ ...claimsPage.params, market: market || undefined }, {
     enabled: isAdmin && tab === "claims",
   });
   const {
-    data: adminRepairs = [],
+    data: adminRepairsRows,
     isLoading: repairsLoading,
+    isFetching: repairsFetching,
     refetch: refetchRepairs,
   } = useAdminRepairRequests(
-    { search: deferredSearch, market: market || undefined, ...paginationFor(repairsPage) },
+    { search: deferredSearch, market: market || undefined, ...repairsPage.params },
     { enabled: isAdmin && tab === "repairs" },
   );
   const updateClaimStatus = useUpdateClaimStatus();
@@ -143,34 +139,38 @@ export default function AdminPage() {
   const updateRepairStatus = useUpdateRepairRequestStatus();
   const updateRepairAmount = useUpdateRepairRequestAmount();
   const {
-    data: customers,
+    data: customersRows,
     isLoading: customersLoading,
+    isFetching: customersFetching,
     refetch: refetchCustomers,
   } = useAdminCustomers(
     deferredSearch,
-    { ...paginationFor(customersPage), market: market || undefined },
+    { ...customersPage.params, market: market || undefined },
     { enabled: isAdmin && tab === "customers" },
   );
   const {
-    data: adminPayments,
+    data: adminPaymentsRows,
     isLoading: paymentsLoading,
+    isFetching: paymentsFetching,
     refetch: refetchPayments,
-  } = useAdminPayments({ ...paginationFor(paymentsPage), market: market || undefined }, {
+  } = useAdminPayments({ ...paymentsPage.params, market: market || undefined }, {
     enabled: isAdmin && tab === "payments",
   });
   const {
-    data: adminPartners = [],
+    data: adminPartnersRows,
     isLoading: partnersLoading,
+    isFetching: partnersFetching,
     refetch: refetchPartners,
-  } = useAdminPartners(paginationFor(partnersPage), {
+  } = useAdminPartners(partnersPage.params, {
     enabled: isAdmin && tab === "partners",
   });
   const {
-    data: partnerApps = [],
+    data: partnerAppsRows,
     isLoading: appsLoading,
+    isFetching: applicationsFetching,
     refetch: refetchPartnerApplications,
   } =
-    useAdminPartnerApplications(undefined, {
+    useAdminPartnerApplications(applicationsPage.params, {
       enabled: isAdmin && tab === "applications",
     });
   const reviewApplication = useReviewPartnerApplication();
@@ -183,23 +183,37 @@ export default function AdminPage() {
   const [repairAmountDrafts, setRepairAmountDrafts] = useState<Record<string, string>>({});
   const [repairDateDrafts, setRepairDateDrafts] = useState<Record<string, string>>({});
   const [repairTimeDrafts, setRepairTimeDrafts] = useState<Record<string, string>>({});
-  const selectedPartner = adminPartners.find((partner) => partner.id === selectedPartnerId) ?? null;
+
   const {
-    data: selectedPartnerCommissions = [],
+    data: selectedPartnerCommissionsRows,
     isLoading: partnerCommissionsLoading,
+    isFetching: partnerCommissionsFetching,
     refetch: refetchPartnerCommissions,
   } = useAdminPartnerCommissions(
     selectedPartnerId ?? undefined,
+    partnerCommissionsPage.params,
     { enabled: isAdmin && tab === "partners" && !!selectedPartnerId },
   );
   const {
-    data: selectedPartnerReferrals = [],
+    data: selectedPartnerReferralsRows,
     isLoading: partnerReferralsLoading,
+    isFetching: partnerReferralsFetching,
     refetch: refetchPartnerReferrals,
   } = useAdminPartnerReferrals(
     selectedPartnerId ?? undefined,
+    partnerReferralsPage.params,
     { enabled: isAdmin && tab === "partners" && !!selectedPartnerId },
   );
+
+  const adminClaims = claimsPage.items(adminClaimsRows);
+  const adminRepairs = repairsPage.items(adminRepairsRows);
+  const customers = customersPage.items(customersRows);
+  const adminPayments = paymentsPage.items(adminPaymentsRows);
+  const adminPartners = partnersPage.items(adminPartnersRows);
+  const partnerApps = applicationsPage.items(partnerAppsRows);
+  const selectedPartnerCommissions = partnerCommissionsPage.items(selectedPartnerCommissionsRows);
+  const selectedPartnerReferrals = partnerReferralsPage.items(selectedPartnerReferralsRows);
+  const selectedPartner = adminPartners.find((partner) => partner.id === selectedPartnerId) ?? null;
 
   useEffect(() => {
     if (!isPending && !isAdmin) {
@@ -829,7 +843,7 @@ export default function AdminPage() {
           <div>
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-lg font-medium text-indigo-950">{lang === "fr" ? "Gestion des sinistres" : "Claims management"}</h2>
-              <Input placeholder={lang === "fr" ? "Rechercher..." : "Search..."} className="w-60" value={search} onChange={(e) => setSearch(e.target.value)} />
+              <Input placeholder={lang === "fr" ? "Rechercher..." : "Search..."} className="w-60" value={search} onChange={(e) => handleSearchChange(e.target.value)} />
             </div>
             {claimsLoading ? (
               <div className="space-y-3">{Array.from({ length: 4 }).map((_, i) => <CardSkeleton key={i} />)}</div>
@@ -884,14 +898,7 @@ export default function AdminPage() {
                 })}
               </div>
             )}
-            <Pagination
-              page={claimsPage}
-              pageSize={PAGE_SIZE}
-              currentCount={(adminClaims ?? []).length}
-              isLoading={claimsLoading}
-              onPageChange={setClaimsPage}
-              lang={lang}
-            />
+            <Pagination {...claimsPage.controls(adminClaimsRows, claimsFetching)} lang={lang} />
           </div>
         )}
 
@@ -909,7 +916,7 @@ export default function AdminPage() {
                 }
                 className="w-72"
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => handleSearchChange(e.target.value)}
               />
             </div>
 
@@ -1155,14 +1162,7 @@ export default function AdminPage() {
                 })}
               </div>
             )}
-            <Pagination
-              page={repairsPage}
-              pageSize={PAGE_SIZE}
-              currentCount={adminRepairs.length}
-              isLoading={repairsLoading}
-              onPageChange={setRepairsPage}
-              lang={lang}
-            />
+            <Pagination {...repairsPage.controls(adminRepairsRows, repairsFetching)} lang={lang} />
           </div>
         )}
 
@@ -1171,7 +1171,7 @@ export default function AdminPage() {
           <div>
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-lg font-medium text-indigo-950">{lang === "fr" ? "Gestion des clients" : "Customer management"}</h2>
-              <Input placeholder={lang === "fr" ? "Rechercher..." : "Search..."} className="w-60" value={search} onChange={(e) => setSearch(e.target.value)} />
+              <Input placeholder={lang === "fr" ? "Rechercher..." : "Search..."} className="w-60" value={search} onChange={(e) => handleSearchChange(e.target.value)} />
             </div>
             {customersLoading ? (
               <div className="space-y-3">{Array.from({ length: 5 }).map((_, i) => <CardSkeleton key={i} />)}</div>
@@ -1350,14 +1350,7 @@ export default function AdminPage() {
                 </div>
               </div>
             )}
-            <Pagination
-              page={customersPage}
-              pageSize={PAGE_SIZE}
-              currentCount={(customers ?? []).length}
-              isLoading={customersLoading}
-              onPageChange={setCustomersPage}
-              lang={lang}
-            />
+            <Pagination {...customersPage.controls(customersRows, customersFetching)} lang={lang} />
           </div>
         )}
 
@@ -1459,14 +1452,7 @@ export default function AdminPage() {
                 </div>
               </div>
             )}
-            <Pagination
-              page={paymentsPage}
-              pageSize={PAGE_SIZE}
-              currentCount={(adminPayments ?? []).length}
-              isLoading={paymentsLoading}
-              onPageChange={setPaymentsPage}
-              lang={lang}
-            />
+            <Pagination {...paymentsPage.controls(adminPaymentsRows, paymentsFetching)} lang={lang} />
           </div>
         )}
 
@@ -1648,6 +1634,7 @@ export default function AdminPage() {
                 </div>
               </div>
             )}
+            <Pagination {...applicationsPage.controls(partnerAppsRows, applicationsFetching)} lang={lang} />
           </div>
         )}
 
@@ -1749,11 +1736,13 @@ export default function AdminPage() {
                             <Button
                               variant={selectedPartnerId === partner.id ? "secondary" : "outline"}
                               size="sm"
-                              onClick={() =>
+                              onClick={() => {
+                                partnerCommissionsPage.setPage(1);
+                                partnerReferralsPage.setPage(1);
                                 setSelectedPartnerId((current) =>
                                   current === partner.id ? null : partner.id,
-                                )
-                              }
+                                );
+                              }}
                             >
                               {selectedPartnerId === partner.id
                                 ? lang === "fr"
@@ -1772,14 +1761,7 @@ export default function AdminPage() {
               </div>
               )}
             </div>
-            <Pagination
-              page={partnersPage}
-              pageSize={PAGE_SIZE}
-              currentCount={adminPartners.length}
-              isLoading={partnersLoading}
-              onPageChange={setPartnersPage}
-              lang={lang}
-            />
+            <Pagination {...partnersPage.controls(adminPartnersRows, partnersFetching)} lang={lang} />
 
             {selectedPartner && (
               <div className="mt-6 rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">
@@ -1992,6 +1974,7 @@ export default function AdminPage() {
                       </table>
                     </div>
                   )}
+                  <Pagination {...partnerReferralsPage.controls(selectedPartnerReferralsRows, partnerReferralsFetching)} lang={lang} />
                 </div>
 
                 <div className="mt-6 overflow-hidden rounded-2xl border border-slate-200/80">
@@ -2073,6 +2056,7 @@ export default function AdminPage() {
                       </table>
                     </div>
                   )}
+                  <Pagination {...partnerCommissionsPage.controls(selectedPartnerCommissionsRows, partnerCommissionsFetching)} lang={lang} />
                 </div>
               </div>
             )}

@@ -1089,6 +1089,13 @@ export interface AdminEmployeeDetail {
 
 // --- Pagination params ---
 
+export interface CommercialDetailPagination {
+  limit: number;
+  partners_offset: number;
+  reports_offset: number;
+  commissions_offset: number;
+}
+
 export interface PaginationParams {
   limit?: number;
   offset?: number;

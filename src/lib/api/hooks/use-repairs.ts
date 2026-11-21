@@ -1,8 +1,9 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { repairs } from "../endpoints";
 import type {
+  PaginationParams,
   AdminRepairParams,
   CreateRepairRequest,
   LookupRepairRequest,
@@ -29,12 +30,13 @@ export function useLookupRepairRequest() {
 }
 
 export function useMyRepairRequests(
-  { enabled = true }: { enabled?: boolean } = {},
+  { enabled = true, pagination }: { enabled?: boolean; pagination?: PaginationParams } = {},
 ) {
   return useQuery<RepairRequest[]>({
-    queryKey: ["repair-requests", "mine"],
-    queryFn: () => repairs.mine(),
+    queryKey: ["repair-requests", "mine", pagination],
+    queryFn: () => repairs.mine(pagination),
     enabled,
+    placeholderData: keepPreviousData,
   });
 }
 

@@ -25,6 +25,7 @@ import type {
   OperationalEntityType,
   OperationalFollowUp,
   OperationalNote,
+  PaginationParams,
   UpdateRepairRequestAmount,
   UpdateRepairRequestStatus,
   UpsertOperationalFollowUpRequest,
@@ -235,13 +236,15 @@ export function useUpsertOperationalFollowUp() {
 }
 
 export function useEmployeeNotes(
-  entityType?: OperationalEntityType,
-  entityId?: string,
+  entityType: OperationalEntityType,
+  entityId: string,
+  pagination: PaginationParams,
   { enabled = true }: EmployeeQueryOptions = {},
 ) {
   return useQuery<OperationalNote[]>({
-    queryKey: ["employee", "notes", entityType, entityId],
-    queryFn: () => employee.notes(entityType!, entityId!),
+    queryKey: ["employee", "notes", entityType, entityId, pagination],
+    queryFn: () => employee.notes(entityType, entityId, pagination),
+    placeholderData: keepPreviousData,
     enabled: enabled && !!entityType && !!entityId,
   });
 }

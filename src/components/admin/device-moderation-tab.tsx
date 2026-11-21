@@ -1,5 +1,7 @@
 "use client";
 
+import { Pagination } from "@/components/ui/pagination";
+import { usePagination } from "@/lib/hooks/use-pagination";
 import { Button } from "@/components/ui/button";
 import { CardSkeleton } from "@/components/ui/skeleton";
 import { AuthedImage, AuthedVideo } from "@/components/admin/authed-media";
@@ -15,7 +17,8 @@ import { useLanguage } from "@/lib/language-context";
 // catches a fraudulent one and suspends it (reversibly).
 export function DeviceModerationTab() {
   const { lang } = useLanguage();
-  const { data, isLoading, error } = useModerationDevices();
+  const devicePage = usePagination();
+  const { data, isLoading, isFetching, error } = useModerationDevices(devicePage.params);
   const suspend = useSuspendDevice();
   const reactivate = useReactivateDevice();
   const busy = suspend.isPending || reactivate.isPending;
@@ -30,29 +33,19 @@ export function DeviceModerationTab() {
     );
   }
 
-  if (error) {
-    return (
-      <div className="rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700">
-        {lang === "fr"
-          ? "Impossible de charger les appareils."
-          : "Could not load devices."}
-      </div>
-    );
-  }
-
-  const devices = data ?? [];
-  if (devices.length === 0) {
-    return (
-      <div className="rounded-2xl border border-slate-200/80 bg-white px-6 py-12 text-center text-sm text-slate-400">
-        {lang === "fr"
-          ? "Aucun appareil couvert à modérer."
-          : "No covered devices to moderate."}
-      </div>
-    );
-  }
+  const devices = devicePage.items(data);
 
   return (
     <div className="space-y-4">
+      {error ? (
+        <div className="rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700">
+          {lang === "fr" ? "Impossible de charger les appareils." : "Could not load devices."}
+        </div>
+      ) : devices.length === 0 && (
+        <div className="rounded-2xl border border-slate-200/80 bg-white px-6 py-12 text-center text-sm text-slate-400">
+          {lang === "fr" ? "Aucun appareil couvert à modérer." : "No covered devices to moderate."}
+        </div>
+      )}
       {devices.map((d) => {
         const suspended = d.status === "suspended";
         return (
@@ -142,6 +135,7 @@ export function DeviceModerationTab() {
           </div>
         );
       })}
+      <Pagination {...devicePage.controls(data, isFetching)} lang={lang} />
     </div>
   );
 }

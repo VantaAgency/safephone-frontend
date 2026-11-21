@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { fetchAllPages } from "../fetch-all-pages";
 import { subscriptions } from "../endpoints";
 import type {
   AddSubscriptionDeviceRequest,
@@ -12,7 +13,7 @@ import type {
 export function useSubscriptions({ enabled = true }: { enabled?: boolean } = {}) {
   return useQuery<Subscription[]>({
     queryKey: ["subscriptions"],
-    queryFn: () => subscriptions.list(),
+    queryFn: ({ signal }) => fetchAllPages(subscriptions.list, signal),
     enabled,
   });
 }
@@ -36,6 +37,7 @@ export function useAddDeviceToSubscription() {
       subscriptions.addDevice(id, data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["subscription-devices", variables.id] });
+      queryClient.invalidateQueries({ queryKey: ["devices"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard", "summary"] });
     },
   });

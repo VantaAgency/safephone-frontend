@@ -1,19 +1,21 @@
 "use client";
 
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { claims } from "../endpoints";
 import type {
+  PaginationParams,
   AdminClaimParams,
   Claim,
   CreateClaimRequest,
   UpdateClaimStatusRequest,
 } from "../types";
 
-export function useClaims({ enabled = true }: { enabled?: boolean } = {}) {
+export function useClaims({ enabled = true, pagination }: { enabled?: boolean; pagination?: PaginationParams } = {}) {
   return useQuery<Claim[]>({
-    queryKey: ["claims"],
-    queryFn: () => claims.list(),
+    queryKey: ["claims", pagination],
+    queryFn: () => claims.list(pagination),
     enabled,
+    placeholderData: keepPreviousData,
   });
 }
 

@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { RouteGuardLoader } from "@/components/auth/route-guard-loader";
 import { DeviceModerationTab } from "@/components/admin/device-moderation-tab";
 import { StatCard } from "@/components/cards/stat-card";
+import { Pagination } from "@/components/ui/pagination";
+import { usePagination } from "@/lib/hooks/use-pagination";
 import { Button } from "@/components/ui/button";
 import {
   FormField,
@@ -103,6 +105,12 @@ export default function EmployeeWorkspacePage() {
   const [selectedRepairId, setSelectedRepairId] = useState<string | null>(null);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
+  const clientsPage = usePagination();
+  const paymentsPage = usePagination();
+  const claimsPage = usePagination();
+  const repairsPage = usePagination();
+  const tasksPage = usePagination();
+
   const {
     data: overview,
     isLoading: overviewLoading,
@@ -111,13 +119,15 @@ export default function EmployeeWorkspacePage() {
     enabled: isEmployee,
   });
   const {
-    data: clients = [],
+    data: clientsRows,
     isLoading: clientsLoading,
+    isFetching: clientsFetching,
     isError: clientsError,
   } = useEmployeeClients(
-    { search: clientSearch },
+    { search: clientSearch, ...clientsPage.params },
     { enabled: isEmployee && tab === "clients" },
   );
+  const clients = clientsPage.items(clientsRows);
   const activeClientId =
     clients.some((item) => item.id === selectedClientId)
       ? selectedClientId
@@ -127,24 +137,29 @@ export default function EmployeeWorkspacePage() {
     { enabled: isEmployee && tab === "clients" && !!activeClientId },
   );
   const {
-    data: paymentFollowUps = [],
+    data: paymentFollowUpsRows,
     isLoading: paymentsLoading,
+    isFetching: paymentsFetching,
     isError: paymentsError,
   } = useEmployeePaymentFollowUps(
-    { search: paymentSearch },
+    { search: paymentSearch, ...paymentsPage.params },
     { enabled: isEmployee && tab === "payments" },
   );
+  const paymentFollowUps = paymentsPage.items(paymentFollowUpsRows);
   const {
-    data: claimItems = [],
+    data: claimItemsRows,
     isLoading: claimsLoading,
+    isFetching: claimsFetching,
     isError: claimsError,
   } = useEmployeeClaims(
     {
+      ...claimsPage.params,
       search: claimSearch,
       status: claimStatus || undefined,
     },
     { enabled: isEmployee && tab === "claims" },
   );
+  const claimItems = claimsPage.items(claimItemsRows);
   const activeClaimId =
     claimItems.some((item) => item.claim.id === selectedClaimId)
       ? selectedClaimId
@@ -154,16 +169,19 @@ export default function EmployeeWorkspacePage() {
     { enabled: isEmployee && tab === "claims" && !!activeClaimId },
   );
   const {
-    data: repairItems = [],
+    data: repairItemsRows,
     isLoading: repairsLoading,
+    isFetching: repairsFetching,
     isError: repairsError,
   } = useEmployeeRepairs(
     {
+      ...repairsPage.params,
       search: repairSearch,
       status: repairStatus || undefined,
     },
     { enabled: isEmployee && tab === "repairs" },
   );
+  const repairItems = repairsPage.items(repairItemsRows);
   const activeRepairId =
     repairItems.some((item) => item.repair.id === selectedRepairId)
       ? selectedRepairId
@@ -173,12 +191,14 @@ export default function EmployeeWorkspacePage() {
     { enabled: isEmployee && tab === "repairs" && !!activeRepairId },
   );
   const {
-    data: tasks = [],
+    data: tasksRows,
     isLoading: tasksLoading,
+    isFetching: tasksFetching,
     isError: tasksError,
-  } = useEmployeeTasks(undefined, {
-    enabled: isEmployee && (tab === "overview" || tab === "tasks"),
+  } = useEmployeeTasks(tasksPage.params, {
+    enabled: isEmployee && tab === "tasks",
   });
+  const tasks = tasksPage.items(tasksRows);
 
   const updateClaimStatus = useEmployeeUpdateClaimStatus();
   const updateRepairStatus = useEmployeeUpdateRepairStatus();
@@ -465,7 +485,10 @@ export default function EmployeeWorkspacePage() {
               actions={
                 <Input
                   value={clientSearch}
-                  onChange={(event) => setClientSearch(event.target.value)}
+                  onChange={(event) => {
+                    clientsPage.setPage(1);
+                    setClientSearch(event.target.value);
+                  }}
                   placeholder={lang === "fr" ? "Rechercher un client..." : "Search clients..."}
                   className="min-w-[240px]"
                 />
@@ -546,6 +569,7 @@ export default function EmployeeWorkspacePage() {
                   }
                 />
               )}
+              <Pagination {...clientsPage.controls(clientsRows, clientsFetching)} lang={lang} />
             </PanelShell>
 
             <PanelShell
@@ -581,7 +605,10 @@ export default function EmployeeWorkspacePage() {
               actions={
                 <Input
                   value={paymentSearch}
-                  onChange={(event) => setPaymentSearch(event.target.value)}
+                  onChange={(event) => {
+                    paymentsPage.setPage(1);
+                    setPaymentSearch(event.target.value);
+                  }}
                   placeholder={lang === "fr" ? "Rechercher un client ou un appareil..." : "Search a client or device..."}
                   className="min-w-[260px]"
                 />
@@ -624,6 +651,7 @@ export default function EmployeeWorkspacePage() {
                   }
                 />
               )}
+              <Pagination {...paymentsPage.controls(paymentFollowUpsRows, paymentsFetching)} lang={lang} />
             </PanelShell>
 
             <PanelShell
@@ -653,15 +681,19 @@ export default function EmployeeWorkspacePage() {
                 <div className="flex flex-wrap gap-2">
                   <Input
                     value={claimSearch}
-                    onChange={(event) => setClaimSearch(event.target.value)}
+                    onChange={(event) => {
+                    claimsPage.setPage(1);
+                    setClaimSearch(event.target.value);
+                  }}
                     placeholder={lang === "fr" ? "Rechercher..." : "Search..."}
                     className="min-w-[220px]"
                   />
                   <Select
                     value={claimStatus}
-                    onChange={(event) =>
-                      setClaimStatus(event.target.value as ClaimStatus | "")
-                    }
+                    onChange={(event) => {
+                      claimsPage.setPage(1);
+                      setClaimStatus(event.target.value as ClaimStatus | "");
+                    }}
                     className="min-w-[180px]"
                   >
                     <option value="">{lang === "fr" ? "Tous les statuts" : "All statuses"}</option>
@@ -706,6 +738,7 @@ export default function EmployeeWorkspacePage() {
                   }
                 />
               )}
+              <Pagination {...claimsPage.controls(claimItemsRows, claimsFetching)} lang={lang} />
             </PanelShell>
 
             <PanelShell title={lang === "fr" ? "Détail sinistre" : "Claim detail"}>
@@ -740,17 +773,19 @@ export default function EmployeeWorkspacePage() {
                 <div className="flex flex-wrap gap-2">
                   <Input
                     value={repairSearch}
-                    onChange={(event) => setRepairSearch(event.target.value)}
+                    onChange={(event) => {
+                    repairsPage.setPage(1);
+                    setRepairSearch(event.target.value);
+                  }}
                     placeholder={lang === "fr" ? "Rechercher..." : "Search..."}
                     className="min-w-[220px]"
                   />
                   <Select
                     value={repairStatus}
-                    onChange={(event) =>
-                      setRepairStatus(
-                        event.target.value as RepairRequestStatus | "",
-                      )
-                    }
+                    onChange={(event) => {
+                      repairsPage.setPage(1);
+                      setRepairStatus(event.target.value as RepairRequestStatus | "");
+                    }}
                     className="min-w-[180px]"
                   >
                     <option value="">{lang === "fr" ? "Tous les statuts" : "All statuses"}</option>
@@ -803,6 +838,7 @@ export default function EmployeeWorkspacePage() {
                   }
                 />
               )}
+              <Pagination {...repairsPage.controls(repairItemsRows, repairsFetching)} lang={lang} />
             </PanelShell>
 
             <PanelShell title={lang === "fr" ? "Détail réparation" : "Repair detail"}>
@@ -904,6 +940,7 @@ export default function EmployeeWorkspacePage() {
                   }
                 />
               )}
+              <Pagination {...tasksPage.controls(tasksRows, tasksFetching)} lang={lang} />
             </PanelShell>
 
             <PanelShell title={lang === "fr" ? "Suivi de la tâche" : "Task follow-up"}>
@@ -2103,10 +2140,6 @@ function OperationalWorkbench({
     entityType,
     entityId,
   );
-  const { data: notes = [], isLoading: notesLoading } = useEmployeeNotes(
-    entityType,
-    entityId,
-  );
 
   return (
     <DetailSection
@@ -2123,8 +2156,6 @@ function OperationalWorkbench({
           entityType={entityType}
           entityId={entityId}
           followUp={followUp ?? null}
-          notes={notes}
-          notesLoading={notesLoading}
           lang={lang}
         />
       )}
@@ -2136,17 +2167,19 @@ function OperationalWorkbenchForm({
   entityType,
   entityId,
   followUp,
-  notes,
-  notesLoading,
   lang,
 }: {
   entityType: OperationalEntityType;
   entityId: string;
   followUp: ReturnType<typeof useEmployeeFollowUp>["data"];
-  notes: OperationalNote[];
-  notesLoading: boolean;
   lang: "fr" | "en";
 }) {
+  const notesPage = usePagination();
+  const { data: notes, isLoading: notesLoading, isFetching: notesFetching } = useEmployeeNotes(
+    entityType,
+    entityId,
+    notesPage.params,
+  );
   const upsertFollowUp = useUpsertOperationalFollowUp();
   const createNote = useCreateOperationalNote();
   const [status, setStatus] = useState<FollowUpStatus>(
@@ -2182,6 +2215,7 @@ function OperationalWorkbenchForm({
       entity_id: entityId,
       body: noteBody.trim(),
     });
+    notesPage.setPage(1);
     setNoteBody("");
   }
 
@@ -2304,8 +2338,8 @@ function OperationalWorkbenchForm({
           <div className="space-y-3">
             {notesLoading ? (
               <StackedSkeleton />
-            ) : notes.length ? (
-              notes.map((note) => <NoteCard key={note.id} note={note} lang={lang} />)
+            ) : notes?.length ? (
+              notesPage.items(notes).map((note) => <NoteCard key={note.id} note={note} lang={lang} />)
             ) : (
               <EmptyState
                 title={lang === "fr" ? "Aucune note" : "No notes yet"}
@@ -2316,6 +2350,7 @@ function OperationalWorkbenchForm({
                 }
               />
             )}
+            <Pagination {...notesPage.controls(notes, notesFetching)} lang={lang} />
           </div>
         </div>
       </DetailSection>

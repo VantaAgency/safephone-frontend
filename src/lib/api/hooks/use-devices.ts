@@ -1,17 +1,21 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { fetchAllPages } from "../fetch-all-pages";
 import { devices } from "../endpoints";
 import type {
+  PaginationParams,
   CreateDeviceRequest,
   Device,
   UpdateDeviceRequest,
 } from "../types";
 
-export function useDevices({ enabled = true }: { enabled?: boolean } = {}) {
+export function useDevices({ enabled = true, pagination }: { enabled?: boolean; pagination?: PaginationParams } = {}) {
   return useQuery<Device[]>({
-    queryKey: ["devices"],
-    queryFn: () => devices.list(),
+    queryKey: ["devices", pagination],
+    queryFn: ({ signal }) => pagination
+      ? devices.list(pagination)
+      : fetchAllPages(devices.list, signal),
     enabled,
   });
 }

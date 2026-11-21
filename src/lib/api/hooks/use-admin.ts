@@ -6,11 +6,13 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
+import { fetchAllPages } from "../fetch-all-pages";
 import type { ApiResponse } from "../types";
 import { admin } from "../endpoints";
 import type {
   AdminCustomer,
   AdminCommercialDetail,
+  CommercialDetailPagination,
   AdminCommercialListItem,
   AdminDashboardOverview,
   AdminEmployeeDetail,
@@ -117,7 +119,9 @@ export function useAdminEmployees(
 ) {
   return useQuery<AdminEmployeeListItem[]>({
     queryKey: ["admin-employees", params],
-    queryFn: () => admin.employees(params),
+    queryFn: ({ signal }) => params?.limit !== undefined || params?.offset !== undefined
+      ? admin.employees(params)
+      : fetchAllPages((page) => admin.employees({ ...params, ...page }), signal),
     enabled,
     placeholderData: keepPreviousData,
   });
@@ -140,19 +144,23 @@ export function useAdminCommercials(
 ) {
   return useQuery<AdminCommercialListItem[]>({
     queryKey: ["admin-commercials", pagination?.limit, pagination?.offset],
-    queryFn: () => admin.commercials(pagination),
+    queryFn: ({ signal }) => pagination
+      ? admin.commercials(pagination)
+      : fetchAllPages(admin.commercials, signal),
     enabled,
     placeholderData: keepPreviousData,
   });
 }
 
 export function useAdminCommercial(
-  commercialId?: string,
+  commercialId: string,
+  pagination: CommercialDetailPagination,
   { enabled = true }: AdminQueryOptions = {},
 ) {
   return useQuery<AdminCommercialDetail>({
-    queryKey: ["admin-commercial", commercialId],
-    queryFn: () => admin.commercial(commercialId!),
+    queryKey: ["admin-commercial", commercialId, pagination],
+    queryFn: () => admin.commercial(commercialId, pagination),
+    placeholderData: keepPreviousData,
     enabled: enabled && !!commercialId,
   });
 }
@@ -214,29 +222,30 @@ export function useAdminPartners(
   });
 }
 
-export function useAdminPartnerCommissions(partnerId?: string, { enabled = true }: AdminQueryOptions = {}) {
+export function useAdminPartnerCommissions(partnerId: string | undefined, pagination: AdminPaginationParams, { enabled = true }: AdminQueryOptions = {}) {
   return useQuery<AdminPartnerCommission[]>({
-    queryKey: ["admin-partner-commissions", partnerId],
-    queryFn: () => admin.partnerCommissions(partnerId!),
+    queryKey: ["admin-partner-commissions", partnerId, pagination],
+    queryFn: () => admin.partnerCommissions(partnerId!, pagination),
     enabled: enabled && !!partnerId,
   });
 }
 
 export function useAdminPartnerReferrals(
-  partnerId?: string,
+  partnerId: string | undefined,
+  pagination: AdminPaginationParams,
   { enabled = true }: AdminQueryOptions = {},
 ) {
   return useQuery<AdminPartnerReferral[]>({
-    queryKey: ["admin-partner-referrals", partnerId],
-    queryFn: () => admin.partnerReferrals(partnerId!),
+    queryKey: ["admin-partner-referrals", partnerId, pagination],
+    queryFn: () => admin.partnerReferrals(partnerId!, pagination),
     enabled: enabled && !!partnerId,
   });
 }
 
-export function useAdminPartnerApplications(status?: PartnerApplicationStatus, { enabled = true }: AdminQueryOptions = {}) {
+export function useAdminPartnerApplications(pagination: AdminPaginationParams & { status?: PartnerApplicationStatus }, { enabled = true }: AdminQueryOptions = {}) {
   return useQuery<AdminPartnerApplication[]>({
-    queryKey: ["admin-partner-applications", status],
-    queryFn: () => admin.partnerApplications({ status }),
+    queryKey: ["admin-partner-applications", pagination],
+    queryFn: () => admin.partnerApplications(pagination),
     enabled,
     placeholderData: keepPreviousData,
   });
