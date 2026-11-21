@@ -317,7 +317,7 @@ function InscriptionContent() {
       params.set("brand", brandFromQuery);
     }
 
-    router.replace(`/paiement?${params.toString()}`);
+    router.replace(`/sn/paiement?${params.toString()}`);
   }, [
     annualFromQuery,
     brandFromQuery,
@@ -398,7 +398,7 @@ function InscriptionContent() {
       appendPartnerReferralParams(params, partnerCode, partnerSourceMedium);
     }
 
-    router.push(`/paiement?${params.toString()}`);
+    router.push(`/sn/paiement?${params.toString()}`);
   };
 
   return (

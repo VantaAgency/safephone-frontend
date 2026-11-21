@@ -108,6 +108,7 @@ export interface User {
 
 export interface Plan {
   id: string;
+  market: MarketCode;
   slug: string;
   name_fr: string;
   name_en: string;
@@ -169,6 +170,7 @@ export interface DeviceMetadata {
 
 export interface Subscription {
   id: string;
+  market: MarketCode;
   org_id: string;
   user_id: string;
   device_id: string;

@@ -1,4 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getActiveMarket } from "@/lib/markets/server";
+import { hostKind, SN_HOSTS, US_HOSTS, stripUSPrefix } from "@/lib/markets/domains";
+import { routesFor } from "@/lib/markets/routes";
 import type { ApiResponse, PartnerReferralVisitResult } from "@/lib/api/types";
 import {
   PARTNER_REFERRAL_CODE_COOKIE,
@@ -21,7 +24,7 @@ import {
 // TRUSTED_ORIGINS env Better Auth already enforces, plus the canonical
 // NEXT_PUBLIC_SITE_URL / NEXT_PUBLIC_APP_URL.
 function buildAllowedHosts(): Set<string> {
-  const hosts = new Set<string>();
+  const hosts = new Set([...SN_HOSTS, ...US_HOSTS]);
   const add = (raw: string) => {
     const value = raw.trim();
     if (!value) return;
@@ -91,7 +94,10 @@ export async function GET(
   const sourceMedium = normalizePartnerReferralSourceMedium(
     request.nextUrl.searchParams.get("src"),
   );
-  const redirectURL = new URL("/inscription", publicBaseURL(request));
+  const baseURL = publicBaseURL(request);
+  const market = await getActiveMarket();
+  const signup = routesFor(market.code).signup;
+  const redirectURL = new URL(hostKind(new URL(baseURL).host) === "us" ? stripUSPrefix(signup) : signup, baseURL);
 
   if (normalizedCode) {
     redirectURL.searchParams.set("partner", normalizedCode);

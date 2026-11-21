@@ -10,7 +10,8 @@ import {
 
 interface MarketContextValue {
   market: Market;
-  /** True when the active market came from URL/manual/geo, not the default fallback. */
+  canSwitchMarket: boolean;
+  /** True when the active market was resolved from the request. */
   resolved: boolean;
 }
 
@@ -18,18 +19,20 @@ const MarketContext = createContext<MarketContextValue | null>(null);
 
 interface MarketProviderProps {
   marketCode: MarketCode | null;
+  canSwitchMarket: boolean;
   resolved: boolean;
   children: ReactNode;
 }
 
 export function MarketProvider({
   marketCode,
+  canSwitchMarket,
   resolved,
   children,
 }: MarketProviderProps) {
   const market = MARKETS[marketCode ?? DEFAULT_MARKET];
   return (
-    <MarketContext.Provider value={{ market, resolved }}>
+    <MarketContext.Provider value={{ market, resolved, canSwitchMarket }}>
       {children}
     </MarketContext.Provider>
   );

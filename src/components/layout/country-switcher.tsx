@@ -16,7 +16,7 @@ interface CountrySwitcherProps {
 export function CountrySwitcher({ compact = false }: CountrySwitcherProps) {
   const router = useRouter();
   const { toast } = useToast();
-  const { market } = useMarket();
+  const { market, canSwitchMarket } = useMarket();
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState<MarketCode | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -51,14 +51,8 @@ export function CountrySwitcher({ compact = false }: CountrySwitcherProps) {
           ? "Vous consultez maintenant SafePhone Sénégal."
           : "You're now viewing SafePhone United States.";
       toast(message, "success");
-      // A dedicated-domain market is cross-origin → full navigation. A
-      // same-host market stays a soft client navigation.
-      if (/^https?:\/\//i.test(data.redirectTo)) {
-        window.location.assign(data.redirectTo);
-      } else {
-        router.replace(data.redirectTo);
-        router.refresh();
-      }
+      router.replace(data.redirectTo);
+      router.refresh();
     } catch {
       toast(
         market.language === "fr"
@@ -71,6 +65,8 @@ export function CountrySwitcher({ compact = false }: CountrySwitcherProps) {
       setOpen(false);
     }
   };
+
+  if (!canSwitchMarket) return null;
 
   const all = listMarkets();
 

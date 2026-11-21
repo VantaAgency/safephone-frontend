@@ -8,7 +8,9 @@ import {
 import {
   US_ORIGIN,
   SN_ORIGIN,
-  hostKind,
+  geoMarket,
+  isUnder,
+  marketForHost,
   stripUSPrefix,
   addUSPrefix,
   isSharedPath,
@@ -19,8 +21,12 @@ const PROTECTED_ROUTES = [
   "/tableau-de-bord",
   "/sinistres",
   "/paiement",
+  "/sn/sinistres",
+  "/sn/paiement",
   // US dashboard + post-checkout flows
   "/us/dashboard",
+  "/us/claims",
+  "/us/checkout/success",
   "/us/register-device",
 ];
 const ADMIN_ROUTES = ["/admin"];
@@ -35,18 +41,6 @@ function getSessionToken(request: NextRequest) {
     request.cookies.get("__Host-better-auth.session_token")?.value ||
     request.cookies.get("better-auth.session_token")?.value
   );
-}
-
-function resolveMarketFromRequest(request: NextRequest): MarketCode | null {
-  const manual = request.cookies.get(MARKET_COOKIE)?.value;
-  if (isMarketCode(manual)) return manual;
-
-  const geo =
-    request.headers.get("x-vercel-ip-country") ??
-    request.headers.get("cf-ipcountry");
-  if (!geo) return null;
-  const upper = geo.toUpperCase();
-  return isMarketCode(upper) ? upper : null;
 }
 
 /**
@@ -64,7 +58,7 @@ function authGate(
   const sessionToken = getSessionToken(request);
 
   // Admin API: 401 on missing session.
-  if (ADMIN_API_ROUTES.some((r) => checkPath.startsWith(r)) && !sessionToken) {
+  if (ADMIN_API_ROUTES.some((r) => isUnder(checkPath, r)) && !sessionToken) {
     return NextResponse.json(
       { error: { message: "Authentication required" } },
       { status: 401 },
@@ -73,15 +67,16 @@ function authGate(
 
   // Protected routes: redirect to home with the auth modal.
   const isProtected =
-    PROTECTED_ROUTES.some((r) => checkPath.startsWith(r)) ||
-    ADMIN_ROUTES.some((r) => checkPath.startsWith(r)) ||
-    EMPLOYEE_ROUTES.some((r) => checkPath.startsWith(r)) ||
-    PARTNER_ROUTES.some((r) => checkPath.startsWith(r)) ||
-    COMMERCIAL_ROUTES.some((r) => checkPath.startsWith(r));
+    PROTECTED_ROUTES.some((r) => isUnder(checkPath, r)) ||
+    ADMIN_ROUTES.some((r) => isUnder(checkPath, r)) ||
+    EMPLOYEE_ROUTES.some((r) => isUnder(checkPath, r)) ||
+    PARTNER_ROUTES.some((r) => isUnder(checkPath, r)) ||
+    COMMERCIAL_ROUTES.some((r) => isUnder(checkPath, r));
   if (isProtected && !sessionToken) {
-    const url = new URL("/", request.url);
+    const home = marketForHost(request.headers.get("host")) === "SN" || isUnder(checkPath, "/sn") ? "/sn" : "/";
+    const url = new URL(home, request.url);
     url.searchParams.set("auth", "sign-in");
-    url.searchParams.set("redirect", redirectPath);
+    url.searchParams.set("redirect", redirectPath + request.nextUrl.search);
     return NextResponse.redirect(url);
   }
 
@@ -109,110 +104,107 @@ function rewriteTo(request: NextRequest, internalPath: string, search: string) {
 
 export function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
-  const kind = hostKind(
+  const domainMarket = marketForHost(
     request.headers.get("host") ?? request.headers.get("x-forwarded-host"),
   );
-
-  // ── Dedicated US domain: serve the US market at the root ─────────────────
-  if (kind === "us") {
-    return proxyUSHost(request, pathname, search);
+  if (isUnder(pathname, "/api") || isUnder(pathname, "/health")) {
+    if (domainMarket === "SN" && (isUnder(pathname, "/api/v1/payments/stripe") || isUnder(pathname, "/api/v1/us/devices"))) {
+      return NextResponse.json({ error: { message: "This endpoint belongs to SafePhone US" } }, { status: 404 });
+    }
+    if (domainMarket === "US" && (
+      (request.method === "POST" && ["/api/v1/payments", "/api/v1/payments/renew-subscription"].includes(pathname)) ||
+      /^\/api\/v1\/payments\/[^/]+\/(checkout|resume)$/.test(pathname)
+    )) {
+      return NextResponse.json({ error: { message: "This endpoint belongs to SafePhone Sénégal" } }, { status: 404 });
+    }
+    return authGate(request, pathname) ?? passThrough(request, pathname);
   }
 
-  // ── Dedicated SN domain: the old `/us/*` path now lives on the US domain ─
-  if (kind === "sn" && (pathname === "/us" || pathname.startsWith("/us/"))) {
-    return NextResponse.redirect(
-      `${US_ORIGIN}${stripUSPrefix(pathname)}${search}`,
-      301,
-    );
+  const detected = geoMarket(request.headers);
+  if (!domainMarket && process.env.VERCEL_ENV !== "production") {
+    return proxyPreview(request, pathname, search);
   }
 
-  // ── Legacy / SN multi-market behaviour ───────────────────────────────────
-  return proxyMultiMarket(request, pathname, search, kind);
-}
-
-/** safephone.us — US served clean at the root; /us/* canonicalised; /sn/* sent home. */
-function proxyUSHost(request: NextRequest, pathname: string, search: string) {
-  // SN content doesn't belong on the US domain → send it to the SN site.
-  if (pathname === "/sn" || pathname.startsWith("/sn/")) {
-    return NextResponse.redirect(`${SN_ORIGIN}${pathname}${search}`, 301);
+  if (!domainMarket) {
+    const target = detected ?? DEFAULT_MARKET;
+    if (isUnder(pathname, "/p")) {
+      return marketRedirect(target, pathname + search);
+    }
+    return marketRedirect(target);
   }
 
-  // Canonicalise any `/us` or `/us/*` to its clean form so the app's own
-  // `/us/...` links and old bookmarks settle on the prefix-less URL.
-  if (pathname === "/us" || pathname.startsWith("/us/")) {
-    return NextResponse.redirect(
-      new URL(`${stripUSPrefix(pathname)}${search}`, request.url),
-      301,
-    );
+  const isSenegal = domainMarket === "SN";
+  const home = isSenegal ? "/sn" : "/";
+  // Stripe sessions issued before the domains were separated used this URL.
+  const stripeSession = request.nextUrl.searchParams.get("session_id");
+  if (isSenegal && pathname === "/us/checkout/success" && stripeSession &&
+    /^cs_(live|test)_[a-zA-Z0-9]+$/.test(stripeSession)) {
+    return marketRedirect("US", `/checkout/success?session_id=${encodeURIComponent(stripeSession)}`);
   }
 
-  // Shared routes (auth, dashboards, partner-ref, API) pass through as-is.
+  const wrongMarketPath = isSenegal
+    ? ["/us", "/checkout", "/register-device", "/pricing", "/signup", "/login", "/dashboard", "/repair", "/claims", "/partners", "/how-it-works", "/repair-protection-terms", "/privacy", "/terms"]
+    : ["/sn", "/paiement", "/forfaits", "/sinistres", "/reparations", "/partenaires"];
+
+  if (wrongMarketPath.some((prefix) => isUnder(pathname, prefix)) || isUnder(pathname, "/select-country")) {
+    return NextResponse.redirect(new URL(home, request.url), 307);
+  }
+
+  // Payment returns and their sign-in steps must stay on the original domain.
+  const checkoutPath = isSenegal
+    ? ["/paiement", "/sn/paiement", "/inscription", "/sn/inscription"]
+    : ["/checkout", "/us/checkout", "/register-device", "/us/register-device", "/signup", "/us/signup", "/login", "/us/login"];
+  const isCheckout = checkoutPath.some((prefix) => isUnder(pathname, prefix));
+  const isAuth = ((pathname === home || pathname === "/") && request.nextUrl.searchParams.has("auth")) ||
+    ["/connexion", "/inscription-compte", "/mot-de-passe-oublie", "/reinitialiser-mot-de-passe"].includes(pathname);
+  if (detected && detected !== domainMarket && !isCheckout && !isAuth &&
+    !getSessionToken(request) && !isUnder(pathname, "/p")) {
+    return marketRedirect(detected);
+  }
+
+  if (isSenegal) {
+    if (pathname === "/") {
+      return NextResponse.redirect(new URL(`/sn${search}`, request.url), 307);
+    }
+    const target = BARE_PATH_REDIRECTS[pathname.replace(/\/$/, "")]?.SN;
+    if (target) {
+      return NextResponse.redirect(new URL(target + search, request.url), 307);
+    }
+    return authGate(request, pathname) ?? passThrough(request, pathname);
+  }
+
+  if (isUnder(pathname, "/us")) {
+    return NextResponse.redirect(new URL(stripUSPrefix(pathname) + search, request.url), 307);
+  }
   if (isSharedPath(pathname)) {
-    const gated = authGate(request, pathname);
-    if (gated) return gated;
-    return passThrough(request, pathname);
+    return authGate(request, pathname) ?? passThrough(request, pathname);
   }
-
-  // Everything else is a US market page → rewrite to the internal `/us` path.
   const internal = addUSPrefix(pathname);
-  const gated = authGate(request, internal, pathname);
-  if (gated) return gated;
-  return rewriteTo(request, internal, search);
+  return authGate(request, internal, pathname) ?? rewriteTo(request, internal, search);
 }
 
-/** localhost / preview / safephone.sn — both markets via `/sn` and `/us` prefixes. */
-function proxyMultiMarket(
-  request: NextRequest,
-  pathname: string,
-  search: string,
-  kind: "sn" | "legacy",
-) {
+function marketRedirect(market: MarketCode, path?: string) {
+  const origin = market === "SN" ? SN_ORIGIN : US_ORIGIN;
+  const response = NextResponse.redirect(new URL(origin + (path ?? (market === "SN" ? "/sn" : "/"))), 307);
+  response.headers.set("Cache-Control", "private, no-store");
+  return response;
+}
+
+function proxyPreview(request: NextRequest, pathname: string, search: string) {
+  // Existing DEXPAY sessions can return to the old bare paths.
+  if (isUnder(pathname, "/paiement")) {
+    return NextResponse.redirect(new URL(`/sn${pathname}${search}`, request.url), 307);
+  }
+
   const gated = authGate(request, pathname);
   if (gated) return gated;
-
-  // Pass through canonical market routes.
-  if (
-    pathname === "/sn" ||
-    pathname.startsWith("/sn/") ||
-    pathname === "/us" ||
-    pathname.startsWith("/us/") ||
-    pathname === "/select-country"
-  ) {
-    return passThrough(request, pathname);
-  }
-
-  // Bare root → detection-based redirect.
-  if (pathname === "/") {
-    const market = resolveMarketFromRequest(request) ?? DEFAULT_MARKET;
-    // On the SN prod host, a US visitor belongs on the US domain.
-    if (market === "US" && kind === "sn") {
-      return NextResponse.redirect(`${US_ORIGIN}/${search}`, 307);
-    }
-    const target = `/${market.toLowerCase()}`;
-    return NextResponse.redirect(new URL(`${target}${search}`, request.url));
-  }
-
-  // Bare-path canonicalisation (e.g. /forfaits → /sn/forfaits or /us/pricing).
-  // Physical routes under app/(public)/ for these paths exist — Next would
-  // serve them directly without this redirect. The (public) tree is kept
-  // around for backwards-compat URLs; the canonical user-facing entry is
-  // always under /sn or /us.
-  const barePath = pathname.replace(/\/$/, "") || "/";
-  const redirect = BARE_PATH_REDIRECTS[barePath];
-  if (redirect) {
-    const market = resolveMarketFromRequest(request) ?? DEFAULT_MARKET;
-    // On the SN prod host, the US equivalent lives on the US domain.
-    if (market === "US" && kind === "sn") {
-      return NextResponse.redirect(
-        `${US_ORIGIN}${stripUSPrefix(redirect.US)}${search}`,
-        307,
-      );
-    }
-    const target = redirect[market];
-    return NextResponse.redirect(new URL(`${target}${search}`, request.url), 307);
-  }
-
-  return passThrough(request, pathname);
+  const cookie = request.cookies.get(MARKET_COOKIE)?.value;
+  const market = isMarketCode(cookie) ? cookie : geoMarket(request.headers) ?? DEFAULT_MARKET;
+  const target = pathname === "/" ? `/${market.toLowerCase()}`
+    : BARE_PATH_REDIRECTS[pathname.replace(/\/$/, "")]?.[market];
+  return target
+    ? NextResponse.redirect(new URL(target + search, request.url), 307)
+    : passThrough(request, pathname);
 }
 
 // Bare-path → per-market target map. Keep this in sync with routes.ts.
@@ -224,9 +216,9 @@ function proxyMultiMarket(
 const BARE_PATH_REDIRECTS: Record<string, Record<MarketCode, string>> = {
   "/forfaits":         { SN: "/sn/forfaits",         US: "/us/pricing" },
   "/inscription":      { SN: "/sn/inscription",      US: "/us/signup" },
-  "/paiement":         { SN: "/sn/paiement",         US: "/us/pricing" },
-  "/paiement/succes":  { SN: "/sn/paiement/succes",  US: "/us/checkout/success" },
-  "/paiement/echec":   { SN: "/sn/paiement/echec",   US: "/us/checkout/cancel" },
+  "/paiement":         { SN: "/sn/paiement",         US: "/sn/paiement" },
+  "/paiement/succes":  { SN: "/sn/paiement/succes",  US: "/sn/paiement/succes" },
+  "/paiement/echec":   { SN: "/sn/paiement/echec",   US: "/sn/paiement/echec" },
   "/sinistres":        { SN: "/sn/sinistres",        US: "/us/claims" },
   "/reparations":      { SN: "/sn/reparations",      US: "/us/repair" },
   "/partenaires":      { SN: "/sn/partenaires",      US: "/us/partners" },

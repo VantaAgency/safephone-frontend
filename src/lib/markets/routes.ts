@@ -61,8 +61,8 @@ const SN_ROUTES: MarketRoutes = {
   terms: "/sn#legal",
   privacy: "/sn#legal",
   repairProtectionTerms: "/sn#legal",
-  paymentSuccess: "/paiement/succes",
-  paymentCancel: "/paiement/echec",
+  paymentSuccess: "/sn/paiement/succes",
+  paymentCancel: "/sn/paiement/echec",
 };
 
 const US_ROUTES: MarketRoutes = {

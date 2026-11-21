@@ -1,4 +1,31 @@
-import { test, expect } from "./fixtures";
+import { test, expect, type Page, type TestUser } from "./fixtures";
+
+async function payWithTestCard(page: Page, user: TestUser) {
+  await page.waitForURL(/https:\/\/checkout\.stripe\.com\/.*cs_test_/, { timeout: 30_000 });
+  await expect(page.getByText(/\$\d+/).first()).toBeVisible();
+  const cardField = (frame: ReturnType<Page["mainFrame"]>) =>
+    frame.getByRole("textbox", { name: /card number/i });
+  const cardButton = (frame: ReturnType<Page["mainFrame"]>) =>
+    frame.getByRole("button", { name: /^card$/i });
+  const findCheckoutFrame = async () =>
+    (await Promise.all(page.frames().map(async (frame) =>
+      await cardField(frame).or(cardButton(frame)).first().isVisible().catch(() => false) ? frame : null,
+    ))).find(Boolean);
+  await expect.poll(async () => Boolean(await findCheckoutFrame())).toBe(true);
+  const checkout = (await findCheckoutFrame())!;
+  if (await cardButton(checkout).isVisible()) await cardButton(checkout).click();
+
+  const email = checkout.getByRole("textbox", { name: /^email$/i });
+  if (await email.isVisible() && await email.isEditable()) await email.fill(user.email);
+  await cardField(checkout).fill("4242 4242 4242 4242");
+  await checkout.getByRole("textbox", { name: /expiration|expiry/i }).fill("12 / 30");
+  await checkout.getByRole("textbox", { name: /cvc|security code/i }).fill("123");
+  await checkout.getByRole("textbox", { name: /name on card|cardholder/i }).fill(user.name);
+  await checkout.getByRole("combobox", { name: /country/i }).selectOption({ label: "United States" });
+  await checkout.getByRole("textbox", { name: /zip|postal/i }).fill("94103");
+  await checkout.getByRole("button", { name: /^subscribe$/i }).click();
+  await page.waitForURL(/\/us\/checkout\/success/, { timeout: 60_000 });
+}
 
 /**
  * End-to-end US flow split into two tests:
@@ -39,42 +66,7 @@ test.describe("US Stripe checkout flow", () => {
     await expect(subscribeButtons.first()).toBeVisible();
     await subscribeButtons.first().click();
 
-    // ─── Redirect through /us/signup → Stripe ────────────────────────────
-    await page.waitForURL(/checkout\.stripe\.com/, { timeout: 30_000 });
-    expect(page.url()).toContain("checkout.stripe.com");
-
-    // ─── Fill Stripe Checkout test card ──────────────────────────────────
-    const emailField = page.getByRole("textbox", { name: /email/i });
-    if (await emailField.isVisible().catch(() => false)) {
-      await emailField.fill(user.email);
-    }
-    await page
-      .getByRole("textbox", { name: /card number/i })
-      .fill("4242 4242 4242 4242");
-    await page
-      .getByRole("textbox", { name: /expiration|expiry/i })
-      .fill("12 / 30");
-    await page.getByRole("textbox", { name: /cvc|security code/i }).fill("123");
-
-    const nameField = page.getByRole("textbox", {
-      name: /name on card|cardholder/i,
-    });
-    if (await nameField.isVisible().catch(() => false)) {
-      await nameField.fill(user.name);
-    }
-
-    const zipField = page.getByRole("textbox", { name: /zip|postal/i });
-    if (await zipField.isVisible().catch(() => false)) {
-      await zipField.fill("94103");
-    }
-
-    await page
-      .getByRole("button", { name: /subscribe|pay|start|confirm/i })
-      .first()
-      .click();
-
-    // ─── Back on success page ─────────────────────────────────────────────
-    await page.waitForURL(/\/us\/checkout\/success/, { timeout: 60_000 });
+    await payWithTestCard(page, user);
     await expect(page).toHaveURL(/session_id=cs_test_/);
   });
 
@@ -92,35 +84,7 @@ test.describe("US Stripe checkout flow", () => {
       .getByRole("button", { name: /subscribe|choose|select|get/i })
       .first()
       .click();
-    await page.waitForURL(/checkout\.stripe\.com/, { timeout: 30_000 });
-
-    const emailField = page.getByRole("textbox", { name: /email/i });
-    if (await emailField.isVisible().catch(() => false)) {
-      await emailField.fill(user.email);
-    }
-    await page
-      .getByRole("textbox", { name: /card number/i })
-      .fill("4242 4242 4242 4242");
-    await page
-      .getByRole("textbox", { name: /expiration|expiry/i })
-      .fill("12 / 30");
-    await page.getByRole("textbox", { name: /cvc|security code/i }).fill("123");
-    const nameField = page.getByRole("textbox", {
-      name: /name on card|cardholder/i,
-    });
-    if (await nameField.isVisible().catch(() => false)) {
-      await nameField.fill(user.name);
-    }
-    const zipField = page.getByRole("textbox", { name: /zip|postal/i });
-    if (await zipField.isVisible().catch(() => false)) {
-      await zipField.fill("94103");
-    }
-    await page
-      .getByRole("button", { name: /subscribe|pay|start|confirm/i })
-      .first()
-      .click();
-
-    await page.waitForURL(/\/us\/checkout\/success/, { timeout: 60_000 });
+    await payWithTestCard(page, user);
 
     // ─── Register device ──────────────────────────────────────────────────
     // Webhook needs ~5-15s to land — try a few times before giving up.
